@@ -24,42 +24,22 @@ SOFTWARE.
 
 /* Contributors: Tomasz Koziara */
 
-#ifndef __solfec__
-#define __solfec__
+#ifndef __real__
+#define __real__
 
-/* compilation-level constants */
-#define BLOCK_SIZE 64
+#if defined MPI_REAL /* prevent warnings */
+#undef MPI_REAL
+#endif
+
+/* real type */
+#if REALSIZE==4
 #define REAL float
-/* --------------------------- */
-
-enum fe_type {TET, PYR, WED, HEX};
-
-struct fe_block
-{
-  uint32_t bid; /* body identifier */
-
-  fe_type type; /* fixed type blocks */
-
-  REAL data[BLOCK_SIZE]; /* static per-component data blocks for ISPC routines */
-
-  uint8_t size;
-
-  /* XXX: one map<string,block> instead ? */
-
-  /* XXX: a global mempool for all element data blocks */
-
-  /* XXX: per block algebra ? (additive-Schwarz-overlapped) */
-
-  REAL extents[6]; /* for contact detection and MPI rank migration */
-};
-
-struct solfec
-{
-  REAL *nodal_data; /* global nodal data via MPI-3.0 shared memory blocks */
-
-  /* XXX: use one map<string,vector> instead ? */
-
-  std::list<fe_block> fe_blocks;
-};
+#define MPI_REAL MPI_FLOAT
+#define REAL_MAX 3.40282347E+38F
+#else
+#define REAL double
+#define MPI_REAL MPI_DOUBLE
+#define REAL_MAX 1.7976931348623157E+308
+#endif
 
 #endif
