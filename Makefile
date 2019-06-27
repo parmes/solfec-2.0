@@ -9,6 +9,9 @@ ISPC_SRC=ispc/simd_util.ispc
 # ISPC targets
 ISPC_TARGETS=sse2,sse4,avx
 
+# MPI C++ compiler
+MPICXX=mpicxx
+
 # Program name
 EXE=solfec
 

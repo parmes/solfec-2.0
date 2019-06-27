@@ -1,0 +1,14 @@
+solfec4
+solfec8
+objs4/*
+objs8/*
+*.swp
+*.pyc
+*.dump
+*.vtk.*
+*.h5
+*.xmf
+*.png
+*.med
+*.lyx#
+*.dSYM

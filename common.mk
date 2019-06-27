@@ -14,7 +14,7 @@ CPP_OBJS4=$(addprefix objs4/, $(CPP_SRC:.cpp=.o))
 CPP_OBJS8=$(addprefix objs8/, $(CPP_SRC:.cpp=.o))
 C_OBJS4=$(addprefix objs4/, $(C_SRC:.c=.o))
 C_OBJS8=$(addprefix objs8/, $(C_SRC:.c=.o))
-LIBS=-lm
+LIBS=-lm $(PYTHONLIB) $(HDF5LIB)
 
 default: dirs $(ISPC_HEADERS4) $(ISPC_HEADERS8) $(CPP_OBJS4) $(CPP_OBJS8) $(C_OBJS4) $(C_OBJS8) $(EXE)4 $(EXE)8
 

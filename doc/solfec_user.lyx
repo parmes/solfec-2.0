@@ -1,0 +1,1581 @@
+#LyX 2.3 created this file. For more info see http://www.lyx.org/
+\lyxformat 544
+\begin_document
+\begin_header
+\save_transient_properties true
+\origin unavailable
+\textclass book
+\use_default_options true
+\maintain_unincluded_children false
+\language english
+\language_package default
+\inputencoding auto
+\fontencoding global
+\font_roman "default" "default"
+\font_sans "default" "default"
+\font_typewriter "default" "default"
+\font_math "auto" "auto"
+\font_default_family default
+\use_non_tex_fonts false
+\font_sc false
+\font_osf false
+\font_sf_scale 100 100
+\font_tt_scale 100 100
+\use_microtype false
+\use_dash_ligatures true
+\graphics default
+\default_output_format default
+\output_sync 0
+\bibtex_command default
+\index_command default
+\paperfontsize default
+\spacing single
+\use_hyperref true
+\pdf_bookmarks true
+\pdf_bookmarksnumbered false
+\pdf_bookmarksopen false
+\pdf_bookmarksopenlevel 1
+\pdf_breaklinks false
+\pdf_pdfborder false
+\pdf_colorlinks true
+\pdf_backref false
+\pdf_pdfusetitle true
+\pdf_quoted_options "urlcolor=blue, linkcolor=black"
+\papersize a4paper
+\use_geometry true
+\use_package amsmath 1
+\use_package amssymb 1
+\use_package cancel 1
+\use_package esint 1
+\use_package mathdots 1
+\use_package mathtools 1
+\use_package mhchem 1
+\use_package stackrel 1
+\use_package stmaryrd 1
+\use_package undertilde 1
+\cite_engine basic
+\cite_engine_type default
+\biblio_style plain
+\use_bibtopic false
+\use_indices false
+\paperorientation portrait
+\suppress_date false
+\justification true
+\use_refstyle 0
+\use_minted 0
+\index Index
+\shortcut idx
+\color #008000
+\end_index
+\leftmargin 2cm
+\topmargin 4cm
+\rightmargin 2cm
+\bottommargin 4cm
+\headheight 2cm
+\headsep 1cm
+\footskip 2cm
+\secnumdepth 2
+\tocdepth 2
+\paragraph_separation indent
+\paragraph_indentation default
+\is_math_indent 0
+\math_numbering_side default
+\quotes_style english
+\dynamic_quotes 0
+\papercolumns 1
+\papersides 1
+\paperpagestyle default
+\tracking_changes false
+\output_changes false
+\html_math_output 0
+\html_css_as_file 0
+\html_be_strict false
+\end_header
+
+\begin_body
+
+\begin_layout Title
+SOFLEC 2.0 USER MANUAL
+\end_layout
+
+\begin_layout Standard
+\begin_inset CommandInset toc
+LatexCommand tableofcontents
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout LyX-Code
+
+\end_layout
+
+\begin_layout Chapter
+Installation
+\end_layout
+
+\begin_layout Standard
+Clone SOLFEC sources from 
+\begin_inset CommandInset href
+LatexCommand href
+name "GitHub"
+target "https://github.com/tkoziara/parmec"
+literal "false"
+
+\end_inset
+
+:
+\end_layout
+
+\begin_layout LyX-Code
+git clone  https://github.com/parmes/solfec-2.0.git
+\end_layout
+
+\begin_layout Standard
+Enter SOLFEC directory:
+\end_layout
+
+\begin_layout LyX-Code
+cd solfec-2.0
+\end_layout
+
+\begin_layout Standard
+Edit Config.mak file variables:
+\end_layout
+
+\begin_layout LyX-Code
+# ISPC (
+\begin_inset CommandInset href
+LatexCommand href
+target "http://ispc.github.io"
+literal "false"
+
+\end_inset
+
+) and MPICXX compilers are assumed to be in the PATH
+\end_layout
+
+\begin_layout LyX-Code
+ 
+\end_layout
+
+\begin_layout LyX-Code
+# Python paths (used to parse input files)
+\end_layout
+
+\begin_layout LyX-Code
+PYTHONINC=-I/usr/include/python2.7
+\end_layout
+
+\begin_layout LyX-Code
+PYTHONLIB=-L/usr/lib -lpython2.7
+\end_layout
+
+\begin_layout LyX-Code
+ 
+\end_layout
+
+\begin_layout LyX-Code
+# HDF5 paths (used to write output files)
+\end_layout
+
+\begin_layout LyX-Code
+HDF5INC=-I/usr/include
+\end_layout
+
+\begin_layout LyX-Code
+HDF5LIB=-L/usr/lib -lhdf5 -lhdf5_hl
+\end_layout
+
+\begin_layout LyX-Code
+ 
+\end_layout
+
+\begin_layout LyX-Code
+# Debug version
+\end_layout
+
+\begin_layout LyX-Code
+DEBUG=no
+\end_layout
+
+\begin_layout Standard
+Compile sources:
+\end_layout
+
+\begin_layout LyX-Code
+make
+\end_layout
+
+\begin_layout Standard
+Solfec executable files are:
+\end_layout
+
+\begin_layout LyX-Code
+solfec4 (single precision)
+\end_layout
+
+\begin_layout LyX-Code
+solfec8 (double precision)
+\end_layout
+
+\begin_layout Standard
+To update solfec type:
+\end_layout
+
+\begin_layout LyX-Code
+make clean
+\end_layout
+
+\begin_layout LyX-Code
+git pull
+\end_layout
+
+\begin_layout LyX-Code
+make
+\end_layout
+
+\begin_layout Chapter
+\begin_inset CommandInset label
+LatexCommand label
+name "cha:Running"
+
+\end_inset
+
+Running
+\end_layout
+
+\begin_layout Standard
+SOLFEC is a command line program utilizing MPI runtime environment and shared
+ memory parallelism.
+ Typically, for an input model and a hardware platform at hand, you will
+ want to test which degree of MPI parallelism per cluster node gives optimum
+ performance.
+ Typical usage:
+\end_layout
+
+\begin_layout Enumerate
+Include solfec-2.0 directory into your PATH variable.
+\end_layout
+
+\begin_layout Enumerate
+Create a directory where your input file and output files will be stored
+ (e.g.
+ 
+\emph on
+mkdir test
+\emph default
+).
+\end_layout
+
+\begin_layout Enumerate
+Edit your 
+\begin_inset CommandInset href
+LatexCommand href
+name "Python"
+target "http://www.python.org/"
+literal "false"
+
+\end_inset
+
+ input file in this directory (e.g.
+ 
+\emph on
+test.py
+\emph default
+); Chapter 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "cha:Input commands"
+
+\end_inset
+
+ documents all input commands.
+\end_layout
+
+\begin_layout Enumerate
+Run SOLFEC (e.g.
+ 
+\emph on
+mpirun -np N solfec4 path/to/test/test.py
+\emph default
+, or 
+\emph on
+mpirun -np N solfec8 path/to/test/test.py
+\emph default
+, or use a batch script).
+\end_layout
+
+\begin_layout Enumerate
+Time histories can be generated during analysis using the HISTORY command;
+ see Section 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "subsec:HISTORY"
+
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Enumerate
+Upon termination output file(s) is(are) created in the same directory (e.g.
+ 
+\emph on
+path/to/test/test.h5
+\emph default
+); see Section 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "subsec:OUTPUT"
+
+\end_inset
+
+ and Chapter 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "cha:Output files"
+
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Chapter
+\begin_inset CommandInset label
+LatexCommand label
+name "cha:Input commands"
+
+\end_inset
+
+Input commands
+\end_layout
+
+\begin_layout Standard
+SOLFEC input language extends 
+\begin_inset CommandInset href
+LatexCommand href
+name "Python"
+target "http://www.python.org/"
+literal "false"
+
+\end_inset
+
+ by subroutines listed below.
+ In all cases, when an object number is returned, 
+\series bold
+indexing starts at 0
+\series default
+ and increments on each call.
+ Only 
+\series bold
+rank 0
+\series default
+ MPI process reads the input file.
+\end_layout
+
+\begin_layout Section
+\begin_inset CommandInset label
+LatexCommand label
+name "subsec:ARGV"
+
+\end_inset
+
+ARGV
+\end_layout
+
+\begin_layout Standard
+List command line arguments.
+\end_layout
+
+\begin_layout Subsection*
+list = ARGV (| nonsolfec)
+\end_layout
+
+\begin_layout Itemize
+
+\series bold
+list
+\series default
+ - Python list (possibly empty) of command line arguments
+\end_layout
+
+\begin_layout Itemize
+
+\series bold
+nonsolfec
+\series default
+ - optional boolean flag enabling filtering out solfec arguments; default:
+ True
+\end_layout
+
+\begin_layout Section
+\begin_inset CommandInset label
+LatexCommand label
+name "subsec:RESET"
+
+\end_inset
+
+RESET
+\end_layout
+
+\begin_layout Standard
+Erase all data.
+\end_layout
+
+\begin_layout Subsection*
+RESET ( | outname)
+\end_layout
+
+\begin_layout Itemize
+
+\series bold
+outname
+\series default
+ - optional output file name (default: input file name without the 
+\begin_inset Quotes eld
+\end_inset
+
+.py
+\begin_inset Quotes erd
+\end_inset
+
+ extension)
+\end_layout
+
+\begin_layout Section
+\begin_inset CommandInset label
+LatexCommand label
+name "sec:SPLINE"
+
+\end_inset
+
+SPLINE
+\end_layout
+
+\begin_layout Standard
+Create a linear spline based on series of 2-points.
+\end_layout
+
+\begin_layout Subsection*
+splnum = SPLINE (points | cache)
+\end_layout
+
+\begin_layout Itemize
+
+\series bold
+splnum
+\series default
+ - spline number
+\end_layout
+
+\begin_layout Itemize
+
+\series bold
+points
+\series default
+ - a constant 
+\emph on
+v0
+\emph default
+, or a list 
+\emph on
+[t0, v0, t1, v1, ....]
+\emph default
+ or 
+\emph on
+[[t0,v0], [t1,v1], ...]
+\emph default
+ or 
+\emph on
+[(t0,v0), (t1,v1), ...]
+\emph default
+ of points (where 
+\emph on
+ti < tj
+\emph default
+, when 
+\emph on
+i < j
+\emph default
+), or a path to a file storing pairs of times and values in format:
+\end_layout
+
+\begin_layout LyX-Code
+# comment 1 ...
+\end_layout
+
+\begin_layout LyX-Code
+# comment 2 ...
+\end_layout
+
+\begin_layout LyX-Code
+t0 v0
+\end_layout
+
+\begin_layout LyX-Code
+t1 v1
+\end_layout
+
+\begin_layout LyX-Code
+# comment 3 ...
+\end_layout
+
+\begin_layout LyX-Code
+t2 v2
+\end_layout
+
+\begin_layout LyX-Code
+...
+\end_layout
+
+\begin_layout Itemize
+
+\series bold
+cache
+\series default
+ - optional partial cache size; if 
+\series bold
+points
+\series default
+ = file path and 
+\series bold
+cache
+\series default
+ > 0 then only the cache size of points is stored in memory at any given
+ time; this helps to save memory in case of a need for many large spline
+ objects; default: 0 (entire spline is stored in memory)
+\end_layout
+
+\begin_layout Section
+\begin_inset CommandInset label
+LatexCommand label
+name "subsec:MATERIAL"
+
+\end_inset
+
+MATERIAL
+\end_layout
+
+\begin_layout Standard
+Create material.
+\end_layout
+
+\begin_layout Subsection*
+matnum = MATERIAL (density, young, poisson, viscosity)
+\end_layout
+
+\begin_layout Itemize
+
+\series bold
+matnum
+\series default
+ - material number
+\end_layout
+
+\begin_layout Itemize
+
+\series bold
+density
+\series default
+ - mass density
+\end_layout
+
+\begin_layout Itemize
+
+\series bold
+young
+\series default
+ - Young modulus
+\end_layout
+
+\begin_layout Itemize
+
+\series bold
+poisson
+\series default
+ - Poisson ratio
+\end_layout
+
+\begin_layout Itemize
+
+\series bold
+viscosity
+\series default
+ – viscosity parameter
+\end_layout
+
+\begin_layout Section
+\begin_inset CommandInset label
+LatexCommand label
+name "subsec:MESH"
+
+\end_inset
+
+MESH
+\end_layout
+
+\begin_layout Standard
+Create a meshed body.
+\end_layout
+
+\begin_layout Subsection*
+bodnum = MESH (nodes, elements, material, colors)
+\end_layout
+
+\begin_layout Itemize
+
+\series bold
+bodnum
+\series default
+ - body number
+\end_layout
+
+\begin_layout Itemize
+
+\series bold
+nodes
+\series default
+ - list of nodes: [
+\emph on
+x0, y0, z0, x1, y1, z1, ...
+\emph default
+]
+\end_layout
+
+\begin_layout Itemize
+
+\series bold
+elements
+\series default
+ - list of elements: [
+\emph on
+e1, n1, n2, ..., ne1, me1, e2, n1, n2, ..., ne2, me2, ...
+\emph default
+], where 
+\emph on
+e1
+\emph default
+ is the number of nodes of the first element,
+\emph on
+ n1, n2, ..., ne1
+\emph default
+ enumerate the element nodes, and 
+\emph on
+me1
+\emph default
+ is the material number.
+ Similarly for the second and all remaining elements.
+ Supported numbers of nodes per element are 
+\emph on
+4, 5, 6, and 8
+\emph default
+ for respectively 
+\emph on
+tetrahedron, pyramid, wedge, and hexahedron
+\emph default
+, see Figure 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:eletype"
+
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Itemize
+
+\series bold
+material
+\series default
+ - material number
+\end_layout
+
+\begin_layout Itemize
+
+\series bold
+colors
+\series default
+ - list of positive integer face colors: [
+\emph on
+gcolor, f1, n1, n2, ..., nf1, c1, f2, n1, n2, ..., nf2, c2, ...
+\emph default
+], where 
+\emph on
+gcolor
+\emph default
+ is the global color for all not specified faces, 
+\emph on
+f1
+\emph default
+ is the number of nodes in the first specified face, 
+\emph on
+n1, n2, ..., nf1
+\emph default
+ enumerate the face nodes, and 
+\emph on
+c1
+\emph default
+ is the surface color of that face.
+ Similarly for the second and all remaining faces.
+ If only the global color is required, it can be passed as [
+\emph on
+gcolor
+\emph default
+] or as 
+\emph on
+gcolor
+\emph default
+ alone.
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+placement h
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Graphics
+	filename figures/tet.eps
+	lyxscale 15
+	width 15col%
+
+\end_inset
+
+
+\begin_inset Graphics
+	filename figures/pyr.eps
+	lyxscale 15
+	width 15col%
+
+\end_inset
+
+
+\begin_inset Graphics
+	filename figures/wed.eps
+	lyxscale 15
+	width 15col%
+
+\end_inset
+
+
+\begin_inset Graphics
+	filename figures/hex.eps
+	lyxscale 15
+	width 15col%
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+\begin_inset CommandInset label
+LatexCommand label
+name "fig:eletype"
+
+\end_inset
+
+Mesh element types in SOLFEC.
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Section
+\begin_inset CommandInset label
+LatexCommand label
+name "subsec:CONTACT"
+
+\end_inset
+
+CONTACT
+\end_layout
+
+\begin_layout Standard
+Define surface pairing for contact analysis.
+ Default parameters, for unspecified pairings, are: spring = 0.0, damper
+ = 1.0, friction = (0.0, 0.0), rolling = 0.0, drilling = 0.0, and kskn = 0.5.
+\end_layout
+
+\begin_layout Subsection*
+GRANULAR (color1, color2 | friction)
+\end_layout
+
+\begin_layout Itemize
+
+\series bold
+color1
+\series default
+ - first color (positive, or color1 = 0 and color2 = 0 to redefine default
+ parameters for unspecified pairings)
+\end_layout
+
+\begin_layout Itemize
+
+\series bold
+color2
+\series default
+ - second color (positive, or color1 = 0 and color2 = 0 to redefine default
+ parameters for unspecified pairings)
+\end_layout
+
+\begin_layout Itemize
+
+\series bold
+friction
+\series default
+ - optional Coulomb's friction coefficient; default: 0.0; tuple 
+\begin_inset Formula $\left(\mu_{s},\mu_{d}\right)$
+\end_inset
+
+ can be used to specify respectively static and dynamic friction coefficients;
+\end_layout
+
+\begin_layout Section
+\begin_inset CommandInset label
+LatexCommand label
+name "subsec:RESTRAIN"
+
+\end_inset
+
+RESTRAIN
+\end_layout
+
+\begin_layout Standard
+Restrain body point or surface motion.
+\end_layout
+
+\begin_layout Subsection*
+RESTRAIN (bodnum | point, color)
+\end_layout
+
+\begin_layout Itemize
+
+\series bold
+bodnum
+\series default
+ - body number
+\end_layout
+
+\begin_layout Itemize
+
+\series bold
+point
+\series default
+ - optional referential point; default: 
+\emph on
+not specified
+\end_layout
+
+\begin_layout Itemize
+
+\series bold
+color
+\series default
+ - optional surface color; default: 
+\emph on
+not specified
+\end_layout
+
+\begin_layout Section
+\begin_inset CommandInset label
+LatexCommand label
+name "subsec:PRESCRIBE"
+
+\end_inset
+
+PRESCRIBE
+\end_layout
+
+\begin_layout Standard
+Prescribe body, point, or surface motion.
+ Prescribed motion overwrites this resulting from dynamics and restraints.
+\end_layout
+
+\begin_layout Subsection*
+PRESCRIBE (bodnum | point, color, linear, angular)
+\end_layout
+
+\begin_layout Itemize
+
+\series bold
+bodnum
+\series default
+ - body number
+\end_layout
+
+\begin_layout Itemize
+
+\series bold
+point
+\series default
+ - optional referential point; default: 
+\emph on
+not specified
+\end_layout
+
+\begin_layout Itemize
+
+\series bold
+color
+\series default
+ - optional surface color; default: 
+\emph on
+not specified
+\end_layout
+
+\begin_layout Itemize
+
+\series bold
+linear
+\series default
+ - a tuple 
+\begin_inset Formula $(i,j,k)$
+\end_inset
+
+ of SPLINE numbers, or a callback: 
+\begin_inset Formula $\left(v_{x},v_{y},v_{z}\right)=$
+\end_inset
+
+ 
+\series bold
+linear
+\series default
+ 
+\begin_inset Formula $\left(t\right)$
+\end_inset
+
+, defining linear velocity history; default: 
+\emph on
+not prescribed
+\end_layout
+
+\begin_layout Itemize
+
+\series bold
+angular
+\series default
+ - a tuple 
+\begin_inset Formula $(i,j,k)$
+\end_inset
+
+ of SPLINE numbers, or a callback: 
+\begin_inset Formula $\left(\omega_{x},\omega_{y},\omega_{z}\right)=$
+\end_inset
+
+ 
+\series bold
+angular
+\series default
+ 
+\begin_inset Formula $\left(t\right)$
+\end_inset
+
+, defining spatial angular velocity history with respect to the entity (body
+ or surface) mass center; default: 
+\emph on
+not prescribed
+\end_layout
+
+\begin_layout Section
+\begin_inset CommandInset label
+LatexCommand label
+name "subsec:VELOCITY"
+
+\end_inset
+
+VELOCITY
+\end_layout
+
+\begin_layout Standard
+Set body velocity.
+\end_layout
+
+\begin_layout Subsection*
+VELOCITY (bodnum | linear, angular)
+\end_layout
+
+\begin_layout Itemize
+
+\series bold
+bodnum
+\series default
+ - body number
+\end_layout
+
+\begin_layout Itemize
+
+\series bold
+linear
+\series default
+ - linear velocity tuple 
+\begin_inset Formula $\left(v_{x},v_{y},v_{z}\right)$
+\end_inset
+
+; default: 
+\begin_inset Formula $\left(0,0,0\right)$
+\end_inset
+
+ at 
+\begin_inset Formula $t=0$
+\end_inset
+
+
+\end_layout
+
+\begin_layout Itemize
+
+\series bold
+angular
+\series default
+ - angular velocity tuple 
+\begin_inset Formula $\left(\omega_{x},\omega_{y},\omega_{z}\right)$
+\end_inset
+
+; default: 
+\begin_inset Formula $\left(0,0,0\right)$
+\end_inset
+
+ at 
+\begin_inset Formula $t=0$
+\end_inset
+
+
+\end_layout
+
+\begin_layout Section
+\begin_inset CommandInset label
+LatexCommand label
+name "subsec:GRAVITY"
+
+\end_inset
+
+GRAVITY
+\end_layout
+
+\begin_layout Standard
+Set gravity.
+\end_layout
+
+\begin_layout Subsection*
+GRAVITY (gx, gy, gz)
+\end_layout
+
+\begin_layout Itemize
+
+\series bold
+gx
+\series default
+ - constant 
+\begin_inset Formula $x$
+\end_inset
+
+ float number, or callback 
+\series bold
+gx
+\series default
+
+\begin_inset Formula $(t)$
+\end_inset
+
+, or SPLINE number
+\end_layout
+
+\begin_layout Itemize
+
+\series bold
+gy
+\series default
+ - constant 
+\begin_inset Formula $y$
+\end_inset
+
+ float number, or callback 
+\series bold
+gy
+\series default
+
+\begin_inset Formula $(t)$
+\end_inset
+
+, or SPLINE number
+\end_layout
+
+\begin_layout Itemize
+
+\series bold
+gz
+\series default
+ - constant 
+\begin_inset Formula $z$
+\end_inset
+
+ float number, or callback 
+\series bold
+gz
+\series default
+
+\begin_inset Formula $(t)$
+\end_inset
+
+, or SPLINE number
+\end_layout
+
+\begin_layout Section
+\begin_inset CommandInset label
+LatexCommand label
+name "subsec:HISTORY"
+
+\end_inset
+
+HISTORY
+\end_layout
+
+\begin_layout Standard
+Before running a simulation, request time history output; or read history
+ from an existing output file.
+\end_layout
+
+\begin_layout Subsection*
+list = HISTORY (entity | point, bodnum, h5file, h5last)
+\end_layout
+
+\begin_layout Itemize
+
+\series bold
+list
+\series default
+ - output time history list (empty upon initial request, populated during
+ simulation)
+\end_layout
+
+\begin_layout Itemize
+
+\series bold
+entity
+\series default
+ - entity name; global entities: (output time) 'TIME', (number of contacts)
+ 'CONTACTS'; body entities: (position) 'PX', 'PY', 'PZ', '|P|', (displacement)
+ 'DX', 'DY', 'DZ', '|D|', (linear velocity) 'VX', 'VY', 'VZ', '|V|', (Cauchy
+ stress) 'SX', 'SY', 'SZ', 'SXY', 'SXZ', 'SYZ', '|S|' (von Mises norm);
+\end_layout
+
+\begin_layout Itemize
+
+\series bold
+point
+\series default
+ - referential point; default:
+\emph on
+ not specified
+\end_layout
+
+\begin_layout Itemize
+
+\series bold
+bodnum
+\series default
+ - body number; default: 
+\emph on
+not specified
+\end_layout
+
+\begin_layout Itemize
+
+\series bold
+h5file
+\series default
+ - optional *.h5 file storing existing results; in this case the history
+ is retrieved from this file (if found) or an error message is issued; an
+ appropriate output file needs to be picked depending on the 
+\series bold
+entity
+\series default
+, see Section 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "subsec:OUTPUT"
+
+\end_inset
+
+; the output 
+\series bold
+list
+\series default
+ is not populated until 
+\series bold
+h5last
+\series default
+ = 
+\emph on
+True
+\emph default
+; default: not specified
+\end_layout
+
+\begin_layout Itemize
+
+\series bold
+h5last
+\series default
+ - optional boolean flag marking a last call to HISTORY for which the 
+\series bold
+h5file
+\series default
+ argument is used; for faster reading all such histories are populated once
+ HISTORY(..., 
+\series bold
+h5file
+\series default
+ = ..., 
+\series bold
+h5last
+\series default
+ = 
+\emph on
+True
+\emph default
+) is called; default: 
+\emph on
+False
+\end_layout
+
+\begin_layout Section
+\begin_inset CommandInset label
+LatexCommand label
+name "subsec:OUTPUT"
+
+\end_inset
+
+OUTPUT
+\end_layout
+
+\begin_layout Standard
+Before running a simulation, define scalar and/or vector entities included
+ into the output file(s).
+ SOLFEC outputs:
+\end_layout
+
+\begin_layout Itemize
+*0.vtk.* 
+\series bold
+and/or
+\series default
+ (*0.h5, *0.xmf) files for meshed bodies 
+\series bold
+not
+\series default
+ specified as 
+\series bold
+a subset
+\series default
+ in the OUTPUT command
+\end_layout
+
+\begin_layout Itemize
+*1.vtk.*, *2.vtk.*, ...
+ 
+\series bold
+and/or
+\series default
+ (*1.h5, *1.xmf, *2.h5, *2.xmf, ...) files for meshed bodies specified as subsets,
+ where numbers 1, 2, ...
+ match consecutive OUTPUT calls
+\end_layout
+
+\begin_layout Itemize
+*0cd.vtk.* 
+\series bold
+and/or
+\series default
+ (*0cd.h5, *0cd.xmf) files for contact data including bodies 
+\series bold
+not
+\series default
+ specified as 
+\series bold
+a subset
+\series default
+ in the OUTPUT command
+\end_layout
+
+\begin_layout Itemize
+*1cd.vtk.*, *2cd.vtk.*, ...
+ 
+\series bold
+and/or
+\series default
+ (*1cd.h5, *1cd.xmf, *2cd.h5, *2cd.xmf, ...) files for contact data including bodies
+ specified as subsets, where numbers 1, 2, ...
+ match consecutive OUTPUT calls
+\end_layout
+
+\begin_layout Subsection*
+OUTPUT ( | entities, subset, mode, format)
+\end_layout
+
+\begin_layout Itemize
+
+\series bold
+entities
+\series default
+ - list of output entities; default: ['NUMBER', 'COLOR', 'DISPL', 'LINVEL',
+ STRESS, 'CF', 'CFN', 'CFT', 'AREA', 'PAIR'] where:
+\end_layout
+
+\begin_deeper
+\begin_layout Itemize
+'NUMBER' - scalar field of body numbers (modes: 'MESH')
+\end_layout
+
+\begin_layout Itemize
+'COLOR' - scalar field of surface colors (modes: 'MESH')
+\end_layout
+
+\begin_layout Itemize
+'DISPL' - 3-component vector field of displacements (modes: 'MESH')
+\end_layout
+
+\begin_layout Itemize
+'LINVEL' - 3-component vector field of linear velocity (modes: 'MESH')
+\end_layout
+
+\begin_layout Itemize
+'STRESS' - 6-component tensor field representing Cauchy stress (modes: 'MESH')
+\end_layout
+
+\begin_layout Itemize
+'CF' - 3-component vector field of total contact forces (modes: 'CD')
+\end_layout
+
+\begin_layout Itemize
+'CFN' - 3-component vector field of normal contact forces (modes: 'CD')
+\end_layout
+
+\begin_layout Itemize
+'CFT' - 3-component vector field of tangential contact forces (modes: 'CD')
+\end_layout
+
+\begin_layout Itemize
+'AREA' - scalar field of contact area (modes: 'CD')
+\end_layout
+
+\begin_layout Itemize
+'PAIR' - 2-component vector field of body pair numbers (modes: 'CD')
+\end_layout
+
+\end_deeper
+\begin_layout Itemize
+
+\series bold
+subset
+\series default
+ - optional body number 
+\emph on
+i, 
+\emph default
+or a list of body numbers [
+\emph on
+i, j, ...
+\emph default
+], to which this specification is narrowed down
+\end_layout
+
+\begin_layout Itemize
+
+\series bold
+mode
+\series default
+ - optional output mode or list of output modes: 'MESH' for mesh output,
+ CD' for contact data output; default: ['MESH', 'CD']
+\end_layout
+
+\begin_layout Itemize
+
+\series bold
+format
+\series default
+ - optional output format, e.g.
+ 'VTK' or 'XDMF', or a list, e.g.
+ ['VTK', 'XDMF'], see Chapter 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "cha:Output files"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+; default: 'XDMF'
+\end_layout
+
+\begin_layout Section
+\begin_inset CommandInset label
+LatexCommand label
+name "subsec:RUN"
+
+\end_inset
+
+RUN
+\end_layout
+
+\begin_layout Standard
+Run simulation.
+\end_layout
+
+\begin_layout Subsection*
+t = RUN (duration, step | interval)
+\end_layout
+
+\begin_layout Itemize
+
+\series bold
+t
+\series default
+ - simulation runtime in seconds
+\end_layout
+
+\begin_layout Itemize
+
+\series bold
+duration
+\series default
+ - simulation duration; 0 can be used to output the initial model state
+\end_layout
+
+\begin_layout Itemize
+
+\series bold
+step
+\series default
+ - simulation time step
+\end_layout
+
+\begin_layout Itemize
+
+\series bold
+interval
+\series default
+ - output interval (default: time step); tuple 
+\begin_inset Formula $\left(dt_{\text{files}},dt_{\text{history}}\right)$
+\end_inset
+
+ can be used to indicate different output frequencies of output files and
+ time histories, respectively; callback functions or SPLINE numbers can
+ also be used, e.g.
+ 
+\begin_inset Formula $dt_{\text{files}}=\text{dt\_fiels}\left(t\right)$
+\end_inset
+
+ and 
+\begin_inset Formula $dt_{\text{history}}=\text{splnum}$
+\end_inset
+
+, prescribing variable interval frequencies, depending on current time;
+\end_layout
+
+\begin_layout Chapter
+\begin_inset CommandInset label
+LatexCommand label
+name "cha:Output files"
+
+\end_inset
+
+Output files
+\end_layout
+
+\begin_layout Standard
+Currently SOLFEC supports the following output file formats:
+\end_layout
+
+\begin_layout Itemize
+\begin_inset CommandInset href
+LatexCommand href
+name "*.vtk"
+target "http://www.vtk.org/wp-content/uploads/2015/04/file-formats.pdf"
+literal "false"
+
+\end_inset
+
+ text based legacy 
+\begin_inset CommandInset href
+LatexCommand href
+name "VTK format"
+target "http://www.vtk.org/wp-content/uploads/2015/04/file-formats.pdf"
+literal "false"
+
+\end_inset
+
+; can be viewed with 
+\begin_inset CommandInset href
+LatexCommand href
+name "ParaView"
+target "https://www.paraview.org/"
+literal "false"
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Itemize
+\begin_inset CommandInset href
+LatexCommand href
+name "*.xmf"
+target "http://www.xdmf.org/index.php/XDMF_Model_and_Format"
+literal "false"
+
+\end_inset
+
+ HDF5/XML based 
+\begin_inset CommandInset href
+LatexCommand href
+name "XDMF format"
+target "http://www.xdmf.org/index.php/XDMF_Model_and_Format"
+literal "false"
+
+\end_inset
+
+; can be viewed with 
+\begin_inset CommandInset href
+LatexCommand href
+name "ParaView"
+target "https://www.paraview.org/"
+literal "false"
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+See also the 
+\begin_inset CommandInset ref
+LatexCommand nameref
+reference "subsec:OUTPUT"
+
+\end_inset
+
+ command for details on outputted entities and file kinds.
+ 
+\end_layout
+
+\end_body
+\end_document
