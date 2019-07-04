@@ -320,10 +320,14 @@ reference "subsec:HISTORY"
 \end_layout
 
 \begin_layout Enumerate
-Upon termination output file(s) is(are) created in the same directory (e.g.
+Upon termination output files are created in the same directory (e.g.
  
 \emph on
 path/to/test/test.h5
+\emph default
+, 
+\emph on
+path/to/test/test.xmf
 \emph default
 ); see Section 
 \begin_inset CommandInset ref
@@ -1336,7 +1340,7 @@ OUTPUT ( | entities, subset, mode, format)
 entities
 \series default
  - list of output entities; default: ['NUMBER', 'COLOR', 'DISPL', 'LINVEL',
- STRESS, 'CF', 'CFN', 'CFT', 'AREA', 'PAIR'] where:
+ STRESS, 'CF', 'CFN', 'CFT', 'AREA', 'BPAIR', 'CPAIR'] where:
 \end_layout
 
 \begin_deeper
@@ -1377,7 +1381,11 @@ entities
 \end_layout
 
 \begin_layout Itemize
-'PAIR' - 2-component vector field of body pair numbers (modes: 'CD')
+'BPAIR' - 2-component vector field of body pair numbers (modes: 'CD')
+\end_layout
+
+\begin_layout Itemize
+'CPAIR' - 2-component vector field of color pair numbers (modes: 'CD')
 \end_layout
 
 \end_deeper
