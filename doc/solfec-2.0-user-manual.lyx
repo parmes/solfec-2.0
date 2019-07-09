@@ -116,7 +116,7 @@ Installation
 \end_layout
 
 \begin_layout Standard
-Clone SOLFEC sources from 
+Clone Solfec-2.0 sources from 
 \begin_inset CommandInset href
 LatexCommand href
 name "GitHub"
@@ -133,7 +133,7 @@ git clone  https://github.com/parmes/solfec-2.0.git
 \end_layout
 
 \begin_layout Standard
-Enter SOLFEC directory:
+Enter directory:
 \end_layout
 
 \begin_layout LyX-Code
@@ -209,7 +209,7 @@ make
 \end_layout
 
 \begin_layout Standard
-Solfec executable files are:
+Solfec-2.0 executables are:
 \end_layout
 
 \begin_layout LyX-Code
@@ -221,7 +221,7 @@ solfec8 (double precision)
 \end_layout
 
 \begin_layout Standard
-To update solfec type:
+To update the executables type:
 \end_layout
 
 \begin_layout LyX-Code
@@ -247,11 +247,11 @@ Running
 \end_layout
 
 \begin_layout Standard
-SOLFEC is a command line program utilizing MPI runtime environment and shared
- memory parallelism.
- Typically, for an input model and a hardware platform at hand, you will
- want to test which degree of MPI parallelism per cluster node gives optimum
- performance.
+Solfec-2.0 is a command line program utilizing MPI runtime environment and
+ shared memory parallelism.
+ For optimum performance, for an input model and a hardware platform at
+ hand, you may want to test which degree of MPI parallelism per cluster
+ node results in shortest runtimes.
  Typical usage:
 \end_layout
 
@@ -295,7 +295,7 @@ reference "cha:Input commands"
 \end_layout
 
 \begin_layout Enumerate
-Run SOLFEC (e.g.
+Run Solfec-2.0 (e.g.
  
 \emph on
 mpirun -np N solfec4 path/to/test/test.py
@@ -357,7 +357,7 @@ Input commands
 \end_layout
 
 \begin_layout Standard
-SOLFEC input language extends 
+Solfec-2.0 input language extends 
 \begin_inset CommandInset href
 LatexCommand href
 name "Python"
@@ -410,7 +410,7 @@ list
 \series bold
 nonsolfec
 \series default
- - optional boolean flag enabling filtering out solfec arguments; default:
+ - optional boolean flag enabling filtering out Solfec-2.0 arguments; default:
  True
 \end_layout
 
@@ -445,7 +445,17 @@ outname
 \begin_inset Quotes erd
 \end_inset
 
- extension)
+ extension); output name can include sub-directories, e.g.
+ 'an/alternative/path' will result in output files 'an/alternative/path.xmf'
+ and 'an/alternative/path.h5' (relative to whence Solfec-2.0 was run) when
+ XDMF output is used (see the 
+\begin_inset CommandInset ref
+LatexCommand nameref
+reference "subsec:OUTPUT"
+
+\end_inset
+
+ command)
 \end_layout
 
 \begin_layout Section
@@ -625,7 +635,7 @@ Create a meshed body.
 \end_layout
 
 \begin_layout Subsection*
-bodnum = MESH (nodes, elements, material, colors)
+bodnum = MESH (nodes, elements, material, colors | transform)
 \end_layout
 
 \begin_layout Itemize
@@ -735,6 +745,71 @@ gcolor
  alone.
 \end_layout
 
+\begin_layout Itemize
+
+\series bold
+transform
+\series default
+ - optional transformation tuple, or a list of transformation tuples, e.g.
+ [translate1, rotate1, translate2, scale2, rotate2, ...], where 
+\begin_inset Formula $\text{translate}=\left(tx,ty,tz\right)$
+\end_inset
+
+; 
+\begin_inset Formula $\text{rotate}=\left(px,py,pz,ax,ay,az,angle\right)$
+\end_inset
+
+, where 
+\begin_inset Formula $px,$
+\end_inset
+
+
+\begin_inset Formula $py,$
+\end_inset
+
+
+\begin_inset Formula $pz$
+\end_inset
+
+ define the point and 
+\begin_inset Formula $ax,ay,az$
+\end_inset
+
+ define the direction of the rotation axis while 
+\begin_inset Formula $angle$
+\end_inset
+
+ defines the angle of rotation, or alternatively 
+\begin_inset Formula $\text{rotate}=\left(r_{11},r_{21},r_{31},r_{12},r_{22},r_{32},r_{13},r_{23},r_{33}\right)$
+\end_inset
+
+ is the rotation matrix (orthogonality is not checked, hence this matrix
+ can be used for more general transformations); 
+\begin_inset Formula $\text{scale}=\left(px,py,px,factor\right)$
+\end_inset
+
+, where 
+\begin_inset Formula $px,$
+\end_inset
+
+
+\begin_inset Formula $py,$
+\end_inset
+
+
+\begin_inset Formula $pz$
+\end_inset
+
+ define the scaling centre point and 
+\begin_inset Formula $factor$
+\end_inset
+
+ is the scaling factor; transformations are applied in the list order; default:
+ 
+\emph on
+not specified
+\end_layout
+
 \begin_layout Standard
 \begin_inset Float figure
 placement h
@@ -788,7 +863,7 @@ name "fig:eletype"
 
 \end_inset
 
-Mesh element types in SOLFEC.
+Mesh element types in Solfec-2.0.
 \end_layout
 
 \end_inset
@@ -813,8 +888,15 @@ CONTACT
 
 \begin_layout Standard
 Define surface pairing for contact analysis.
- Default parameters, for unspecified pairings, are: spring = 0.0, damper
- = 1.0, friction = (0.0, 0.0), rolling = 0.0, drilling = 0.0, and kskn = 0.5.
+ Default parameters, for unspecified pairings, are: 
+\series bold
+friction
+\series default
+ = 
+\begin_inset Formula $(0.0,0.0)$
+\end_inset
+
+;
 \end_layout
 
 \begin_layout Subsection*
@@ -844,11 +926,16 @@ color2
 \series bold
 friction
 \series default
- - optional Coulomb's friction coefficient; default: 0.0; tuple 
+ - optional Coulomb's friction coefficient; tuple 
 \begin_inset Formula $\left(\mu_{s},\mu_{d}\right)$
 \end_inset
 
  can be used to specify respectively static and dynamic friction coefficients;
+ ; default: 
+\begin_inset Formula $(0.0,0.0)$
+\end_inset
+
+
 \end_layout
 
 \begin_layout Section
@@ -882,7 +969,15 @@ bodnum
 \series bold
 point
 \series default
- - optional referential point; default: 
+ - optional referential point 
+\begin_inset Formula $\left(px,py,pz\right)$
+\end_inset
+
+ or list of points 
+\emph on
+[point1, point2, point3, ...]
+\emph default
+; default: 
 \emph on
 not specified
 \end_layout
@@ -929,7 +1024,15 @@ bodnum
 \series bold
 point
 \series default
- - optional referential point; default: 
+ - optional referential point 
+\begin_inset Formula $\left(px,py,pz\right)$
+\end_inset
+
+ or list of points 
+\emph on
+[point1, point2, point3, ...]
+\emph default
+; default: 
 \emph on
 not specified
 \end_layout
@@ -1273,7 +1376,7 @@ OUTPUT
 \begin_layout Standard
 Before running a simulation, define scalar and/or vector entities included
  into the output file(s).
- SOLFEC outputs:
+ Solfec-2.0 outputs:
 \end_layout
 
 \begin_layout Itemize
@@ -1510,7 +1613,7 @@ Output files
 \end_layout
 
 \begin_layout Standard
-Currently SOLFEC supports the following output file formats:
+Currently Solfec-2.0 supports the following output file formats:
 \end_layout
 
 \begin_layout Itemize
@@ -1531,16 +1634,7 @@ literal "false"
 
 \end_inset
 
-; can be viewed with 
-\begin_inset CommandInset href
-LatexCommand href
-name "ParaView"
-target "https://www.paraview.org/"
-literal "false"
-
-\end_inset
-
-
+.
 \end_layout
 
 \begin_layout Itemize
@@ -1561,7 +1655,11 @@ literal "false"
 
 \end_inset
 
-; can be viewed with 
+.
+\end_layout
+
+\begin_layout Standard
+Both of the above formats can be viewed with 
 \begin_inset CommandInset href
 LatexCommand href
 name "ParaView"
@@ -1570,11 +1668,17 @@ literal "false"
 
 \end_inset
 
+ or 
+\begin_inset CommandInset href
+LatexCommand href
+name "VisIt"
+target "https://visit.llnl.gov/"
+literal "false"
 
-\end_layout
+\end_inset
 
-\begin_layout Standard
-See also the 
+.
+ See also the 
 \begin_inset CommandInset ref
 LatexCommand nameref
 reference "subsec:OUTPUT"
