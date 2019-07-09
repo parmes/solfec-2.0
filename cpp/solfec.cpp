@@ -24,10 +24,12 @@ SOFTWARE.
 
 /* Contributors: Tomasz Koziara */
 
+#include <stdlib.h>
 #include <stdio.h>
 #include <mpi.h>
 #include "real.h"
 #include "version.h"
+#include "simd_util_ispc.h"
 
 int main (int argc, char *argv[])
 {
@@ -36,6 +38,8 @@ int main (int argc, char *argv[])
     printf ("VERSION: 1.%s (%s)\n", VERSION_HASH, VERSION_DATE);
     printf ("SYNOPSIS: solfec%d path/to/input/file.py\n", REALSIZE);
   }
+
+  ispc::dummy (argc > 1 ? atoi(argv[1]) : 1000);
 
   return 0;
 }

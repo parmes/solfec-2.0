@@ -16,7 +16,7 @@ C_OBJS4=$(addprefix objs4/, $(C_SRC:.c=.o))
 C_OBJS8=$(addprefix objs8/, $(C_SRC:.c=.o))
 LIBS=-lm $(PYTHONLIB) $(HDF5LIB)
 
-default: dirs version $(EXE)4 $(EXE)8
+default: dirs version $(ISPC_HEADERS4) $(EXE)4 $(ISPC_HEADERS8) $(EXE)8
 
 .PHONY: dirs clean print
 
@@ -55,10 +55,10 @@ $(EXE)8: $(CPP_OBJS8) $(C_OBJS8) $(ISPC_OBJS8)
 	$(MPICXX) $(CFLAGS) -fopenmp -o $@ $^ $(LIBS)
 
 objs4/%_ispc.h objs4/%_ispc.o objs4/%_ispc_sse2.o objs4/%_ispc_sse4.o objs4/%_ispc_avx.o: %.ispc
-	$(ISPC) -DREALSIZE=4 --target=$(ISPC_TARGETS) $< -o objs4/$*_ispc.o -h objs4/$*_ispc.h
+	$(ISPC) -DREALSIZE=4 --target=$(ISPC_TARGETS) -Iinc $< -o objs4/$*_ispc.o -h objs4/$*_ispc.h
 
 objs8/%_ispc.h objs8/%_ispc.o objs8/%_ispc_sse2.o objs8/%_ispc_sse4.o objs8/%_ispc_avx.o: %.ispc
-	$(ISPC) -DREALSIZE=8 --target=$(ISPC_TARGETS) $< -o objs8/$*_ispc.o -h objs8/$*_ispc.h
+	$(ISPC) -DREALSIZE=8 --target=$(ISPC_TARGETS) -Iinc $< -o objs8/$*_ispc.o -h objs8/$*_ispc.h
 
 objs4/cpp/tasksys.o: cpp/tasksys.cpp
 	$(MPICXX) $(CFLAGS) -D ISPC_USE_OMP $< -c -o $@
@@ -67,13 +67,13 @@ objs8/cpp/tasksys.o: cpp/tasksys.cpp
 	$(MPICXX) $(CFLAGS) -D ISPC_USE_OMP $< -c -o $@
 
 objs4/%.o: %.cpp $(ISPC_HEADERS4)
-	$(MPICXX) -DREALSIZE=4 -Iobjs4 $(CFLAGS) $< -c -o $@
+	$(MPICXX) -DREALSIZE=4 -Iinc -Iobjs4/ispc $(CFLAGS) $< -c -o $@
 
 objs8/%.o: %.cpp $(ISPC_HEADERS8)
-	$(MPICXX) -DREALSIZE=8 -Iobjs8 $(CFLAGS) $< -c -o $@
+	$(MPICXX) -DREALSIZE=8 -Iinc -Iobjs8/ispc $(CFLAGS) $< -c -o $@
 
-objs4/%.o: %.c $(ISPC_HEADERS4)
-	$(MPICC) -DREALSIZE=4 -Iobjs4 $(CFLAGS) $< -c -o $@
+objs4/%.o: %.c
+	$(MPICC) -DREALSIZE=4 -Iinc -Iobjs4/ispc $(CFLAGS) $< -c -o $@
 
-objs8/%.o: %.c $(ISPC_HEADERS8)
-	$(MPICC) -DREALSIZE=8 -Iobjs8 $(CFLAGS) $< -c -o $@
+objs8/%.o: %.c
+	$(MPICC) -DREALSIZE=8 -Iinc -Iobjs8/ispc $(CFLAGS) $< -c -o $@
