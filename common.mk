@@ -16,7 +16,7 @@ C_OBJS4=$(addprefix objs4/, $(C_SRC:.c=.o))
 C_OBJS8=$(addprefix objs8/, $(C_SRC:.c=.o))
 LIBS=-lm $(PYTHONLIB) $(HDF5LIB)
 
-default: dirs $(ISPC_HEADERS4) $(ISPC_HEADERS8) $(CPP_OBJS4) $(CPP_OBJS8) $(C_OBJS4) $(C_OBJS8) $(EXE)4 $(EXE)8
+default: dirs version $(EXE)4 $(EXE)8
 
 .PHONY: dirs clean print
 
@@ -44,6 +44,9 @@ del:
 clean:
 	/bin/rm -rf objs* *~ $(EXE)4 $(EXE)8 *.dSYM
 	find ./ -iname "*.dump" -exec rm '{}' ';'
+
+version:
+	python python/version.py
 
 $(EXE)4: $(CPP_OBJS4) $(C_OBJS4) $(ISPC_OBJS4)
 	$(MPICXX) $(CFLAGS) -fopenmp -o $@ $^ $(LIBS)

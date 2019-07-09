@@ -24,10 +24,18 @@ SOFTWARE.
 
 /* Contributors: Tomasz Koziara */
 
+#include <stdio.h>
 #include <mpi.h>
 #include "real.h"
+#include "version.h"
 
 int main (int argc, char *argv[])
 {
+  if (argc == 1)
+  {
+    printf ("VERSION: 1.%s (%s)\n", VERSION_HASH, VERSION_DATE);
+    printf ("SYNOPSIS: solfec%d path/to/input/file.py\n", REALSIZE);
+  }
+
   return 0;
 }
