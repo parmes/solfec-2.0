@@ -346,6 +346,47 @@ reference "cha:Output files"
 .
 \end_layout
 
+\begin_layout Section
+Version string
+\end_layout
+
+\begin_layout Standard
+Running Solfec-2.0 without parameters, e.g.
+\end_layout
+
+\begin_layout LyX-Code
+./solfec4
+\end_layout
+
+\begin_layout Standard
+results in the hint
+\end_layout
+
+\begin_layout LyX-Code
+VERSION: 2.4a49378 (2019-07-10)
+\end_layout
+
+\begin_layout LyX-Code
+SYNOPSIS: solfec4 path/to/input/file.py
+\end_layout
+
+\begin_layout Standard
+The version string has syntax “2.” (denoting Solfec-2.0’s primary version
+ number) followed by a shorthand hexadecimal number (“4a49378” in this case)
+ of a 
+\begin_inset CommandInset href
+LatexCommand href
+name "GitHub commit"
+target "https://github.com/parmes/solfec-2.0/commits/master"
+literal "false"
+
+\end_inset
+
+ that most recently modified Solfec-2.0’s source code.
+ This is followed by the date of that most recent modification of the source
+ code.
+\end_layout
+
 \begin_layout Chapter
 \begin_inset CommandInset label
 LatexCommand label
