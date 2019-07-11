@@ -1,7 +1,7 @@
 /*
 The MIT License (MIT)
 
-Copyright (c) 2019 EDF Energy
+Copyright (c) 2015 Tomasz Koziara
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -22,46 +22,17 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-/* Contributors: Tomasz Koziara */
+#ifndef __err__
+#define __err__
 
-#include <stdlib.h>
-#include <stdio.h>
-#include <mpi.h>
-#include "real.h"
-#include "version.h"
-#include "solfec.h"
+/* textual assertion */
+#define ASSERT(__test__, ...)\
+  do {\
+  if (!(__test__)) { fprintf (stderr, "%s: %d => ", __FILE__, __LINE__);\
+    fprintf (stderr, __VA_ARGS__);\
+    fprintf (stderr, "\n"); exit (1); } } while (0)
 
-/* solfec global variables */
-namespace solfec
-{
-int argc = 0;
+/* memory validity assertion */
+#define ERRMEM(__pointer__) ASSERT (__pointer__, "Out of memory!");
 
-char **argv = NULL;
-
-char *output_path = NULL;
-};
-
-int main (int argc, char *argv[])
-{
-  if (argc == 1)
-  {
-    printf ("VERSION: 2.%s (%s)\n", VERSION_HASH, VERSION_DATE);
-    printf ("SYNOPSIS: solfec%d path/to/input/file.py\n", REALSIZE);
-    return 0;
-  }
-
-  solfec::argc = argc;
-  solfec::argv = argv;
-
-  int rank;
-
-  MPI_Init (&argc, &argv);
-
-  MPI_Comm_rank (MPI_COMM_WORLD, &rank);
-
-  if (rank == 0) input (argv[1]);
- 
-  MPI_Finalize ();
-
-  return 0;
-}
+#endif

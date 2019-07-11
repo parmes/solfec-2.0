@@ -66,6 +66,12 @@ objs4/cpp/tasksys.o: cpp/tasksys.cpp
 objs8/cpp/tasksys.o: cpp/tasksys.cpp
 	$(MPICXX) $(CFLAGS) -D ISPC_USE_OMP $< -c -o $@
 
+objs4/cpp/input.o: cpp/input.cpp
+	$(CXX) -DREALSIZE=4 -Iinc -Iobjs4/ispc $(CFLAGS) $(PYTHONINC) $< -c -o $@
+
+objs8/cpp/input.o: cpp/input.cpp
+	$(CXX) -DREALSIZE=8 -Iinc -Iobjs8/ispc $(CFLAGS) $(PYTHONINC) $< -c -o $@
+
 objs4/%.o: %.cpp $(ISPC_HEADERS4)
 	$(MPICXX) -DREALSIZE=4 -Iinc -Iobjs4/ispc $(CFLAGS) $< -c -o $@
 

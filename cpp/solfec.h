@@ -22,46 +22,20 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-/* Contributors: Tomasz Koziara */
-
-#include <stdlib.h>
-#include <stdio.h>
-#include <mpi.h>
-#include "real.h"
-#include "version.h"
-#include "solfec.h"
+#ifndef __solfec__
+#define __solfec__
 
 /* solfec global variables */
 namespace solfec
 {
-int argc = 0;
+extern int argc;
 
-char **argv = NULL;
+extern char **argv;
 
-char *output_path = NULL;
+extern char *output_path;
 };
 
-int main (int argc, char *argv[])
-{
-  if (argc == 1)
-  {
-    printf ("VERSION: 2.%s (%s)\n", VERSION_HASH, VERSION_DATE);
-    printf ("SYNOPSIS: solfec%d path/to/input/file.py\n", REALSIZE);
-    return 0;
-  }
+/* interpret an input file (return 0 on success) */
+int input (const char *path);
 
-  solfec::argc = argc;
-  solfec::argv = argv;
-
-  int rank;
-
-  MPI_Init (&argc, &argv);
-
-  MPI_Comm_rank (MPI_COMM_WORLD, &rank);
-
-  if (rank == 0) input (argv[1]);
- 
-  MPI_Finalize ();
-
-  return 0;
-}
+#endif

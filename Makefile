@@ -1,7 +1,7 @@
 include Config.mak
 
 # C++ files
-CPP_SRC=cpp/tasksys.cpp cpp/solfec.cpp
+CPP_SRC=cpp/tasksys.cpp cpp/solfec.cpp cpp/input.cpp
 
 # ISPC files
 ISPC_SRC=ispc/simd_util.ispc
