@@ -35,10 +35,18 @@ SOFTWARE.
 namespace solfec
 {
 int argc = 0;
-
 char **argv = NULL;
-
-char *output_path = NULL;
+std::string output_path;
+std::vector<spline> splines;
+std::vector<material> materials;
+std::vector<mesh> bodies;
+std::vector<friction> frictions;
+std::vector<restrain> restrains;
+std::vector<prescribe> prescribes;
+std::vector<velocity> velocities;
+struct gravity gravity;
+std::vector<history> histories;
+std::vector<output> outputs;
 };
 
 int main (int argc, char *argv[])
@@ -46,7 +54,7 @@ int main (int argc, char *argv[])
   if (argc == 1)
   {
     printf ("VERSION: 2.%s (%s)\n", VERSION_HASH, VERSION_DATE);
-    printf ("SYNOPSIS: solfec%d path/to/input/file.py\n", REALSIZE);
+    printf ("SYNOPSIS: [mpirun -np N] solfec%d path/to/input/file.py\n", REALSIZE);
     return 0;
   }
 

@@ -367,7 +367,7 @@ VERSION: 2.4a49378 (2019-07-10)
 \end_layout
 
 \begin_layout LyX-Code
-SYNOPSIS: solfec4 path/to/input/file.py
+SYNOPSIS: [mpirun -np N] solfec4 path/to/input/file.py
 \end_layout
 
 \begin_layout Standard
@@ -530,11 +530,7 @@ splnum
 \series bold
 points
 \series default
- - a constant 
-\emph on
-v0
-\emph default
-, or a list 
+ - a list 
 \emph on
 [t0, v0, t1, v1, ....]
 \emph default
@@ -920,28 +916,28 @@ Mesh element types in Solfec-2.0.
 \begin_layout Section
 \begin_inset CommandInset label
 LatexCommand label
-name "subsec:CONTACT"
+name "subsec:FRICTION"
 
 \end_inset
 
-CONTACT
+FRICTION
 \end_layout
 
 \begin_layout Standard
-Define surface pairing for contact analysis.
- Default parameters, for unspecified pairings, are: 
+Define surface pairing contact friction.
+ Default values, for unspecified pairings, are: 
 \series bold
-friction
+static
 \series default
- = 
-\begin_inset Formula $(0.0,0.0)$
-\end_inset
-
-;
+ = 0, 
+\series bold
+dynamic
+\series default
+ = 0.
 \end_layout
 
 \begin_layout Subsection*
-GRANULAR (color1, color2 | friction)
+FRICTION (color1, color2 | static, dynamic)
 \end_layout
 
 \begin_layout Itemize
@@ -965,15 +961,22 @@ color2
 \begin_layout Itemize
 
 \series bold
-friction
+static
 \series default
- - optional Coulomb's friction coefficient; tuple 
-\begin_inset Formula $\left(\mu_{s},\mu_{d}\right)$
+ - optional static Coulomb's friction coefficient; default: 
+\begin_inset Formula $0.0$
 \end_inset
 
- can be used to specify respectively static and dynamic friction coefficients;
- ; default: 
-\begin_inset Formula $(0.0,0.0)$
+
+\end_layout
+
+\begin_layout Itemize
+
+\series bold
+dynamic
+\series default
+ - optional dynamic Coulomb's friction coefficient; default: 
+\begin_inset Formula $0.0$
 \end_inset
 
 
@@ -1097,7 +1100,7 @@ linear
 \begin_inset Formula $(i,j,k)$
 \end_inset
 
- of SPLINE numbers, or a callback: 
+ of SPLINE numbers or floating point constant values, or a callback: 
 \begin_inset Formula $\left(v_{x},v_{y},v_{z}\right)=$
 \end_inset
 
@@ -1123,7 +1126,7 @@ angular
 \begin_inset Formula $(i,j,k)$
 \end_inset
 
- of SPLINE numbers, or a callback: 
+ of SPLINE numbers or floating point constant values, or a callback: 
 \begin_inset Formula $\left(\omega_{x},\omega_{y},\omega_{z}\right)=$
 \end_inset
 
@@ -1196,7 +1199,7 @@ angular
 \begin_inset Formula $\left(\omega_{x},\omega_{y},\omega_{z}\right)$
 \end_inset
 
-; default: 
+, applied with respect to the referential mass center; default: 
 \begin_inset Formula $\left(0,0,0\right)$
 \end_inset
 
@@ -1301,7 +1304,7 @@ Before running a simulation, request time history output; or read history
 \end_layout
 
 \begin_layout Subsection*
-list = HISTORY (entity | point, bodnum, h5file, h5last)
+list = HISTORY (entity | point, bodnum, filepath)
 \end_layout
 
 \begin_layout Itemize
@@ -1347,61 +1350,11 @@ not specified
 \begin_layout Itemize
 
 \series bold
-h5file
+filepath
 \series default
- - optional *.h5 file storing existing results; in this case the history
- is retrieved from this file (if found) or an error message is issued; an
- appropriate output file needs to be picked depending on the 
-\series bold
-entity
-\series default
-, see Section 
-\begin_inset CommandInset ref
-LatexCommand ref
-reference "subsec:OUTPUT"
-
-\end_inset
-
-; the output 
-\series bold
-list
-\series default
- is not populated until 
-\series bold
-h5last
-\series default
- = 
+ - optional file path to store the history in a text file; default: 
 \emph on
-True
-\emph default
-; default: not specified
-\end_layout
-
-\begin_layout Itemize
-
-\series bold
-h5last
-\series default
- - optional boolean flag marking a last call to HISTORY for which the 
-\series bold
-h5file
-\series default
- argument is used; for faster reading all such histories are populated once
- HISTORY(..., 
-\series bold
-h5file
-\series default
- = ..., 
-\series bold
-h5last
-\series default
- = 
-\emph on
-True
-\emph default
-) is called; default: 
-\emph on
-False
+not specified
 \end_layout
 
 \begin_layout Section
@@ -1475,7 +1428,7 @@ and/or
 \end_layout
 
 \begin_layout Subsection*
-OUTPUT ( | entities, subset, mode, format)
+OUTPUT ( | entities, subset, modes, formats)
 \end_layout
 
 \begin_layout Itemize
@@ -1552,16 +1505,16 @@ i, j, ...
 \begin_layout Itemize
 
 \series bold
-mode
+modes
 \series default
  - optional output mode or list of output modes: 'MESH' for mesh output,
- CD' for contact data output; default: ['MESH', 'CD']
+ 'CD' for contact data output; default: ['MESH', 'CD']
 \end_layout
 
 \begin_layout Itemize
 
 \series bold
-format
+formats
 \series default
  - optional output format, e.g.
  'VTK' or 'XDMF', or a list, e.g.

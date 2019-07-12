@@ -27,8 +27,16 @@ SOFTWARE.
 #ifndef __real__
 #define __real__
 
-#if defined MPI_REAL /* prevent warnings */
+#if defined REAL /* prevent warnings */
+#undef REAL
+#endif
+
+#if defined MPI_REAL
 #undef MPI_REAL
+#endif
+
+#if defined REAL_MAX
+#undef REAL_MAX
 #endif
 
 /* real type */

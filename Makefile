@@ -1,6 +1,10 @@
 include Config.mak
 
+# C includes
+C_INC=inc/err.h inc/alg.h inc/real.h
+
 # C++ files
+CPP_INC=cpp/solfec.h cpp/version.h
 CPP_SRC=cpp/tasksys.cpp cpp/solfec.cpp cpp/input.cpp
 
 # ISPC files

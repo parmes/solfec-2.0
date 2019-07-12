@@ -266,18 +266,16 @@ int input (const char *path)
   char *line;
 
   len = strlen (path);
-  ERRMEM (output_path = new char [len+1]);
-  strcpy (output_path, path);
  
-  if (output_path[len-3] != '.' ||
-      output_path[len-2] != 'p' ||
-      output_path[len-1] != 'y')
+  if (path[len-3] != '.' ||
+      path[len-2] != 'p' ||
+      path[len-1] != 'y')
   {
     fprintf (stderr, "ERROR: input file does not have '.py' extension!\n");
     fprintf (stderr, "       the input path reads: %s\n", path);
     return 1;
   }
-  else output_path[len-3] = '\0';
+  else output_path.assign(path, len-3);
 
 #if PY_MAJOR_VERSION >= 3
   if (PyImport_AppendInittab("solfec", &PyInit_solfec_module) < 0) return -1;
