@@ -36,7 +36,7 @@ namespace solfec
 {
 int argc = 0;
 char **argv = NULL;
-std::string output_path;
+std::string outname;
 std::vector<spline> splines;
 std::vector<material> materials;
 std::vector<mesh> bodies;

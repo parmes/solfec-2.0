@@ -32,6 +32,12 @@ SOFTWARE.
 #include "err.h"
 #include "solfec.h"
 
+#if PY_MAJOR_VERSION >= 3
+#define PyString_FromString PyUnicode_FromString
+#define PyString_Check PyUnicode_Check
+#define PyString_AsString PyUnicode_AsUTF8
+#endif
+
 #ifndef Py_RETURN_FALSE
 #define Py_RETURN_FALSE return Py_INCREF(Py_False), Py_False
 #endif
@@ -71,6 +77,115 @@ static int is_bool (PyObject *obj, const char *var)
       PyErr_SetString (PyExc_TypeError, buf);
       return 0;
     }
+  }
+
+  return 1;
+}
+
+/* string test */
+static int is_string (PyObject *obj, const char *var)
+{
+  if (obj)
+  {
+    if (!PyString_Check (obj))
+    {
+      char buf [BUFLEN];
+      sprintf (buf, "'%s' must be a string", var);
+      PyErr_SetString (PyExc_TypeError, buf);
+      return 0;
+    }
+  }
+
+  return 1;
+}
+
+/* test whether an object is a list, of length >= len divisible by div, or a string */
+static int is_list_or_string (PyObject *obj, const char *var, int div, int len)
+{
+  if (obj)
+  {
+    if (!(PyList_Check (obj) || PyString_Check (obj)))
+    {
+      char buf [BUFLEN];
+      sprintf (buf, "'%s' must be a list or a string object", var);
+      PyErr_SetString (PyExc_TypeError, buf);
+      return 0;
+    }
+
+    if (PyList_Check (obj))
+    {
+      if (!(PyList_Size (obj) % div == 0 && PyList_Size (obj) >= len))
+      {
+	char buf [BUFLEN];
+	sprintf (buf, "'%s' must have N * %d elements, where N >= %d", var, div, len / div);
+	PyErr_SetString (PyExc_ValueError, buf);
+	return 0;
+      }
+    }
+  }
+
+  return 1;
+}
+
+/* list test */
+static int is_list (PyObject *obj, const char *var, int len)
+{
+  if (obj)
+  {
+    if (!PyList_Check (obj))
+    {
+      char buf [BUFLEN];
+      sprintf (buf, "'%s' must be a list object", var);
+      PyErr_SetString (PyExc_TypeError, buf);
+      return 0;
+    }
+
+    if (len > 0 && PyList_Size (obj) != len)
+    {
+      char buf [BUFLEN];
+      snprintf (buf, BUFLEN, "'%s' must have %d items", var, len);
+      PyErr_SetString (PyExc_ValueError, buf);
+      return 0;
+    }
+  }
+
+  return 1;
+}
+
+/* tuple test */
+static int is_tuple (PyObject *obj, const char *var, int len)
+{
+  if (obj)
+  {
+    if (!PyTuple_Check (obj))
+    {
+      char buf [BUFLEN];
+      snprintf (buf, BUFLEN, "'%s' must be a tuple", var);
+      PyErr_SetString (PyExc_TypeError, buf);
+      return 0;
+    }
+
+    if (len > 0 && PyTuple_Size (obj) != len)
+    {
+      char buf [BUFLEN];
+      snprintf (buf, BUFLEN, "'%s' must have %d elements", var, len);
+      PyErr_SetString (PyExc_ValueError, buf);
+      return 0;
+    }
+  }
+
+  return 1;
+}
+
+/* positive test */
+static int is_positive (double num, const char *var)
+{
+  if (num <= 0)
+  {
+    char buf [BUFLEN];
+    sprintf (buf, "'%s' must be positive", var);
+    PyErr_SetString (PyExc_ValueError, buf);
+    return 0;
   }
 
   return 1;
@@ -128,11 +243,7 @@ static PyObject* ARGV (PyObject *self, PyObject *args, PyObject *kwds)
 	continue;
       }
       else if (strlen (argv[i]) > 3 && strcmp(argv[i]+strlen(argv[i])-3, ".py") == 0) continue;
-      #if PY_MAJOR_VERSION >= 3
-      else PyList_Append (list, PyUnicode_FromString (argv[i]));
-      #else
       else PyList_Append (list, PyString_FromString (argv[i]));
-      #endif
     }
   }
   else
@@ -141,11 +252,7 @@ static PyObject* ARGV (PyObject *self, PyObject *args, PyObject *kwds)
     {
       if (endswith (argv[i], "solfec4")) continue;
       else if (endswith (argv[i], "solfec8")) continue;
-      #if PY_MAJOR_VERSION >= 3
-      else PyList_Append (list, PyUnicode_FromString (argv[i]));
-      #else
       else PyList_Append (list, PyString_FromString (argv[i]));
-      #endif
     }
   }
 
@@ -155,19 +262,153 @@ static PyObject* ARGV (PyObject *self, PyObject *args, PyObject *kwds)
 /* reset simulation */
 static PyObject* RESET (PyObject *self, PyObject *args, PyObject *kwds)
 {
+  KEYWORDS ("outname");
+  PyObject *outname;
+
+  outname = NULL;
+
+  PARSEKEYS ("|O", &outname);
+
+  TYPETEST (is_string (outname, kwl [0]));
+
+  if (outname)
+  {
+    solfec::outname.assign(PyString_AsString(outname));
+  }
+
+  solfec::splines.clear();
+  solfec::materials.clear();
+  solfec::bodies.clear();
+  solfec::frictions.clear();
+  solfec::restrains.clear();
+  solfec::prescribes.clear();
+  solfec::velocities.clear();
+  solfec::gravity.clear();
+  solfec::histories.clear();
+  solfec::outputs.clear();
+
   Py_RETURN_NONE;
 }
 
 /* Create linear spline */
 static PyObject* SPLINE (PyObject *self, PyObject *args, PyObject *kwds)
 {
-  Py_RETURN_NONE;
+  KEYWORDS ("points", "cache");
+  std::array<REAL,2> temp;
+  struct spline spline;
+  PyObject *points;
+  int cache, i, n;
+
+  cache = 0;
+
+  PARSEKEYS ("O|i", &points, &cache);
+
+  TYPETEST (is_list_or_string (points, kwl [0], 2, 2));
+
+  if (cache < 0)
+  {
+    PyErr_SetString (PyExc_ValueError, "Negative cache size");
+    return NULL;
+  }
+
+  if (PyString_Check (points))
+  {
+    solfec::splines.push_back (spline);
+
+    spline_from_file (PyString_AsString(points), cache, &solfec::splines.back());
+  }
+  else if (PyList_Check (points))
+  {
+    if (PyList_Check (PyList_GetItem (points, 0)))
+    {
+      n = PyList_Size (points);
+
+      for (i = 0; i < n; i ++)
+      {
+	PyObject *pv = PyList_GetItem (points, i);
+
+	TYPETEST (is_list (pv, "[x,y]", 2));
+
+	temp[0] = PyFloat_AsDouble (PyList_GetItem (pv, 0));
+	temp[1] = PyFloat_AsDouble (PyList_GetItem (pv, 1));
+
+	spline.points.push_back (temp);
+      }
+    }
+    else if (PyTuple_Check (PyList_GetItem (points, 0)))
+    {
+      n = PyList_Size (points);
+
+      for (i = 0; i < n; i ++)
+      {
+	PyObject *pv = PyList_GetItem (points, i);
+
+	TYPETEST (is_tuple (pv, "(x,y)", 2));
+
+	temp[0] = PyFloat_AsDouble (PyTuple_GetItem (pv, 0));
+	temp[1] = PyFloat_AsDouble (PyTuple_GetItem (pv, 1));
+
+	spline.points.push_back (temp);
+      }
+    }
+    else
+    {
+      if (PyList_Size(points) < 4)
+      {
+	PyErr_SetString (PyExc_ValueError, "SPLINE must have at least two points");
+	return NULL;
+      }
+
+      n = PyList_Size (points) / 2;
+
+      for (i = 0; i < n; i ++)
+      {
+	temp[0] = PyFloat_AsDouble (PyList_GetItem (points, 2*i));
+	temp[1] = PyFloat_AsDouble (PyList_GetItem (points, 2*i + 1));
+
+	spline.points.push_back (temp);
+      }
+    }
+
+    solfec::splines.push_back (spline);
+  }
+  else
+  {
+    PyErr_SetString (PyExc_TypeError, "Invalid points format");
+    return NULL;
+  }
+
+#if PY_MAJOR_VERSION >= 3
+  return PyLong_FromUnsignedLongLong(solfec::splines.size());
+#else
+  return Py_BuildValue("K", solfec::splines.size());
+#endif
 }
 
 /* Create material */
 static PyObject* MATERIAL (PyObject *self, PyObject *args, PyObject *kwds)
 {
-  Py_RETURN_NONE;
+  KEYWORDS ("density", "young", "poisson", "viscosity");
+  double density, young, poisson, viscosity;
+  struct material material;
+
+  PARSEKEYS ("dddd", &density, &young, &poisson, &viscosity);
+
+  TYPETEST (is_positive (density, kwl[0]) && is_positive (young, kwl[1]) &&
+            is_positive (poisson, kwl[2]) && is_positive (viscosity, kwl[3]));
+
+  material.density = (REAL)density;
+  material.young = (REAL)young;
+  material.poisson = (REAL)poisson;
+  material.viscosity = (REAL)viscosity;
+
+  solfec::materials.push_back (material);
+
+#if PY_MAJOR_VERSION >= 3
+  return PyLong_FromUnsignedLongLong(solfec::materials.size());
+#else
+  return Py_BuildValue("K", solfec::materials.size());
+#endif
 }
 
 /* Create meshed body */
@@ -261,7 +502,6 @@ static PyObject* PyInit_solfec_module(void)
 /* interpret an input file (return 0 on success) */
 int input (const char *path)
 {
-  using namespace solfec; /* output_path */
   int error, len;
   char *line;
 
@@ -275,7 +515,7 @@ int input (const char *path)
     fprintf (stderr, "       the input path reads: %s\n", path);
     return 1;
   }
-  else output_path.assign(path, len-3);
+  else solfec::outname.assign(path, len-3);
 
 #if PY_MAJOR_VERSION >= 3
   if (PyImport_AppendInittab("solfec", &PyInit_solfec_module) < 0) return -1;

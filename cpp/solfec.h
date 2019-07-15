@@ -39,7 +39,7 @@ struct spline
   std::vector<off_t> offset; /* file offsets */
   std::vector<REAL> xval; /* x values maching file offsets */
   size_t marker; /* index of the last read interval */
-  spline(): marker(0) {}
+  spline(): marker(0), cache(0) {}
 };
 
 /* material */
@@ -107,6 +107,8 @@ struct gravity
   REAL gvalues [3]; /* constant values */
   int64_t gsplines [3]; /* linear splines (when >= 0) */
   void* gcallback [3]; /* Python callback functions */
+  gravity(): gvalues{0,0,0}, gsplines{-1,-1,-1}, gcallback{NULL,NULL,NULL} {}
+  void clear() {gvalues[0]=gvalues[1],gvalues[2]=0.;gsplines[0]=gsplines[1]=gsplines[1]=-1;gcallback[0]=gcallback[1]=gcallback[2]=NULL;}
 };
 
 /* history */
@@ -133,7 +135,7 @@ namespace solfec
 {
 extern int argc;
 extern char **argv;
-extern std::string output_path;
+extern std::string outname;
 extern std::vector<spline> splines;
 extern std::vector<material> materials;
 extern std::vector<mesh> bodies;
@@ -147,7 +149,7 @@ extern std::vector<output> outputs;
 };
 
 /* read spline from file */
-void spline_from_file (char *path, int cache, struct spline *spline);
+void spline_from_file (const char *path, int cache, struct spline *spline);
 
 /* calculate splane value */
 REAL spline_value (struct spline *spline, REAL xval);
