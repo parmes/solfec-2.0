@@ -24,6 +24,7 @@ SOFTWARE.
 
 #include <string>
 #include <vector>
+#include <array>
 #include <set>
 
 #ifndef __solfec__
@@ -32,11 +33,11 @@ SOFTWARE.
 /* spline */
 struct spline
 {
-  std::vector<REAL[2]> points; /* vector of (x, y) pairs */
+  std::vector<std::array<REAL,2>> points; /* vector of (x, y) pairs */
   size_t cache; /* partial cache size */
   std::string path; /* file path for partially cached splines */
   std::vector<off_t> offset; /* file offsets */
-  std::vector<REAL> xarg; /* x-argument instants maching file offsets */
+  std::vector<REAL> xval; /* x values maching file offsets */
   size_t marker; /* index of the last read interval */
   spline(): marker(0) {}
 };
@@ -53,7 +54,7 @@ struct material
 /* mesh */
 struct mesh
 {
-  std::vector<REAL[3]> nodes; /* list of nodes */
+  std::vector<std::array<REAL,3>> nodes; /* list of nodes */
   std::vector<size_t> elements; /* list of elements */
   size_t matnum; /* material number */
   std::vector<size_t> colors; /* face colors */
@@ -72,7 +73,7 @@ struct friction
 struct restrain
 {
   size_t bodnum; /* body number */
-  std::vector<REAL[3]> points; /* list of points */
+  std::vector<std::array<REAL,3>> points; /* list of points */
   size_t size; /* list size */
   size_t color; /* surface color */
 };
@@ -81,7 +82,7 @@ struct restrain
 struct prescribe
 {
   size_t bodnum; /* body number */
-  std::vector<REAL[3]> points; /* list of points */
+  std::vector<std::array<REAL,3>> points; /* list of points */
   size_t size; /* list size */
   size_t color; /* surface color */
   REAL linear_values [3]; /* constant linear velocity */
@@ -144,6 +145,12 @@ extern struct gravity gravity;
 extern std::vector<history> histories;
 extern std::vector<output> outputs;
 };
+
+/* read spline from file */
+void spline_cached (char *path, int cache, struct spline *spline);
+
+/* calculate splane value */
+REAL spline_value (struct spline *spline, REAL xval);
 
 /* interpret an input file (return 0 on success) */
 int input (const char *path);

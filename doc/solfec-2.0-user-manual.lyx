@@ -532,15 +532,15 @@ points
 \series default
  - a list 
 \emph on
-[t0, v0, t1, v1, ....]
+[x0, y0, x1, y1, ....]
 \emph default
  or 
 \emph on
-[[t0,v0], [t1,v1], ...]
+[[x0,y0], [x1,y1], ...]
 \emph default
  or 
 \emph on
-[(t0,v0), (t1,v1), ...]
+[(x0,y0), (x1,y1), ...]
 \emph default
  of points (where 
 \emph on
@@ -550,7 +550,11 @@ ti < tj
 \emph on
 i < j
 \emph default
-), or a path to a file storing pairs of times and values in format:
+), or a path to a file storing pairs of 
+\begin_inset Formula $\left(x,y\right)\text{s}$
+\end_inset
+
+ in format:
 \end_layout
 
 \begin_layout LyX-Code
@@ -562,11 +566,11 @@ i < j
 \end_layout
 
 \begin_layout LyX-Code
-t0 v0
+x0 y0
 \end_layout
 
 \begin_layout LyX-Code
-t1 v1
+x1 y1
 \end_layout
 
 \begin_layout LyX-Code
@@ -574,7 +578,7 @@ t1 v1
 \end_layout
 
 \begin_layout LyX-Code
-t2 v2
+x2 y2
 \end_layout
 
 \begin_layout LyX-Code

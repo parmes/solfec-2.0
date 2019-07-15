@@ -5,7 +5,7 @@ C_INC=inc/err.h inc/alg.h inc/real.h
 
 # C++ files
 CPP_INC=cpp/solfec.h cpp/version.h
-CPP_SRC=cpp/tasksys.cpp cpp/solfec.cpp cpp/input.cpp
+CPP_SRC=cpp/tasksys.cpp cpp/solfec.cpp cpp/input.cpp cpp/spline.cpp
 
 # ISPC files
 ISPC_SRC=ispc/simd_util.ispc
