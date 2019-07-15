@@ -85,7 +85,7 @@ static REAL linterp (std::vector<std::array<REAL,2>>::iterator point, REAL xval)
 }
 
 /* read spline from file */
-void spline_cached (char *path, int cache, struct spline *spline)
+void spline_from_file (char *path, int cache, struct spline *spline)
 {
   char buf [4096];
   REAL x0, x, y;

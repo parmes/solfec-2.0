@@ -147,7 +147,7 @@ extern std::vector<output> outputs;
 };
 
 /* read spline from file */
-void spline_cached (char *path, int cache, struct spline *spline);
+void spline_from_file (char *path, int cache, struct spline *spline);
 
 /* calculate splane value */
 REAL spline_value (struct spline *spline, REAL xval);
