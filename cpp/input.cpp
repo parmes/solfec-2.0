@@ -198,6 +198,34 @@ static int is_positive (double num, const char *var)
   return 1;
 }
 
+/* non-negative test */
+static int is_non_negative (double num, const char *var)
+{
+  if (num < 0)
+  {
+    char buf [BUFLEN];
+    sprintf (buf, "'%s' must non-negative", var);
+    PyErr_SetString (PyExc_ValueError, buf);
+    return 0;
+  }
+
+  return 1;
+}
+
+/* in range test */
+static int is_in_range (double num, const char *var, double lo, double hi)
+{
+  if (num < lo || num > hi)
+  {
+    char buf [BUFLEN];
+    sprintf (buf, "'%s' must be in range [%g, %g]", var, lo, hi);
+    PyErr_SetString (PyExc_ValueError, buf);
+    return 0;
+  }
+
+  return 1;
+}
+
 /* test whether an object is a list (details as above) or a number */
 static int is_list_or_number (PyObject *obj, const char *var, int len)
 {
@@ -721,41 +749,88 @@ static PyObject* MESH (PyObject *self, PyObject *args, PyObject *kwds)
   }
 
   /* tranform nodes */
-  if (PyTuple_Check (transform))
+  if (transform)
   {
-    REAL trans[9];
-    size_t type = PyTuple_Size (transform);
-    for (i = 0; i < type; i ++)
-      trans[i] = (REAL)PyFloat_AsDouble (PyTuple_GetItem (transform, i)),
-    dotransform (trans, type, pmesh->nodes);
-  }
-  else
-  {
-    n = PyList_Size (transform);
-    for (i = 0; i < n; i ++)
+    if (PyTuple_Check (transform))
     {
       REAL trans[9];
-      PyObject *tuple = PyList_GetItem (transform, i);
-      size_t type = PyTuple_Size (tuple);
-      for (j = 0; j < type; j ++)
-	trans[j] = (REAL)PyFloat_AsDouble (PyTuple_GetItem (tuple, j)),
+      size_t type = PyTuple_Size (transform);
+      for (i = 0; i < type; i ++)
+	trans[i] = (REAL)PyFloat_AsDouble (PyTuple_GetItem (transform, i)),
       dotransform (trans, type, pmesh->nodes);
+    }
+    else
+    {
+      n = PyList_Size (transform);
+      for (i = 0; i < n; i ++)
+      {
+	REAL trans[9];
+	PyObject *tuple = PyList_GetItem (transform, i);
+	size_t type = PyTuple_Size (tuple);
+	for (j = 0; j < type; j ++)
+	  trans[j] = (REAL)PyFloat_AsDouble (PyTuple_GetItem (tuple, j)),
+	dotransform (trans, type, pmesh->nodes);
+      }
     }
   }
 
   Py_RETURN_uint64_t (solfec::bodies.size());
 }
 
-/* Define contact parameters */
-static PyObject* CONTACT (PyObject *self, PyObject *args, PyObject *kwds)
+/* Define friction parameters */
+static PyObject* FRICTION (PyObject *self, PyObject *args, PyObject *kwds)
 {
-  Py_RETURN_NONE;
+  KEYWORDS ("color1", "color2", "static", "dynamic");
+  struct friction friction;
+
+  PARSEKEYS ("KKdd", &friction.color1, &friction.color2, &friction.static_friction, &friction.dynamic_friction);
+
+  TYPETEST (is_non_negative (friction.static_friction, kwl[2]) && is_non_negative (friction.dynamic_friction, kwl[3]));
+
+  solfec::frictions.push_back (friction);
+
+  Py_RETURN_uint64_t (solfec::frictions.size());
 }
 
 /* Restrain motion */
 static PyObject* RESTRAIN (PyObject *self, PyObject *args, PyObject *kwds)
 {
-  Py_RETURN_NONE;
+  KEYWORDS ("bodnum", "point", "color");
+  size_t tuple_lengths[1] = {3}, i, j, n;
+  struct restrain restrain;
+  PyObject *point;
+
+  point = NULL;
+  restrain.color = 0;
+
+  PARSEKEYS ("K|OK", &restrain.bodnum, &point, &restrain.color);
+
+  TYPETEST (is_in_range (restrain.bodnum, kwl[0], 0, solfec::bodies.size()) &&
+            is_tuple_or_list_of_tuples (point, kwl[1], tuple_lengths, 1));
+
+  if (point)
+  {
+    std::array<REAL,3> temp;
+    if (PyTuple_Check(point))
+    {
+      for (i = 0; i < 3; i ++)
+	temp[i] = (REAL)PyFloat_AsDouble (PyTuple_GetItem (point, i));
+      restrain.points.push_back(temp);
+    }
+    else
+    {
+      n = PyList_Size (point);
+      for (i = 0; i < n; i ++)
+      {
+	PyObject *tuple = PyList_GetItem (point, i);
+	for (j = 0; j < 3; j ++)
+	  temp[j] = (REAL)PyFloat_AsDouble (PyTuple_GetItem (tuple, j)),
+        restrain.points.push_back(temp);
+      }
+    }
+  }
+
+  Py_RETURN_uint64_t (solfec::restrains.size());
 }
 
 /* Prescribe moion */
@@ -801,7 +876,7 @@ static PyMethodDef methods [] =
   {"SPLINE", (PyCFunction)SPLINE, METH_VARARGS|METH_KEYWORDS, "Create linear spline"},
   {"MATERIAL", (PyCFunction)MATERIAL, METH_VARARGS|METH_KEYWORDS, "Create material"},
   {"MESH", (PyCFunction)MESH, METH_VARARGS|METH_KEYWORDS, "Create meshed body"},
-  {"CONTACT", (PyCFunction)CONTACT, METH_VARARGS|METH_KEYWORDS, "Define contact parameters"},
+  {"FRICTION", (PyCFunction)FRICTION, METH_VARARGS|METH_KEYWORDS, "Define friction parameters"},
   {"RESTRAIN", (PyCFunction)RESTRAIN, METH_VARARGS|METH_KEYWORDS, "Restrain motion"},
   {"PRESCRIBE", (PyCFunction)PRESCRIBE, METH_VARARGS|METH_KEYWORDS, "Prescribe motion"},
   {"VELOCITY", (PyCFunction)VELOCITY, METH_VARARGS|METH_KEYWORDS, "Set rigid velocity"},
@@ -854,7 +929,7 @@ int input (const char *path)
                       "from solfec import SPLINE\n"
                       "from solfec import MATERIAL\n"
                       "from solfec import MESH\n"
-                      "from solfec import CONTACT\n"
+                      "from solfec import FRICTION\n"
                       "from solfec import RESTRAIN\n"
                       "from solfec import PRESCRIBE\n"
                       "from solfec import VELOCITY\n"

@@ -78,8 +78,8 @@ struct restrain
 {
   size_t bodnum; /* body number */
   std::vector<std::array<REAL,3>> points; /* list of points */
-  size_t size; /* list size */
   size_t color; /* surface color */
+  restrain() : bodnum(0), color(0) { }
 };
 
 /* prescribe */
@@ -87,7 +87,6 @@ struct prescribe
 {
   size_t bodnum; /* body number */
   std::vector<std::array<REAL,3>> points; /* list of points */
-  size_t size; /* list size */
   size_t color; /* surface color */
   REAL linear_values [3]; /* constant linear velocity */
   int64_t linear_splines [3]; /* linear splines (when >= 0) */
