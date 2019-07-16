@@ -31,6 +31,7 @@ SOFTWARE.
 #include <stdio.h>
 #include "real.h"
 #include "err.h"
+#include "alg.h"
 #include "solfec.h"
 
 #if PY_MAJOR_VERSION >= 3
@@ -293,6 +294,51 @@ static int is_tuple_or_list_of_tuples (PyObject *obj, const char *var, size_t *t
   }
 
   return 1;
+}
+
+/* transform mesh nodes */
+static void dotransform (REAL *transform, size_t type, std::vector<std::array<REAL,3>> &nodes)
+{
+  switch (type)
+  {
+  case 3: /* translate */
+    for (std::vector<std::array<REAL,3>>::iterator it = nodes.begin(); it != nodes.end(); it ++)
+    {
+      ACC (*it, transform);
+    }
+  break;
+  case 7: /* axis rotate */
+  {
+    REAL rotation[9];
+    ROTATION_MATRIX (transform+3, transform[7], rotation);
+    for (std::vector<std::array<REAL,3>>::iterator it = nodes.begin(); it != nodes.end(); it ++)
+    {
+      REAL v[3], w[3];
+      SUB (*it, transform, v);
+      NVMUL (rotation, v, w);
+      SCC (w, v);
+      ACC (*it, w);
+    }
+  }
+  break;
+  case 9: /* matrix transform */
+    for (std::vector<std::array<REAL,3>>::iterator it = nodes.begin(); it != nodes.end(); it ++)
+    {
+      REAL v[3];
+      COPY (*it, v);
+      NVMUL (transform, v, *it);
+    }
+  break;
+  case 4: /* scale */
+    for (std::vector<std::array<REAL,3>>::iterator it = nodes.begin(); it != nodes.end(); it ++)
+    {
+      REAL v[3];
+      SUB (*it, transform, v);
+      SCALE (v, transform[3]);
+      ADD (transform, v, *it);
+    }
+  break;
+  }
 }
 
 /* define keywords */
@@ -674,7 +720,28 @@ static PyObject* MESH (PyObject *self, PyObject *args, PyObject *kwds)
     pmesh->gcolor = PyInt_AsLong (colors);
   }
 
-  /* TODO: tranform nodes */
+  /* tranform nodes */
+  if (PyTuple_Check (transform))
+  {
+    REAL trans[9];
+    size_t type = PyTuple_Size (transform);
+    for (i = 0; i < type; i ++)
+      trans[i] = (REAL)PyFloat_AsDouble (PyTuple_GetItem (transform, i)),
+    dotransform (trans, type, pmesh->nodes);
+  }
+  else
+  {
+    n = PyList_Size (transform);
+    for (i = 0; i < n; i ++)
+    {
+      REAL trans[9];
+      PyObject *tuple = PyList_GetItem (transform, i);
+      size_t type = PyTuple_Size (tuple);
+      for (j = 0; j < type; j ++)
+	trans[j] = (REAL)PyFloat_AsDouble (PyTuple_GetItem (tuple, j)),
+      dotransform (trans, type, pmesh->nodes);
+    }
+  }
 
   Py_RETURN_uint64_t (solfec::bodies.size());
 }

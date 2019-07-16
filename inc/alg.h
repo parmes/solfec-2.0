@@ -29,6 +29,22 @@ SOFTWARE.
 #ifndef __alg__
 #define __alg__
 
+#ifndef MIN
+  #define MIN(v, w) ((v) < (w) ? (v) : (w))
+#endif
+
+#ifndef MAX
+  #define MAX(v, w) ((v) > (w) ? (v) : (w))
+#endif
+
+#ifndef SGN
+  #define SGN(v) ((v) > 0 ? 1 : ((v) < 0 ? -1 : 0))
+#endif
+
+#ifndef ABS
+  #define ABS(v) ((v) > 0 ? (v) : -(v))
+#endif
+
 #define ALG_PI 3.14159265358979323846 
 
 /* various algebraic macros for small
