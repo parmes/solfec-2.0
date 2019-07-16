@@ -56,8 +56,12 @@ struct mesh
 {
   std::vector<std::array<REAL,3>> nodes; /* list of nodes */
   std::vector<size_t> elements; /* list of elements */
-  size_t matnum; /* material number */
   std::vector<size_t> colors; /* face colors */
+  size_t nhex, nwed, npyr, ntet; /* numbers of elements per kind */
+  size_t nfaces; /* number of faces */
+  size_t matnum; /* material number */
+  size_t gcolor; /* global color */
+  mesh () : nhex(0), nwed(0), npyr(0), ntet(0), nfaces(0), matnum(0), gcolor(0) { }
 };
 
 /* friction */

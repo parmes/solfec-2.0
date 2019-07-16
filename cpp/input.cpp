@@ -26,6 +26,7 @@ SOFTWARE.
 
 #define PY_SSIZE_T_CLEAN
 #include <Python.h>
+#include <algorithm>
 #include <string.h>
 #include <stdio.h>
 #include "real.h"
@@ -33,10 +34,15 @@ SOFTWARE.
 #include "solfec.h"
 
 #if PY_MAJOR_VERSION >= 3
+#define PyInt_AsLong PyLong_AsSize_t
 #define PyString_FromString PyUnicode_FromString
 #define PyString_Check PyUnicode_Check
 #define PyString_AsString PyUnicode_AsUTF8
+#define Py_RETURN_uint64_t(arg) return PyLong_FromUnsignedLongLong(arg)
+#else
+#define Py_RETURN_uint64_t(arg) return Py_BuildValue("K", arg)
 #endif
+
 
 #ifndef Py_RETURN_FALSE
 #define Py_RETURN_FALSE return Py_INCREF(Py_False), Py_False
@@ -186,6 +192,104 @@ static int is_positive (double num, const char *var)
     sprintf (buf, "'%s' must be positive", var);
     PyErr_SetString (PyExc_ValueError, buf);
     return 0;
+  }
+
+  return 1;
+}
+
+/* test whether an object is a list (details as above) or a number */
+static int is_list_or_number (PyObject *obj, const char *var, int len)
+{
+  if (obj)
+  {
+    if (!(PyList_Check (obj) || PyNumber_Check (obj)))
+    {
+      char buf [BUFLEN];
+      sprintf (buf, "'%s' must be a list or a number object", var);
+      PyErr_SetString (PyExc_TypeError, buf);
+      return 0;
+    }
+
+    if (PyList_Check (obj))
+    {
+      if (len > 0 && PyList_Size (obj) != len)
+      {
+	char buf [BUFLEN];
+	sprintf (buf, "'%s' must have %d items", var, len);
+	PyErr_SetString (PyExc_ValueError, buf);
+	return 0;
+      }
+    }
+  }
+
+  return 1;
+}
+
+/* tuple or list of tuples check */
+static int is_tuple_or_list_of_tuples (PyObject *obj, const char *var, size_t *tuple_lengths, size_t n_tuple_lengths)
+{
+  size_t i, j, k, n;
+
+  if (obj)
+  {
+    if (PyTuple_Check (obj))
+    {
+      j = PyTuple_Size (obj);
+
+      for (i = 0; i < n_tuple_lengths; i ++)
+      {
+        if (j == tuple_lengths[i]) break;
+      }
+
+      if (i == n_tuple_lengths)
+      {
+	char buf [BUFLEN];
+	snprintf (buf, BUFLEN, "tuple '%s' length is invalid", var);
+	PyErr_SetString (PyExc_ValueError, buf);
+	return 0;
+      }
+    }
+    else if (PyList_Check (obj))
+    {
+      n = PyList_Size (obj);
+
+      for (i = 0; i < n; i ++)
+      {
+	PyObject *item = PyList_GetItem (obj, i);
+
+	if (!PyTuple_Check (item))
+	{
+	  char buf [BUFLEN];
+	  sprintf (buf, "'%s' must be a list of tuples: item %d is not a tuple", var, i);
+	  PyErr_SetString (PyExc_ValueError, buf);
+	  return 0;
+	}
+
+	j = PyTuple_Size (item);
+
+	for (k = 0; k < n_tuple_lengths; k ++)
+	{
+	  if (j == tuple_lengths[k]) break;
+	}
+
+	if (k == n_tuple_lengths)
+	{
+	  char buf [BUFLEN];
+	  sprintf (buf, "'%s' list item %d (a tuple) has invalid length", var, i);
+	  PyErr_SetString (PyExc_ValueError, buf);
+	  return 0;
+	}
+      }
+
+      return n;
+    }
+    else
+    {
+      char buf [BUFLEN];
+      snprintf (buf, BUFLEN, "'%s' must be a tuple or a list of tuples", var);
+      PyErr_SetString (PyExc_TypeError, buf);
+      return 0;
+    }
   }
 
   return 1;
@@ -378,11 +482,7 @@ static PyObject* SPLINE (PyObject *self, PyObject *args, PyObject *kwds)
     return NULL;
   }
 
-#if PY_MAJOR_VERSION >= 3
-  return PyLong_FromUnsignedLongLong(solfec::splines.size());
-#else
-  return Py_BuildValue("K", solfec::splines.size());
-#endif
+  Py_RETURN_uint64_t (solfec::splines.size());
 }
 
 /* Create material */
@@ -404,24 +504,179 @@ static PyObject* MATERIAL (PyObject *self, PyObject *args, PyObject *kwds)
 
   solfec::materials.push_back (material);
 
-#if PY_MAJOR_VERSION >= 3
-  return PyLong_FromUnsignedLongLong(solfec::materials.size());
-#else
-  return Py_BuildValue("K", solfec::materials.size());
-#endif
+  Py_RETURN_uint64_t (solfec::materials.size());
 }
 
 /* Create meshed body */
 static PyObject* MESH (PyObject *self, PyObject *args, PyObject *kwds)
 {
-  unsigned long long bodnum = 0;
+  KEYWORDS ("nodes", "elements", "matnum", "colors", "transform");
+  size_t tuple_lengths[4] = {3, 7, 9, 4}, i, j, k, l, n, m, e;
+  PyObject *nodes, *elements, *colors, *transform;
+  struct mesh mesh, *pmesh;
+  size_t matnum;
 
-#if PY_MAJOR_VERSION >= 3
-  return PyLong_FromUnsignedLongLong(bodnum);
-#else
-  return Py_BuildValue("K", bodnum);
-#endif
-  Py_RETURN_NONE;
+  solfec::bodies.push_back(mesh);
+
+  pmesh = &solfec::bodies.back();
+
+  transform = NULL;
+
+  PARSEKEYS ("OOKO|O", &nodes, &elements, &matnum, &colors, &transform);
+
+  TYPETEST (is_list (nodes, kwl[0], 0) && is_list (elements, kwl[1], 0) &&
+            is_list_or_number (colors, kwl[3], 0) &&
+            is_tuple_or_list_of_tuples (transform, kwl[4], tuple_lengths, 4));
+
+  pmesh->matnum = matnum;
+
+  /* read nodes */
+  if (PyList_Size(nodes) % 3)
+  {
+    PyErr_SetString (PyExc_ValueError, "Nodes list length must be a multiple of 3");
+    return NULL;
+  }
+
+  n = PyList_Size (nodes) / 3; /* nodes count */
+
+  for (i = 0; i < n; i ++) 
+  {
+    std::array<REAL,3> temp = {(REAL)PyFloat_AsDouble (PyList_GetItem (nodes, 3*i+0)),
+			       (REAL)PyFloat_AsDouble (PyList_GetItem (nodes, 3*i+1)),
+			       (REAL)PyFloat_AsDouble (PyList_GetItem (nodes, 3*i+2))};
+
+    pmesh->nodes.push_back (temp);
+  }
+
+  /* read elements */
+  l = PyList_Size (elements);
+  for (e = i = 0; i < l; e ++)
+  {
+    k = PyInt_AsLong (PyList_GetItem (elements, i));
+
+    switch(k)
+    {
+    case 4:
+      pmesh->ntet++;
+    break;
+    case 5:
+      pmesh->npyr++;
+    break;
+    case 6:
+      pmesh->nwed++;
+    break;
+    case 8:
+      pmesh->nhex++;
+    break;
+    default:
+      PyErr_SetString (PyExc_ValueError, "An element must have 4, 5, 6, or 8 nodes");
+      return NULL;
+    break;
+    }
+
+    pmesh->elements.push_back (k);
+
+    for (j = i+1; j <i+k; j ++) /* nodes */
+    {
+      m = PyInt_AsLong (PyList_GetItem (elements, j));
+
+      if (m < 0 || m >= n)
+      {
+	char buf [BUFLEN];
+	sprintf (buf, "Node %d in element %d is outside of range [0, %d]", j-i, e, n-1);
+	PyErr_SetString (PyExc_ValueError, buf);
+	return NULL;
+      }
+
+      if (std::count(pmesh->elements.end()-(j-i-1),pmesh->elements.end(),m)>0)
+      {
+	char buf [BUFLEN];
+	sprintf (buf, "Node %d repeats in element %d", m, e);
+	PyErr_SetString (PyExc_ValueError, buf);
+	return NULL;
+      }
+
+      pmesh->elements.push_back (m);
+    }
+
+    m = PyInt_AsLong (PyList_GetItem (elements, j)); /* material */
+
+    pmesh->elements.push_back (m);
+
+    i = ++j;
+
+    if (i >= l) /* incomplete */
+    {
+      PyErr_SetString (PyExc_ValueError, "The last element definition is incomplete");
+      return NULL;
+    }
+  }
+
+  if (PyList_Check (colors))
+  {
+    /* global color */
+    pmesh->gcolor = PyInt_AsLong (PyList_GetItem (colors, 0));
+
+    /* read face colors */
+    l = PyList_Size (colors);
+    for (e = i = 0; i < l; e ++)
+    {
+      k = PyInt_AsLong (PyList_GetItem (colors, i));
+
+      if (!(k == 3 || k == 4))
+      {
+	PyErr_SetString (PyExc_ValueError, "A face must have 3 or 4 nodes");
+	return NULL;
+      }
+
+      pmesh->colors.push_back (k);
+
+      for (j = i+1; j <i+k; j ++) /* nodes */
+      {
+	m = PyInt_AsLong (PyList_GetItem (colors, j));
+
+	if (m < 0 || m >= n)
+	{
+	  char buf [BUFLEN];
+	  sprintf (buf, "Node %d in face %d is outside of range [0, %d]", j-i, e, n-1);
+	  PyErr_SetString (PyExc_ValueError, buf);
+	  return NULL;
+	}
+
+	if (std::count(pmesh->colors.end()-(j-i-1),pmesh->colors.end(),m)>0)
+	{
+	  char buf [BUFLEN];
+	  sprintf (buf, "Node %d repeats in face %d", m, e);
+	  PyErr_SetString (PyExc_ValueError, buf);
+	  return NULL;
+	}
+
+	pmesh->colors.push_back (m);
+      }
+
+      m = PyInt_AsLong (PyList_GetItem (colors, j)); /* color */
+
+      pmesh->elements.push_back (m);
+
+      i = ++j;
+
+      if (i >= l) /* incomplete */
+      {
+	PyErr_SetString (PyExc_ValueError, "The last color definition is incomplete");
+	return NULL;
+      }
+    }
+
+    pmesh->nfaces = e;
+  }
+  else
+  {
+    pmesh->gcolor = PyInt_AsLong (colors);
+  }
+
+  /* TODO: tranform nodes */
+
+  Py_RETURN_uint64_t (solfec::bodies.size());
 }
 
 /* Define contact parameters */

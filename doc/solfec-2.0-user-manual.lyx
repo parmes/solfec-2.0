@@ -676,7 +676,7 @@ Create a meshed body.
 \end_layout
 
 \begin_layout Subsection*
-bodnum = MESH (nodes, elements, material, colors | transform)
+bodnum = MESH (nodes, elements, matnum, colors | transform)
 \end_layout
 
 \begin_layout Itemize
@@ -743,7 +743,7 @@ reference "fig:eletype"
 \begin_layout Itemize
 
 \series bold
-material
+matnum
 \series default
  - material number
 \end_layout
