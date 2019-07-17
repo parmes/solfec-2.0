@@ -941,7 +941,15 @@ dynamic
 \end_layout
 
 \begin_layout Subsection*
-FRICTION (color1, color2 | static, dynamic)
+frinum = FRICTION (color1, color2 | static, dynamic)
+\end_layout
+
+\begin_layout Itemize
+
+\series bold
+frinum
+\series default
+ - friction pair number
 \end_layout
 
 \begin_layout Itemize
@@ -1001,7 +1009,15 @@ Restrain body point or surface motion.
 \end_layout
 
 \begin_layout Subsection*
-RESTRAIN (bodnum | point, color)
+resnum = RESTRAIN (bodnum | point, color)
+\end_layout
+
+\begin_layout Itemize
+
+\series bold
+resnum
+\series default
+ - restraint number
 \end_layout
 
 \begin_layout Itemize
@@ -1056,7 +1072,15 @@ Prescribe body, point, or surface motion.
 \end_layout
 
 \begin_layout Subsection*
-PRESCRIBE (bodnum | point, color, linear, angular)
+prenum = PRESCRIBE (bodnum | point, color, linear, angular)
+\end_layout
+
+\begin_layout Itemize
+
+\series bold
+prenum
+\series default
+ - prescribed motion number
 \end_layout
 
 \begin_layout Itemize
@@ -1160,6 +1184,18 @@ VELOCITY
 
 \begin_layout Standard
 Set body velocity.
+ The set of prescribed velocities is emptied upon each invocation of the
+ 
+\begin_inset CommandInset ref
+LatexCommand nameref
+reference "subsec:RUN"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+ command.
 \end_layout
 
 \begin_layout Subsection*
@@ -1600,6 +1636,76 @@ interval
 , prescribing variable interval frequencies, depending on current time;
 \end_layout
 
+\begin_layout Section
+\begin_inset CommandInset label
+LatexCommand label
+name "subsec:DELETE"
+
+\end_inset
+
+DELETE
+\end_layout
+
+\begin_layout Standard
+Delete an object from simulation.
+\end_layout
+
+\begin_layout Subsection*
+DELETE (objnum, objkind)
+\end_layout
+
+\begin_layout Itemize
+
+\series bold
+objnum
+\series default
+ - object number
+\end_layout
+
+\begin_layout Itemize
+
+\series bold
+objkind
+\series default
+ - object kind; one of: 'SPLINE', 'MATERIAL', 'MESH', 'FRICTION', 'RESTRAIN',
+ 'PRESCRIBE'
+\end_layout
+
+\begin_layout Section
+\begin_inset CommandInset label
+LatexCommand label
+name "subsec:NUMOF"
+
+\end_inset
+
+NUMOF
+\end_layout
+
+\begin_layout Standard
+Get number of objects.
+\end_layout
+
+\begin_layout Subsection*
+objnum = NUMOF (objkind)
+\end_layout
+
+\begin_layout Itemize
+
+\series bold
+objnum
+\series default
+ - object number
+\end_layout
+
+\begin_layout Itemize
+
+\series bold
+objkind
+\series default
+ - object kind; one of: 'SPLINE', 'MATERIAL', 'MESH', 'FRICTION', 'RESTRAIN',
+ 'PRESCRIBE'
+\end_layout
+
 \begin_layout Chapter
 \begin_inset CommandInset label
 LatexCommand label
@@ -1684,7 +1790,160 @@ reference "subsec:OUTPUT"
 \end_inset
 
  command for details on outputted entities and file kinds.
- 
+\end_layout
+
+\begin_layout Chapter
+\begin_inset CommandInset label
+LatexCommand label
+name "cha:Debug printing"
+
+\end_inset
+
+Debug printing
+\end_layout
+
+\begin_layout Standard
+For input debugging purposes, the following Python commands are additionally
+ defined:
+\end_layout
+
+\begin_layout Standard
+\align center
+\begin_inset Tabular
+<lyxtabular version="3" rows="10" columns="1">
+<features tabularvalignment="middle">
+<column alignment="center" valignment="top">
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+print_SPLINE(splnum)
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+print_MATERIAL(matnum)
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+print_MESH(bodnum)
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+print_FRICTION(frinum)
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+print_RESTRAIN(resnum)
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+print_PRESCRIBE(prenum)
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+print_VELOCITIES()
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+print_GRAVITY()
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+print_HISTORIES()
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+print_OUTPUTS()
+\end_layout
+
+\end_inset
+</cell>
+</row>
+</lyxtabular>
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\noindent
+These commands print to standard output formatted definitions of the correspondi
+ng data, prior to a first invocation of the 
+\begin_inset CommandInset ref
+LatexCommand nameref
+reference "subsec:RUN"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+ command, following which they are ignored.
 \end_layout
 
 \end_body

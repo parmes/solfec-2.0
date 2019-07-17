@@ -39,7 +39,7 @@ char **argv = NULL;
 std::string outname;
 std::vector<spline> splines;
 std::vector<material> materials;
-std::vector<mesh> bodies;
+std::vector<mesh> meshes;
 std::vector<friction> frictions;
 std::vector<restrain> restrains;
 std::vector<prescribe> prescribes;
@@ -47,6 +47,7 @@ std::vector<velocity> velocities;
 struct gravity gravity;
 std::vector<history> histories;
 std::vector<output> outputs;
+bool notrun = true;
 };
 
 int main (int argc, char *argv[])

@@ -141,7 +141,7 @@ extern char **argv;
 extern std::string outname;
 extern std::vector<spline> splines;
 extern std::vector<material> materials;
-extern std::vector<mesh> bodies;
+extern std::vector<mesh> meshes;
 extern std::vector<friction> frictions;
 extern std::vector<restrain> restrains;
 extern std::vector<prescribe> prescribes;
@@ -149,6 +149,7 @@ extern std::vector<velocity> velocities;
 extern struct gravity gravity;
 extern std::vector<history> histories;
 extern std::vector<output> outputs;
+extern bool notrun;
 };
 
 /* read spline from file */
