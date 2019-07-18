@@ -37,6 +37,7 @@ SOFTWARE.
 
 #if PY_MAJOR_VERSION >= 3
 #define PyInt_AsLong PyLong_AsSize_t
+#define PyInt_Check PyLong_Check
 #define PyString_FromString PyUnicode_FromString
 #define PyString_Check PyUnicode_Check
 #define PyString_AsString PyUnicode_AsUTF8
@@ -213,13 +214,16 @@ static int is_non_negative (double num, const char *var)
   return 1;
 }
 
-/* ge_lt range test */
-static int is_ge_lt (double num, const char *var, double lo, double hi)
+/* in map test */
+template <typename map_type>
+static int is_in_map (double objnum, const char *var, map_type objmap)
 {
-  if (num < lo || num >= hi)
+  typename map_type::iterator it = objmap.find(objnum);
+
+  if (it == objmap.end())
   {
     char buf [BUFLEN];
-    sprintf (buf, "'%s' must be in range [%g, %g]", var, lo, hi);
+    sprintf (buf, "'%s' object with number %zu does not exist", var, objnum);
     PyErr_SetString (PyExc_ValueError, buf);
     return 0;
   }
@@ -456,12 +460,17 @@ static PyObject* RESET (PyObject *self, PyObject *args, PyObject *kwds)
   }
 
   solfec::splines.clear();
+  solfec::splines_count = 0;
   solfec::materials.clear();
+  solfec::materials_count = 0;
   solfec::meshes.clear();
-  solfec::frictions.clear();
+  solfec::meshes_count = 0;
   solfec::restrains.clear();
+  solfec::restrains_count = 0;
   solfec::prescribes.clear();
+  solfec::prescribes_count = 0;
   solfec::velocities.clear();
+  solfec::frictions.clear();
   solfec::gravity.clear();
   solfec::histories.clear();
   solfec::outputs.clear();
@@ -475,7 +484,6 @@ static PyObject* SPLINE (PyObject *self, PyObject *args, PyObject *kwds)
 {
   KEYWORDS ("points", "cache");
   std::array<REAL,2> temp;
-  struct spline spline;
   PyObject *points;
   int cache, i, n;
 
@@ -491,11 +499,11 @@ static PyObject* SPLINE (PyObject *self, PyObject *args, PyObject *kwds)
     return NULL;
   }
 
+  struct spline &spline = solfec::splines[solfec::splines_count ++];
+
   if (PyString_Check (points))
   {
-    solfec::splines.push_back (spline);
-
-    spline_from_file (PyString_AsString(points), cache, &solfec::splines.back());
+    spline_from_file (PyString_AsString(points), cache, &spline);
   }
   else if (PyList_Check (points))
   {
@@ -549,8 +557,6 @@ static PyObject* SPLINE (PyObject *self, PyObject *args, PyObject *kwds)
 	spline.points.push_back (temp);
       }
     }
-
-    solfec::splines.push_back (spline);
   }
   else
   {
@@ -558,7 +564,7 @@ static PyObject* SPLINE (PyObject *self, PyObject *args, PyObject *kwds)
     return NULL;
   }
 
-  Py_RETURN_uint64_t (solfec::splines.size()-1);
+  Py_RETURN_uint64_t (solfec::splines_count-1);
 }
 
 /* print linear spline */
@@ -571,17 +577,19 @@ static PyObject* print_SPLINE (PyObject *self, PyObject *args, PyObject *kwds)
   {
     PARSEKEYS ("K", &splnum);
 
-    TYPETEST (is_ge_lt (splnum, kwl [0], 0, solfec::splines.size()));
+    TYPETEST (is_in_map (splnum, "SPLINE", solfec::splines));
+
+    struct spline &spline = solfec::splines[splnum];
 
     std::cout << "SPLINE_" << splnum << "_points = [";
-    std::vector<std::array<REAL,2>>::iterator it = solfec::splines[splnum].points.begin();
-    for (; it != solfec::splines[splnum].points.end()-1; it ++)
+    std::vector<std::array<REAL,2>>::iterator it = spline.points.begin();
+    for (; it != spline.points.end()-1; it ++)
     {
       std::cout << "(" << (*it)[0] << "," << (*it)[1] << "),";
     }
     std::cout << "(" << (*it)[0] << "," << (*it)[1] << ")]" << std::endl;
-    std::cout << "SPLINE_" << splnum << "_cache = " << solfec::splines[splnum].cache << std::endl;
-    std::cout << "SPLINE_" << splnum << "_path = " << solfec::splines[splnum].path << std::endl;
+    std::cout << "SPLINE_" << splnum << "_cache = " << spline.cache << std::endl;
+    std::cout << "SPLINE_" << splnum << "_path = " << spline.path << std::endl;
   }
 
   Py_RETURN_NONE;
@@ -592,21 +600,20 @@ static PyObject* MATERIAL (PyObject *self, PyObject *args, PyObject *kwds)
 {
   KEYWORDS ("density", "young", "poisson", "viscosity");
   double density, young, poisson, viscosity;
-  struct material material;
 
   PARSEKEYS ("dddd", &density, &young, &poisson, &viscosity);
 
   TYPETEST (is_positive (density, kwl[0]) && is_positive (young, kwl[1]) &&
             is_positive (poisson, kwl[2]) && is_non_negative (viscosity, kwl[3]));
 
+  struct material &material = solfec::materials[solfec::materials_count++];
+
   material.density = (REAL)density;
   material.young = (REAL)young;
   material.poisson = (REAL)poisson;
   material.viscosity = (REAL)viscosity;
 
-  solfec::materials.push_back (material);
-
-  Py_RETURN_uint64_t (solfec::materials.size()-1);
+  Py_RETURN_uint64_t (solfec::materials_count-1);
 }
 
 /* print material */
@@ -619,12 +626,14 @@ static PyObject* print_MATERIAL (PyObject *self, PyObject *args, PyObject *kwds)
   {
     PARSEKEYS ("K", &matnum);
 
-    TYPETEST (is_ge_lt (matnum, kwl [0], 0, solfec::materials.size()));
+    TYPETEST (is_in_map (matnum, "MATERIAL", solfec::materials));
 
-    std::cout << "MATERIAL_" << matnum << "_density = " << solfec::materials[matnum].density<< std::endl;
-    std::cout << "MATERIAL_" << matnum << "_young = " << solfec::materials[matnum].young << std::endl;
-    std::cout << "MATERIAL_" << matnum << "_poisson = " << solfec::materials[matnum].poisson << std::endl;
-    std::cout << "MATERIAL_" << matnum << "_viscosity = " << solfec::materials[matnum].viscosity << std::endl;
+    struct material &material = solfec::materials[matnum];
+
+    std::cout << "MATERIAL_" << matnum << "_density = " << material.density<< std::endl;
+    std::cout << "MATERIAL_" << matnum << "_young = " << material.young << std::endl;
+    std::cout << "MATERIAL_" << matnum << "_poisson = " << material.poisson << std::endl;
+    std::cout << "MATERIAL_" << matnum << "_viscosity = " << material.viscosity << std::endl;
   }
 
   Py_RETURN_NONE;
@@ -636,12 +645,7 @@ static PyObject* MESH (PyObject *self, PyObject *args, PyObject *kwds)
   KEYWORDS ("nodes", "elements", "matnum", "colors", "transform");
   size_t tuple_lengths[4] = {3, 7, 9, 4}, i, j, k, l, n, m, e;
   PyObject *nodes, *elements, *colors, *transform;
-  struct mesh mesh, *pmesh;
   size_t matnum;
-
-  solfec::meshes.push_back(mesh);
-
-  pmesh = &solfec::meshes.back();
 
   transform = NULL;
 
@@ -651,7 +655,9 @@ static PyObject* MESH (PyObject *self, PyObject *args, PyObject *kwds)
             is_list_or_number (colors, kwl[3], 0) &&
             is_tuple_or_list_of_tuples (transform, kwl[4], tuple_lengths, 4));
 
-  pmesh->matnum = matnum;
+  struct mesh &mesh = solfec::meshes[solfec::meshes_count++];
+
+  mesh.matnum = matnum;
 
   /* read nodes */
   if (PyList_Size(nodes) % 3)
@@ -668,7 +674,7 @@ static PyObject* MESH (PyObject *self, PyObject *args, PyObject *kwds)
 			       (REAL)PyFloat_AsDouble (PyList_GetItem (nodes, 3*i+1)),
 			       (REAL)PyFloat_AsDouble (PyList_GetItem (nodes, 3*i+2))};
 
-    pmesh->nodes.push_back (temp);
+    mesh.nodes.push_back (temp);
   }
 
   /* read elements */
@@ -680,16 +686,16 @@ static PyObject* MESH (PyObject *self, PyObject *args, PyObject *kwds)
     switch(k)
     {
     case 4:
-      pmesh->ntet++;
+      mesh.ntet++;
     break;
     case 5:
-      pmesh->npyr++;
+      mesh.npyr++;
     break;
     case 6:
-      pmesh->nwed++;
+      mesh.nwed++;
     break;
     case 8:
-      pmesh->nhex++;
+      mesh.nhex++;
     break;
     default:
       PyErr_SetString (PyExc_ValueError, "An element must have 4, 5, 6, or 8 nodes");
@@ -697,7 +703,7 @@ static PyObject* MESH (PyObject *self, PyObject *args, PyObject *kwds)
     break;
     }
 
-    pmesh->elements.push_back (k);
+    mesh.elements.push_back (k);
 
     for (j = i+1; j <= i+k; j ++) /* nodes */
     {
@@ -711,7 +717,7 @@ static PyObject* MESH (PyObject *self, PyObject *args, PyObject *kwds)
 	return NULL;
       }
 
-      if (std::count(pmesh->elements.end()-(j-i-1),pmesh->elements.end(),m)>0)
+      if (std::count(mesh.elements.end()-(j-i-1),mesh.elements.end(),m)>0)
       {
 	char buf [BUFLEN];
 	sprintf (buf, "Node %d repeats in element %d", m, e);
@@ -719,12 +725,12 @@ static PyObject* MESH (PyObject *self, PyObject *args, PyObject *kwds)
 	return NULL;
       }
 
-      pmesh->elements.push_back (m);
+      mesh.elements.push_back (m);
     }
 
     m = PyInt_AsLong (PyList_GetItem (elements, j)); /* material */
 
-    pmesh->elements.push_back (m);
+    mesh.elements.push_back (m);
 
     i = ++j;
 
@@ -738,7 +744,7 @@ static PyObject* MESH (PyObject *self, PyObject *args, PyObject *kwds)
   if (PyList_Check (colors))
   {
     /* global color */
-    pmesh->gcolor = PyInt_AsLong (PyList_GetItem (colors, 0));
+    mesh.gcolor = PyInt_AsLong (PyList_GetItem (colors, 0));
 
     /* read face colors */
     l = PyList_Size (colors);
@@ -752,7 +758,7 @@ static PyObject* MESH (PyObject *self, PyObject *args, PyObject *kwds)
 	return NULL;
       }
 
-      pmesh->colors.push_back (k);
+      mesh.colors.push_back (k);
 
       for (j = i+1; j <= i+k; j ++) /* nodes */
       {
@@ -766,7 +772,7 @@ static PyObject* MESH (PyObject *self, PyObject *args, PyObject *kwds)
 	  return NULL;
 	}
 
-	if (std::count(pmesh->colors.end()-(j-i-1),pmesh->colors.end(),m)>0)
+	if (std::count(mesh.colors.end()-(j-i-1),mesh.colors.end(),m)>0)
 	{
 	  char buf [BUFLEN];
 	  sprintf (buf, "Node %d repeats in face %d", m, e);
@@ -774,12 +780,12 @@ static PyObject* MESH (PyObject *self, PyObject *args, PyObject *kwds)
 	  return NULL;
 	}
 
-	pmesh->colors.push_back (m);
+	mesh.colors.push_back (m);
       }
 
       m = PyInt_AsLong (PyList_GetItem (colors, j)); /* color */
 
-      pmesh->colors.push_back (m);
+      mesh.colors.push_back (m);
 
       i = ++j;
 
@@ -790,11 +796,11 @@ static PyObject* MESH (PyObject *self, PyObject *args, PyObject *kwds)
       }
     }
 
-    pmesh->nfaces = e;
+    mesh.nfaces = e;
   }
   else
   {
-    pmesh->gcolor = PyInt_AsLong (colors);
+    mesh.gcolor = PyInt_AsLong (colors);
   }
 
   /* tranform nodes */
@@ -806,7 +812,7 @@ static PyObject* MESH (PyObject *self, PyObject *args, PyObject *kwds)
       size_t type = PyTuple_Size (transform);
       for (i = 0; i < type; i ++)
 	trans[i] = (REAL)PyFloat_AsDouble (PyTuple_GetItem (transform, i)),
-      dotransform (trans, type, pmesh->nodes);
+      dotransform (trans, type, mesh.nodes);
     }
     else
     {
@@ -818,12 +824,12 @@ static PyObject* MESH (PyObject *self, PyObject *args, PyObject *kwds)
 	size_t type = PyTuple_Size (tuple);
 	for (j = 0; j < type; j ++)
 	  trans[j] = (REAL)PyFloat_AsDouble (PyTuple_GetItem (tuple, j)),
-	dotransform (trans, type, pmesh->nodes);
+	dotransform (trans, type, mesh.nodes);
       }
     }
   }
 
-  Py_RETURN_uint64_t (solfec::meshes.size()-1);
+  Py_RETURN_uint64_t (solfec::meshes_count-1);
 }
 
 /* print meshed body */
@@ -836,12 +842,14 @@ static PyObject* print_MESH (PyObject *self, PyObject *args, PyObject *kwds)
   {
     PARSEKEYS ("K", &bodnum);
 
-    TYPETEST (is_ge_lt (bodnum, kwl [0], 0, solfec::meshes.size()));
+    TYPETEST (is_in_map (bodnum, "MESH", solfec::meshes));
+
+    struct mesh &mesh = solfec::meshes[bodnum];
 
     {
       std::cout << "MESH_" << bodnum << "_nodes = [";
-      std::vector<std::array<REAL,3>>::iterator it = solfec::meshes[bodnum].nodes.begin();
-      for (; it != solfec::meshes[bodnum].nodes.end()-1; it ++)
+      std::vector<std::array<REAL,3>>::iterator it = mesh.nodes.begin();
+      for (; it != mesh.nodes.end()-1; it ++)
       {
 	 std::cout << (*it)[0] << "," << (*it)[1] << "," << (*it)[2] << "," << std::endl;
       }
@@ -849,9 +857,9 @@ static PyObject* print_MESH (PyObject *self, PyObject *args, PyObject *kwds)
     }
     {
       std::cout << "MESH_" << bodnum << "_elements = [";
-      size_t ne = solfec::meshes[bodnum].elements.size();
-      std::vector<size_t>::iterator it = solfec::meshes[bodnum].elements.begin();
-      for (; it != solfec::meshes[bodnum].elements.end(); )
+      size_t ne = mesh.elements.size();
+      std::vector<size_t>::iterator it = mesh.elements.begin();
+      for (; it != mesh.elements.end(); )
       {
 	switch (*it)
 	{
@@ -873,14 +881,14 @@ static PyObject* print_MESH (PyObject *self, PyObject *args, PyObject *kwds)
 	 break;
 	}
 
-	if (it != solfec::meshes[bodnum].elements.end()) std::cout << "," << std::endl;
+	if (it != mesh.elements.end()) std::cout << "," << std::endl;
 	else std::cout << "]" << std::endl;
       }
     }
     {
-      std::cout << "MESH_" << bodnum << "_colors = [" << solfec::meshes[bodnum].gcolor << ",";
-      std::vector<size_t>::iterator it = solfec::meshes[bodnum].colors.begin();
-      for (; it != solfec::meshes[bodnum].colors.end(); )
+      std::cout << "MESH_" << bodnum << "_colors = [" << mesh.gcolor << ",";
+      std::vector<size_t>::iterator it = mesh.colors.begin();
+      for (; it != mesh.colors.end(); )
       {
 	switch (*it)
 	{
@@ -893,7 +901,7 @@ static PyObject* print_MESH (PyObject *self, PyObject *args, PyObject *kwds)
 	 break;
 	}
 
-	if (it != solfec::meshes[bodnum].colors.end()) std::cout << "," << std::endl;
+	if (it != mesh.colors.end()) std::cout << "," << std::endl;
 	else std::cout << "]" << std::endl;
       }
     }
@@ -902,35 +910,21 @@ static PyObject* print_MESH (PyObject *self, PyObject *args, PyObject *kwds)
   Py_RETURN_NONE;
 }
  
-/* Define friction parameters */
-static PyObject* FRICTION (PyObject *self, PyObject *args, PyObject *kwds)
-{
-  KEYWORDS ("color1", "color2", "static", "dynamic");
-  struct friction friction;
-
-  PARSEKEYS ("KKdd", &friction.color1, &friction.color2, &friction.static_friction, &friction.dynamic_friction);
-
-  TYPETEST (is_non_negative (friction.static_friction, kwl[2]) && is_non_negative (friction.dynamic_friction, kwl[3]));
-
-  solfec::frictions.push_back (friction);
-
-  Py_RETURN_uint64_t (solfec::frictions.size()-1);
-}
-
 /* Restrain motion */
 static PyObject* RESTRAIN (PyObject *self, PyObject *args, PyObject *kwds)
 {
   KEYWORDS ("bodnum", "point", "color");
   size_t tuple_lengths[1] = {3}, i, j, n;
-  struct restrain restrain;
   PyObject *point;
 
-  point = NULL;
+  struct restrain &restrain = solfec::restrains[solfec::restrains_count++];
+
   restrain.color = 0;
+  point = NULL;
 
   PARSEKEYS ("K|OK", &restrain.bodnum, &point, &restrain.color);
 
-  TYPETEST (is_ge_lt (restrain.bodnum, kwl[0], 0, solfec::meshes.size()) &&
+  TYPETEST (is_in_map (restrain.bodnum, "MESH", solfec::meshes) &&
             is_tuple_or_list_of_tuples (point, kwl[1], tuple_lengths, 1));
 
   if (point)
@@ -955,18 +949,195 @@ static PyObject* RESTRAIN (PyObject *self, PyObject *args, PyObject *kwds)
     }
   }
 
-  Py_RETURN_uint64_t (solfec::restrains.size()-1);
+  solfec::meshes[restrain.bodnum].restrains.insert(solfec::restrains_count-1);
+
+  Py_RETURN_uint64_t (solfec::restrains_count-1);
 }
 
 /* Prescribe moion */
 static PyObject* PRESCRIBE (PyObject *self, PyObject *args, PyObject *kwds)
 {
-  Py_RETURN_NONE;
+  KEYWORDS ("bodnum", "point", "color", "linear", "angular");
+  size_t tuple_lengths[1] = {3}, i, j, n;
+  PyObject *point, *linear, *angular;
+
+  struct prescribe &prescribe = solfec::prescribes[solfec::prescribes_count++];
+
+  prescribe.color = 0;
+  point = NULL;
+  linear = NULL;
+  angular = NULL;
+
+  PARSEKEYS ("K|OK", &prescribe.bodnum, &point, &prescribe.color, &linear, &angular);
+
+  TYPETEST (is_in_map (prescribe.bodnum, "MESH", solfec::meshes) &&
+            is_tuple_or_list_of_tuples (point, kwl[1], tuple_lengths, 1));
+
+  if (point)
+  {
+    std::array<REAL,3> temp;
+    if (PyTuple_Check(point))
+    {
+      for (i = 0; i < 3; i ++)
+	temp[i] = (REAL)PyFloat_AsDouble (PyTuple_GetItem (point, i));
+      prescribe.points.push_back(temp);
+    }
+    else
+    {
+      n = PyList_Size (point);
+      for (i = 0; i < n; i ++)
+      {
+	PyObject *tuple = PyList_GetItem (point, i);
+	for (j = 0; j < 3; j ++)
+	  temp[j] = (REAL)PyFloat_AsDouble (PyTuple_GetItem (tuple, j)),
+        prescribe.points.push_back(temp);
+      }
+    }
+  }
+
+  if (linear)
+  {
+    if (PyCallable_Check(linear))
+    {
+      prescribe.linear_callback = linear;
+      prescribe.linear_values[0] = 0.;
+      prescribe.linear_values[1] = 0.;
+      prescribe.linear_values[2] = 0.;
+      prescribe.linear_splines[0] = -1;
+      prescribe.linear_splines[1] = -1;
+      prescribe.linear_splines[2] = -1;
+    }
+    else if (PyTuple_Check(linear))
+    {
+      if (PyTuple_Size(linear) != 3) 
+      {
+	PyErr_SetString (PyExc_ValueError, "'linear' tuple size != 3");
+	return NULL;
+      }
+
+      PyObject *l[3] =  {PyTuple_GetItem(linear, 0), PyTuple_GetItem(linear, 1), PyTuple_GetItem(linear, 2)}; 
+
+      for (int i = 0; i < 3; i ++)
+      {
+	if (PyFloat_Check(l[i]))
+	{
+          prescribe.linear_values[i] = (REAL)PyFloat_AsDouble(l[i]);
+	}
+	else if (PyInt_Check(l[i]))
+	{
+	  size_t splnum = PyInt_AsLong(l[i]);
+
+	  if (is_in_map(splnum, "SPLINE", solfec::splines))
+	  {
+            prescribe.linear_splines[i] = PyInt_AsLong(l[i]);
+	  }
+	  else
+	  {
+	    PyErr_SetString (PyExc_ValueError, "'linear' tuple item SPLINE number out of range");
+	    return NULL;
+	  }
+	}
+	else
+	{
+	  PyErr_SetString (PyExc_ValueError, "'linear' tuple item is neither a float nor an integer");
+	  return NULL;
+	}
+      }
+    }
+    else
+    {
+      PyErr_SetString (PyExc_ValueError, "'linear' is neither a tuple nor a callback");
+      return NULL;
+    }
+  }
+
+  if (angular)
+  {
+    if (PyCallable_Check(angular))
+    {
+      prescribe.angular_callback = angular;
+      prescribe.angular_values[0] = 0.;
+      prescribe.angular_values[1] = 0.;
+      prescribe.angular_values[2] = 0.;
+      prescribe.angular_splines[0] = -1;
+      prescribe.angular_splines[1] = -1;
+      prescribe.angular_splines[2] = -1;
+    }
+    else if (PyTuple_Check(angular))
+    {
+      if (PyTuple_Size(angular) != 3) 
+      {
+	PyErr_SetString (PyExc_ValueError, "'angular' tuple size != 3");
+	return NULL;
+      }
+
+      PyObject *l[3] =  {PyTuple_GetItem(angular, 0), PyTuple_GetItem(angular, 1), PyTuple_GetItem(angular, 2)}; 
+
+      for (int i = 0; i < 3; i ++)
+      {
+	if (PyFloat_Check(l[i]))
+	{
+          prescribe.angular_values[i] = (REAL)PyFloat_AsDouble(l[i]);
+	}
+	else if (PyInt_Check(l[i]))
+	{
+	  size_t splnum = PyInt_AsLong(l[i]);
+
+	  if (is_in_map(splnum, "SPLINE", solfec::splines))
+	  {
+            prescribe.angular_splines[i] = PyInt_AsLong(l[i]);
+	  }
+	  else
+	  {
+	    PyErr_SetString (PyExc_ValueError, "'angular' tuple item SPLINE number out of range");
+	    return NULL;
+	  }
+	}
+	else
+	{
+	  PyErr_SetString (PyExc_ValueError, "'angular' tuple item is neither a float nor an integer");
+	  return NULL;
+	}
+      }
+    }
+    else
+    {
+      PyErr_SetString (PyExc_ValueError, "'angular' is neither a tuple nor a callback");
+      return NULL;
+    }
+  }
+
+  solfec::meshes[prescribe.bodnum].prescribes.insert(solfec::prescribes_count-1);
+
+  Py_RETURN_uint64_t (solfec::prescribes_count-1);
 }
 
 /* Set rigid velocity */
 static PyObject* VELOCITY (PyObject *self, PyObject *args, PyObject *kwds)
 {
+  Py_RETURN_NONE;
+}
+
+/* Define friction parameters */
+static PyObject* FRICTION (PyObject *self, PyObject *args, PyObject *kwds)
+{
+  KEYWORDS ("color1", "color2", "static", "dynamic");
+  struct friction friction;
+
+  PARSEKEYS ("KKdd", &friction.color1, &friction.color2, &friction.static_friction, &friction.dynamic_friction);
+
+  if (friction.color1 > friction.color2) std::swap(friction.color1, friction.color2);
+
+  TYPETEST (is_non_negative (friction.static_friction, kwl[2]) && is_non_negative (friction.dynamic_friction, kwl[3]));
+
+  std::pair<std::set<struct friction,friction_compare>::iterator,bool> ret = solfec::frictions.insert (friction);
+
+  if (ret.second == false) /* redefine */
+  {
+    solfec::frictions.erase(ret.first);
+    solfec::frictions.insert (friction);
+  }
+
   Py_RETURN_NONE;
 }
 
@@ -996,6 +1167,54 @@ static PyObject* RUN (PyObject *self, PyObject *args, PyObject *kwds)
   Py_RETURN_NONE;
 }
 
+/* Delete object */
+static PyObject* DELETE (PyObject *self, PyObject *args, PyObject *kwds)
+{
+  KEYWORDS ("objnum", "objkind");
+  PyObject *objkind;
+  size_t objnum;
+
+  PARSEKEYS ("KO", &objnum, &objkind);
+
+  IFIS (objkind,"MESH")
+  {
+    TYPETEST (is_in_map (objnum, "MESH", solfec::meshes));
+
+    struct mesh &mesh = solfec::meshes[objnum];
+
+    for (std::set<size_t>::iterator it = mesh.restrains.begin(); it != mesh.restrains.end(); it ++)
+    {
+      solfec::restrains.erase(*it);
+    }
+
+    for (std::set<size_t>::iterator it = mesh.prescribes.begin(); it != mesh.prescribes.end(); it ++)
+    {
+      solfec::prescribes.erase(*it);
+    }
+
+    solfec::meshes.erase(objnum);
+  }
+  ELIF (objkind,"RESTRAIN")
+  {
+    TYPETEST (is_in_map (objnum, "RESTRAIN", solfec::restrains));
+
+    solfec::restrains.erase(objnum);
+  }
+  ELIF (objkind,"PRESCRIBE")
+  {
+    TYPETEST (is_in_map (objnum, "PRESCRIBE", solfec::prescribes));
+
+    solfec::prescribes.erase(objnum);
+  }
+  ELSE
+  {
+    PyErr_SetString (PyExc_ValueError, "Invalid object kind");
+    return NULL;
+  }
+
+  Py_RETURN_NONE;
+}
+
 static PyMethodDef methods [] =
 {
   {"ARGV", (PyCFunction)ARGV, METH_VARARGS|METH_KEYWORDS, "Command line arguments"},
@@ -1006,14 +1225,15 @@ static PyMethodDef methods [] =
   {"print_MATERIAL", (PyCFunction)print_MATERIAL, METH_VARARGS|METH_KEYWORDS, "print material"},
   {"MESH", (PyCFunction)MESH, METH_VARARGS|METH_KEYWORDS, "Create meshed body"},
   {"print_MESH", (PyCFunction)print_MESH, METH_VARARGS|METH_KEYWORDS, "print meshed body"},
-  {"FRICTION", (PyCFunction)FRICTION, METH_VARARGS|METH_KEYWORDS, "Define friction parameters"},
   {"RESTRAIN", (PyCFunction)RESTRAIN, METH_VARARGS|METH_KEYWORDS, "Restrain motion"},
   {"PRESCRIBE", (PyCFunction)PRESCRIBE, METH_VARARGS|METH_KEYWORDS, "Prescribe motion"},
   {"VELOCITY", (PyCFunction)VELOCITY, METH_VARARGS|METH_KEYWORDS, "Set rigid velocity"},
+  {"FRICTION", (PyCFunction)FRICTION, METH_VARARGS|METH_KEYWORDS, "Define friction parameters"},
   {"GRAVITY", (PyCFunction)GRAVITY, METH_VARARGS|METH_KEYWORDS, "Set gravity"},
   {"HISTORY", (PyCFunction)HISTORY, METH_VARARGS|METH_KEYWORDS, "Retrieve time history"},
   {"OUTPUT", (PyCFunction)OUTPUT, METH_VARARGS|METH_KEYWORDS, "Declare output entities"},
   {"RUN", (PyCFunction)RUN, METH_VARARGS|METH_KEYWORDS, "Run simulation"},
+  {"DELETE", (PyCFunction)DELETE, METH_VARARGS|METH_KEYWORDS, "Delete object"},
   {NULL, NULL, 0, NULL}
 };
 
@@ -1062,14 +1282,15 @@ int input (const char *path)
                       "from solfec import print_MATERIAL\n"
                       "from solfec import MESH\n"
                       "from solfec import print_MESH\n"
-                      "from solfec import FRICTION\n"
                       "from solfec import RESTRAIN\n"
                       "from solfec import PRESCRIBE\n"
                       "from solfec import VELOCITY\n"
+                      "from solfec import FRICTION\n"
                       "from solfec import GRAVITY\n"
                       "from solfec import HISTORY\n"
                       "from solfec import OUTPUT\n"
-                      "from solfec import RUN\n");
+                      "from solfec import RUN\n"
+                      "from solfec import DELETE\n");
 
   ERRMEM (line = new char [128 + strlen (path)]);
 #if PY_MAJOR_VERSION >= 3

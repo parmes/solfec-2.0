@@ -26,6 +26,7 @@ SOFTWARE.
 #include <vector>
 #include <array>
 #include <set>
+#include <map>
 
 #ifndef __solfec__
 #define __solfec__
@@ -61,16 +62,9 @@ struct mesh
   size_t nfaces; /* number of faces */
   size_t matnum; /* material number */
   size_t gcolor; /* global color */
+  std::set<size_t> restrains; /* applied restrains */
+  std::set<size_t> prescribes; /* applied prescribes */
   mesh () : nhex(0), nwed(0), npyr(0), ntet(0), nfaces(0), matnum(0), gcolor(0) { }
-};
-
-/* friction */
-struct friction
-{
-  size_t color1; /* first face color */
-  size_t color2; /* second face color */
-  REAL static_friction; /* static Coulomb's friction */
-  REAL dynamic_friction;/* dynamic Coulomb's friction */
 };
 
 /* restrain */
@@ -102,6 +96,21 @@ struct velocity
   size_t bodnum; /* body number */
   REAL linear_values [3]; /* linear velocity */
   REAL angular_values [3]; /* linear velocity */
+};
+
+/* friction */
+struct friction
+{
+  size_t color1; /* first face color */
+  size_t color2; /* second face color */
+  REAL static_friction; /* static Coulomb's friction */
+  REAL dynamic_friction;/* dynamic Coulomb's friction */
+};
+
+/* friction comparison */
+struct friction_compare {
+  bool operator() (const struct friction& lhs, const struct friction& rhs) const
+  {return lhs.color1 == rhs.color1 ? lhs.color2 < rhs.color2 : lhs.color1 < lhs.color2;}
 };
 
 /* gravity */
@@ -139,13 +148,18 @@ namespace solfec
 extern int argc;
 extern char **argv;
 extern std::string outname;
-extern std::vector<spline> splines;
-extern std::vector<material> materials;
-extern std::vector<mesh> meshes;
-extern std::vector<friction> frictions;
-extern std::vector<restrain> restrains;
-extern std::vector<prescribe> prescribes;
+extern std::map<size_t,spline> splines;
+extern size_t splines_count;
+extern std::map<size_t,material> materials;
+extern size_t materials_count;
+extern std::map<size_t,mesh> meshes;
+extern size_t meshes_count;
+extern std::map<size_t,restrain> restrains;
+extern size_t restrains_count;
+extern std::map<size_t,prescribe> prescribes;
+extern size_t prescribes_count;
 extern std::vector<velocity> velocities;
+extern std::set<friction,friction_compare> frictions;
 extern struct gravity gravity;
 extern std::vector<history> histories;
 extern std::vector<output> outputs;

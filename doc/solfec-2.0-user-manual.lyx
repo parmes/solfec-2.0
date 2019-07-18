@@ -920,83 +920,6 @@ Mesh element types in Solfec-2.0.
 \begin_layout Section
 \begin_inset CommandInset label
 LatexCommand label
-name "subsec:FRICTION"
-
-\end_inset
-
-FRICTION
-\end_layout
-
-\begin_layout Standard
-Define surface pairing contact friction.
- Default values, for unspecified pairings, are: 
-\series bold
-static
-\series default
- = 0, 
-\series bold
-dynamic
-\series default
- = 0.
-\end_layout
-
-\begin_layout Subsection*
-frinum = FRICTION (color1, color2 | static, dynamic)
-\end_layout
-
-\begin_layout Itemize
-
-\series bold
-frinum
-\series default
- - friction pair number
-\end_layout
-
-\begin_layout Itemize
-
-\series bold
-color1
-\series default
- - first color (positive, or color1 = 0 and color2 = 0 to redefine default
- parameters for unspecified pairings)
-\end_layout
-
-\begin_layout Itemize
-
-\series bold
-color2
-\series default
- - second color (positive, or color1 = 0 and color2 = 0 to redefine default
- parameters for unspecified pairings)
-\end_layout
-
-\begin_layout Itemize
-
-\series bold
-static
-\series default
- - optional static Coulomb's friction coefficient; default: 
-\begin_inset Formula $0.0$
-\end_inset
-
-
-\end_layout
-
-\begin_layout Itemize
-
-\series bold
-dynamic
-\series default
- - optional dynamic Coulomb's friction coefficient; default: 
-\begin_inset Formula $0.0$
-\end_inset
-
-
-\end_layout
-
-\begin_layout Section
-\begin_inset CommandInset label
-LatexCommand label
 name "subsec:RESTRAIN"
 
 \end_inset
@@ -1245,6 +1168,75 @@ angular
 
  at 
 \begin_inset Formula $t=0$
+\end_inset
+
+
+\end_layout
+
+\begin_layout Section
+\begin_inset CommandInset label
+LatexCommand label
+name "subsec:FRICTION"
+
+\end_inset
+
+FRICTION
+\end_layout
+
+\begin_layout Standard
+Define surface pairing contact friction.
+ Default values, for unspecified pairings, are: 
+\series bold
+static
+\series default
+ = 0, 
+\series bold
+dynamic
+\series default
+ = 0.
+\end_layout
+
+\begin_layout Subsection*
+FRICTION (color1, color2 | static, dynamic)
+\end_layout
+
+\begin_layout Itemize
+
+\series bold
+color1
+\series default
+ - first color (positive, or color1 = 0 and color2 = 0 to redefine default
+ parameters for unspecified pairings)
+\end_layout
+
+\begin_layout Itemize
+
+\series bold
+color2
+\series default
+ - second color (positive, or color1 = 0 and color2 = 0 to redefine default
+ parameters for unspecified pairings)
+\end_layout
+
+\begin_layout Itemize
+
+\series bold
+static
+\series default
+ - optional static Coulomb's friction coefficient; default: 
+\begin_inset Formula $0.0$
+\end_inset
+
+
+\end_layout
+
+\begin_layout Itemize
+
+\series bold
+dynamic
+\series default
+ - optional dynamic Coulomb's friction coefficient; default: 
+\begin_inset Formula $0.0$
 \end_inset
 
 
@@ -1667,43 +1659,7 @@ objnum
 \series bold
 objkind
 \series default
- - object kind; one of: 'SPLINE', 'MATERIAL', 'MESH', 'FRICTION', 'RESTRAIN',
- 'PRESCRIBE'
-\end_layout
-
-\begin_layout Section
-\begin_inset CommandInset label
-LatexCommand label
-name "subsec:NUMOF"
-
-\end_inset
-
-NUMOF
-\end_layout
-
-\begin_layout Standard
-Get number of objects.
-\end_layout
-
-\begin_layout Subsection*
-objnum = NUMOF (objkind)
-\end_layout
-
-\begin_layout Itemize
-
-\series bold
-objnum
-\series default
- - object number
-\end_layout
-
-\begin_layout Itemize
-
-\series bold
-objkind
-\series default
- - object kind; one of: 'SPLINE', 'MATERIAL', 'MESH', 'FRICTION', 'RESTRAIN',
- 'PRESCRIBE'
+ - object kind; one of: 'MESH', 'RESTRAIN', 'PRESCRIBE'
 \end_layout
 
 \begin_layout Chapter
@@ -1803,8 +1759,7 @@ Debug printing
 \end_layout
 
 \begin_layout Standard
-For input debugging purposes, the following Python commands are additionally
- defined:
+For debugging purposes, the following Python commands are additionally defined:
 \end_layout
 
 \begin_layout Standard
@@ -1851,17 +1806,6 @@ print_MESH(bodnum)
 \begin_inset Text
 
 \begin_layout Plain Layout
-print_FRICTION(frinum)
-\end_layout
-
-\end_inset
-</cell>
-</row>
-<row>
-<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
 print_RESTRAIN(resnum)
 \end_layout
 
@@ -1885,6 +1829,17 @@ print_PRESCRIBE(prenum)
 
 \begin_layout Plain Layout
 print_VELOCITIES()
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+print_FRICTIONS()
 \end_layout
 
 \end_inset
@@ -1933,7 +1888,7 @@ print_OUTPUTS()
 \begin_layout Standard
 \noindent
 These commands print to standard output formatted definitions of the correspondi
-ng data, prior to a first invocation of the 
+ng input data, prior to a first invocation of the 
 \begin_inset CommandInset ref
 LatexCommand nameref
 reference "subsec:RUN"
