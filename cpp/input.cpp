@@ -557,13 +557,15 @@ static PyObject* print_SPLINE (PyObject *self, PyObject *args, PyObject *kwds)
 
     struct spline &spline = solfec::splines[splnum];
 
-    std::cout << "SPLINE_" << splnum << "_points = [";
+    std::cout << "SPLINE_" << splnum << "_points = ";
     std::vector<std::array<REAL,2>>::iterator it = spline.points.begin();
-    for (; it != spline.points.end()-1; it ++)
+    if (it == spline.points.end()) std::cout << std::endl; else std::cout << "[";
+    for (; it != spline.points.end(); it ++)
     {
-      std::cout << "(" << (*it)[0] << "," << (*it)[1] << "),";
+      std::cout << "(" << (*it)[0] << "," << (*it)[1];
+      if (it+1 != spline.points.end()) std::cout << "),";
+      else std::cout << ")]" << std::endl;
     }
-    std::cout << "(" << (*it)[0] << "," << (*it)[1] << ")]" << std::endl;
     std::cout << "SPLINE_" << splnum << "_cache = " << spline.cache << std::endl;
     std::cout << "SPLINE_" << splnum << "_path = " << spline.path << std::endl;
   }
@@ -923,7 +925,7 @@ static PyObject* RESTRAIN (PyObject *self, PyObject *args, PyObject *kwds)
       {
 	PyObject *tuple = PyList_GetItem (point, i);
 	for (j = 0; j < 3; j ++)
-	  temp[j] = (REAL)PyFloat_AsDouble (PyTuple_GetItem (tuple, j)),
+	  temp[j] = (REAL)PyFloat_AsDouble (PyTuple_GetItem (tuple, j));
         restrain.points.push_back(temp);
       }
     }
@@ -932,6 +934,36 @@ static PyObject* RESTRAIN (PyObject *self, PyObject *args, PyObject *kwds)
   solfec::meshes[restrain.bodnum].restrains.insert(solfec::restrains_count-1);
 
   Py_RETURN_uint64_t (solfec::restrains_count-1);
+}
+
+/* print restrain */
+static PyObject* print_RESTRAIN (PyObject *self, PyObject *args, PyObject *kwds)
+{
+  KEYWORDS ("resnum");
+  size_t resnum;
+
+  if (solfec::notrun)
+  {
+    PARSEKEYS ("K", &resnum);
+
+    TYPETEST (is_in_map (resnum, "RESTRAIN", solfec::restrains));
+
+    struct restrain &restrain = solfec::restrains[resnum];
+
+    std::cout << "RESTTRAIN_" << resnum << "_bodnum = " << restrain.bodnum << std::endl;
+    std::cout << "RESTRAIN_" << resnum << "_points = ";
+    std::vector<std::array<REAL,3>>::iterator it = restrain.points.begin();
+    if (it == restrain.points.end()) std::cout << std::endl; else std::cout << "[";
+    for (; it != restrain.points.end(); it ++)
+    {
+      std::cout << "(" << (*it)[0] << "," << (*it)[1] <<  "," << (*it)[2];
+      if (it+1 != restrain.points.end()) std::cout << "),";
+      else std::cout << ")]" << std::endl;
+    }
+    std::cout << "RESTRAIN_" << resnum << "_color = " << restrain.color << std::endl;
+  }
+
+  Py_RETURN_NONE;
 }
 
 /* Prescribe moion */
@@ -1206,6 +1238,7 @@ static PyMethodDef methods [] =
   {"MESH", (PyCFunction)MESH, METH_VARARGS|METH_KEYWORDS, "Create meshed body"},
   {"print_MESH", (PyCFunction)print_MESH, METH_VARARGS|METH_KEYWORDS, "print meshed body"},
   {"RESTRAIN", (PyCFunction)RESTRAIN, METH_VARARGS|METH_KEYWORDS, "Restrain motion"},
+  {"print_RESTRAIN", (PyCFunction)print_RESTRAIN, METH_VARARGS|METH_KEYWORDS, "print restrain"},
   {"PRESCRIBE", (PyCFunction)PRESCRIBE, METH_VARARGS|METH_KEYWORDS, "Prescribe motion"},
   {"VELOCITY", (PyCFunction)VELOCITY, METH_VARARGS|METH_KEYWORDS, "Set rigid velocity"},
   {"FRICTION", (PyCFunction)FRICTION, METH_VARARGS|METH_KEYWORDS, "Define friction parameters"},
@@ -1273,6 +1306,7 @@ int input (const char *path)
                       "from solfec import MESH\n"
                       "from solfec import print_MESH\n"
                       "from solfec import RESTRAIN\n"
+                      "from solfec import print_RESTRAIN\n"
                       "from solfec import PRESCRIBE\n"
                       "from solfec import VELOCITY\n"
                       "from solfec import FRICTION\n"
