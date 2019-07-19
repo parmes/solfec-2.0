@@ -8,7 +8,7 @@ CPP_INC=cpp/solfec.h cpp/version.h
 CPP_SRC=cpp/tasksys.cpp cpp/solfec.cpp cpp/input.cpp cpp/spline.cpp
 
 # ISPC files
-ISPC_SRC=ispc/simd_util.ispc
+ISPC_SRC=ispc/util.ispc
 
 # ISPC targets
 ISPC_TARGETS=sse2,sse4,avx

@@ -55,7 +55,7 @@ struct material
 /* mesh */
 struct mesh
 {
-  std::vector<std::array<REAL,3>> nodes; /* list of nodes */
+  std::array<std::vector<REAL>,3> nodes; /* list of nodes */
   std::vector<size_t> elements; /* list of elements */
   std::vector<size_t> colors; /* face colors */
   size_t nhex, nwed, npyr, ntet; /* numbers of elements per kind */

@@ -34,6 +34,7 @@ SOFTWARE.
 #include "err.h"
 #include "alg.h"
 #include "solfec.h"
+#include "util_ispc.h"
 
 #if PY_MAJOR_VERSION >= 3
 #define PyInt_AsLong PyLong_AsSize_t
@@ -330,46 +331,25 @@ static int is_tuple_or_list_of_tuples (PyObject *obj, const char *var, size_t *t
 }
 
 /* transform mesh nodes */
-static void dotransform (REAL *transform, size_t type, std::vector<std::array<REAL,3>> &nodes)
+static void dotransform (REAL *transform, size_t type, std::array<std::vector<REAL>,3> &nodes)
 {
   switch (type)
   {
   case 3: /* translate */
-    for (std::vector<std::array<REAL,3>>::iterator it = nodes.begin(); it != nodes.end(); it ++)
-    {
-      ACC (*it, transform);
-    }
+    ispc::translate (transform, &nodes[0][0], &nodes[1][0], &nodes[2][0], nodes[0].size());
   break;
   case 7: /* axis rotate */
   {
     REAL rotation[9];
     ROTATION_MATRIX (transform+3, transform[7], rotation);
-    for (std::vector<std::array<REAL,3>>::iterator it = nodes.begin(); it != nodes.end(); it ++)
-    {
-      REAL v[3], w[3];
-      SUB (*it, transform, v);
-      NVMUL (rotation, v, w);
-      SCC (w, v);
-      ACC (*it, w);
-    }
+    ispc::axis_rotate (transform, rotation, &nodes[0][0], &nodes[1][0], &nodes[2][0], nodes[0].size());
   }
   break;
   case 9: /* matrix transform */
-    for (std::vector<std::array<REAL,3>>::iterator it = nodes.begin(); it != nodes.end(); it ++)
-    {
-      REAL v[3];
-      COPY (*it, v);
-      NVMUL (transform, v, *it);
-    }
+    ispc::matrix_transform (transform, &nodes[0][0], &nodes[1][0], &nodes[2][0], nodes[0].size());
   break;
   case 4: /* scale */
-    for (std::vector<std::array<REAL,3>>::iterator it = nodes.begin(); it != nodes.end(); it ++)
-    {
-      REAL v[3];
-      SUB (*it, transform, v);
-      SCALE (v, transform[3]);
-      ADD (transform, v, *it);
-    }
+    ispc::scale (transform, transform[3], &nodes[0][0], &nodes[1][0], &nodes[2][0], nodes[0].size());
   break;
   }
 }
@@ -674,7 +654,9 @@ static PyObject* MESH (PyObject *self, PyObject *args, PyObject *kwds)
 			       (REAL)PyFloat_AsDouble (PyList_GetItem (nodes, 3*i+1)),
 			       (REAL)PyFloat_AsDouble (PyList_GetItem (nodes, 3*i+2))};
 
-    mesh.nodes.push_back (temp);
+    mesh.nodes[0].push_back (temp[0]);
+    mesh.nodes[1].push_back (temp[1]);
+    mesh.nodes[2].push_back (temp[2]);
   }
 
   /* read elements */
@@ -848,12 +830,14 @@ static PyObject* print_MESH (PyObject *self, PyObject *args, PyObject *kwds)
 
     {
       std::cout << "MESH_" << bodnum << "_nodes = [";
-      std::vector<std::array<REAL,3>>::iterator it = mesh.nodes.begin();
-      for (; it != mesh.nodes.end()-1; it ++)
+      std::vector<REAL>::iterator it0 = mesh.nodes[0].begin();
+      std::vector<REAL>::iterator it1 = mesh.nodes[1].begin();
+      std::vector<REAL>::iterator it2 = mesh.nodes[2].begin();
+      for (; it0 != mesh.nodes[0].end()-1; it0 ++, it1++, it2++)
       {
-	 std::cout << (*it)[0] << "," << (*it)[1] << "," << (*it)[2] << "," << std::endl;
+	 std::cout << (*it0) << "," << (*it1) << "," << (*it2) << "," << std::endl;
       }
-      std::cout << (*it)[0] << "," << (*it)[1] << "," << (*it)[2] << "]" << std::endl;
+      std::cout << (*it0) << "," << (*it1) << "," << (*it2) << "]" << std::endl;
     }
     {
       std::cout << "MESH_" << bodnum << "_elements = [";
