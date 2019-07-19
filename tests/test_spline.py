@@ -14,6 +14,9 @@ SPLINE_2_path =
 SPLINE_3_points = [(0,10),(1,11),(2,12),(3,13),(4,14),(5,15),(6,16)]
 SPLINE_3_cache = 0
 SPLINE_3_path = 
+SPLINE_4_points = [(0,10),(1,11),(2,12),(3,13),(4,14),(5,15),(6,16)]
+SPLINE_4_cache = 0
+SPLINE_4_path = 
 '''
 
 class test(unittest.TestCase):

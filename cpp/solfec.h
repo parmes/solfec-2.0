@@ -82,12 +82,15 @@ struct prescribe
   size_t bodnum; /* body number */
   std::vector<std::array<REAL,3>> points; /* list of points */
   size_t color; /* surface color */
+  bool linear_applied; /* linear applied flag */
   REAL linear_values [3]; /* constant linear velocity */
   int64_t linear_splines [3]; /* linear splines (when >= 0) */
   void* linear_callback; /* Python callback function */
+  bool angular_applied;
   REAL angular_values [3];
   int64_t angular_splines [3];
   void* angular_callback;
+  prescribe() : bodnum(0), color(0), linear_applied(false), angular_applied(false) { }
 };
 
 /* velocity */

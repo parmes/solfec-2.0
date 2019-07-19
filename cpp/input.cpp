@@ -38,7 +38,6 @@ SOFTWARE.
 
 #if PY_MAJOR_VERSION >= 3
 #define PyInt_AsLong PyLong_AsSize_t
-#define PyInt_Check PyLong_Check
 #define PyString_FromString PyUnicode_FromString
 #define PyString_Check PyUnicode_Check
 #define PyString_AsString PyUnicode_AsUTF8
@@ -950,7 +949,7 @@ static PyObject* print_RESTRAIN (PyObject *self, PyObject *args, PyObject *kwds)
 
     struct restrain &restrain = solfec::restrains[resnum];
 
-    std::cout << "RESTTRAIN_" << resnum << "_bodnum = " << restrain.bodnum << std::endl;
+    std::cout << "RESTRAIN_" << resnum << "_bodnum = " << restrain.bodnum << std::endl;
     std::cout << "RESTRAIN_" << resnum << "_points = ";
     std::vector<std::array<REAL,3>>::iterator it = restrain.points.begin();
     if (it == restrain.points.end()) std::cout << std::endl; else std::cout << "[";
@@ -980,7 +979,7 @@ static PyObject* PRESCRIBE (PyObject *self, PyObject *args, PyObject *kwds)
   linear = NULL;
   angular = NULL;
 
-  PARSEKEYS ("K|OK", &prescribe.bodnum, &point, &prescribe.color, &linear, &angular);
+  PARSEKEYS ("K|OKOO", &prescribe.bodnum, &point, &prescribe.color, &linear, &angular);
 
   TYPETEST (is_in_map (prescribe.bodnum, "MESH", solfec::meshes) &&
             is_tuple_or_list_of_tuples (point, kwl[1], tuple_lengths, 1));
@@ -1001,7 +1000,7 @@ static PyObject* PRESCRIBE (PyObject *self, PyObject *args, PyObject *kwds)
       {
 	PyObject *tuple = PyList_GetItem (point, i);
 	for (j = 0; j < 3; j ++)
-	  temp[j] = (REAL)PyFloat_AsDouble (PyTuple_GetItem (tuple, j)),
+	  temp[j] = (REAL)PyFloat_AsDouble (PyTuple_GetItem (tuple, j));
         prescribe.points.push_back(temp);
       }
     }
@@ -1009,6 +1008,8 @@ static PyObject* PRESCRIBE (PyObject *self, PyObject *args, PyObject *kwds)
 
   if (linear)
   {
+    prescribe.linear_applied = true;
+
     if (PyCallable_Check(linear))
     {
       prescribe.linear_callback = linear;
@@ -1031,11 +1032,16 @@ static PyObject* PRESCRIBE (PyObject *self, PyObject *args, PyObject *kwds)
 
       for (int i = 0; i < 3; i ++)
       {
+#if 0
+	PyTypeObject* type = l[i]->ob_type;
+        const char* p = type->tp_name;
+	std::cout << "linear[i] Python Type = " << p << std::endl;
+#endif
 	if (PyFloat_Check(l[i]))
 	{
           prescribe.linear_values[i] = (REAL)PyFloat_AsDouble(l[i]);
 	}
-	else if (PyInt_Check(l[i]))
+	else if (PyLong_Check(l[i]))
 	{
 	  size_t splnum = PyInt_AsLong(l[i]);
 
@@ -1062,9 +1068,12 @@ static PyObject* PRESCRIBE (PyObject *self, PyObject *args, PyObject *kwds)
       return NULL;
     }
   }
+  else prescribe.linear_applied = false;
 
   if (angular)
   {
+    prescribe.angular_applied = true;
+
     if (PyCallable_Check(angular))
     {
       prescribe.angular_callback = angular;
@@ -1091,7 +1100,7 @@ static PyObject* PRESCRIBE (PyObject *self, PyObject *args, PyObject *kwds)
 	{
           prescribe.angular_values[i] = (REAL)PyFloat_AsDouble(l[i]);
 	}
-	else if (PyInt_Check(l[i]))
+	else if (PyLong_Check(l[i]))
 	{
 	  size_t splnum = PyInt_AsLong(l[i]);
 
@@ -1118,10 +1127,71 @@ static PyObject* PRESCRIBE (PyObject *self, PyObject *args, PyObject *kwds)
       return NULL;
     }
   }
+  else prescribe.angular_applied = false;
 
   solfec::meshes[prescribe.bodnum].prescribes.insert(solfec::prescribes_count-1);
 
   Py_RETURN_uint64_t (solfec::prescribes_count-1);
+}
+
+/* print prescribe */
+static PyObject* print_PRESCRIBE (PyObject *self, PyObject *args, PyObject *kwds)
+{
+  KEYWORDS ("prenum");
+  size_t prenum;
+
+  if (solfec::notrun)
+  {
+    PARSEKEYS ("K", &prenum);
+
+    TYPETEST (is_in_map (prenum, "PRESCRIBE", solfec::prescribes));
+
+    struct prescribe &prescribe = solfec::prescribes[prenum];
+
+    std::cout << "PRESCRIBE_" << prenum << "_bodnum = " << prescribe.bodnum << std::endl;
+    std::cout << "PRESCRIBE_" << prenum << "_points = ";
+    std::vector<std::array<REAL,3>>::iterator it = prescribe.points.begin();
+    if (it == prescribe.points.end()) std::cout << std::endl; else std::cout << "[";
+    for (; it != prescribe.points.end(); it ++)
+    {
+      std::cout << "(" << (*it)[0] << "," << (*it)[1] <<  "," << (*it)[2];
+      if (it+1 != prescribe.points.end()) std::cout << "),";
+      else std::cout << ")]" << std::endl;
+    }
+    std::cout << "PRESCRIBE_" << prenum << "_color = " << prescribe.color << std::endl;
+    if (prescribe.linear_applied)
+    {
+      std::cout << "PRESCRIBE_" << prenum << "_linear = ";
+      if (prescribe.linear_callback) std::cout << "callback" << std::endl;
+      else
+      {
+	std::cout << "(";
+	for (int i = 0; i < 3; i ++)
+	{
+	  if (prescribe.linear_splines[i] >= 0) std::cout << prescribe.linear_splines[i];
+	  else std::cout << prescribe.linear_values[i];
+	}
+	std::cout << ")" << std::endl;
+      }
+    }
+    if (prescribe.angular_applied)
+    {
+      std::cout << "PRESCRIBE_" << prenum << "_angular = ";
+      if (prescribe.angular_callback) std::cout << "callback" << std::endl;
+      else
+      {
+	std::cout << "(";
+	for (int i = 0; i < 3; i ++)
+	{
+	  if (prescribe.angular_splines[i] >= 0) std::cout << prescribe.angular_splines[i];
+	  else std::cout << prescribe.angular_values[i];
+	}
+	std::cout << ")" << std::endl;
+      }
+    }
+  }
+
+  Py_RETURN_NONE;
 }
 
 /* Set rigid velocity */
@@ -1240,6 +1310,7 @@ static PyMethodDef methods [] =
   {"RESTRAIN", (PyCFunction)RESTRAIN, METH_VARARGS|METH_KEYWORDS, "Restrain motion"},
   {"print_RESTRAIN", (PyCFunction)print_RESTRAIN, METH_VARARGS|METH_KEYWORDS, "print restrain"},
   {"PRESCRIBE", (PyCFunction)PRESCRIBE, METH_VARARGS|METH_KEYWORDS, "Prescribe motion"},
+  {"print_PRESCRIBE", (PyCFunction)print_PRESCRIBE, METH_VARARGS|METH_KEYWORDS, "print prescribe"},
   {"VELOCITY", (PyCFunction)VELOCITY, METH_VARARGS|METH_KEYWORDS, "Set rigid velocity"},
   {"FRICTION", (PyCFunction)FRICTION, METH_VARARGS|METH_KEYWORDS, "Define friction parameters"},
   {"GRAVITY", (PyCFunction)GRAVITY, METH_VARARGS|METH_KEYWORDS, "Set gravity"},
@@ -1308,6 +1379,7 @@ int input (const char *path)
                       "from solfec import RESTRAIN\n"
                       "from solfec import print_RESTRAIN\n"
                       "from solfec import PRESCRIBE\n"
+                      "from solfec import print_PRESCRIBE\n"
                       "from solfec import VELOCITY\n"
                       "from solfec import FRICTION\n"
                       "from solfec import GRAVITY\n"
