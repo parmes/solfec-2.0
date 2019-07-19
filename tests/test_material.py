@@ -1,6 +1,5 @@
-# Solfec-2.0 unit test: ARGV input command
-import unittest
-import os
+# Solfec-2.0 unit test: MATERIAL input command
+import unittest, os
 
 output0 = \
 '''MATERIAL_0_density = 1000

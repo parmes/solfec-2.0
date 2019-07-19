@@ -471,7 +471,7 @@ static PyObject* SPLINE (PyObject *self, PyObject *args, PyObject *kwds)
 
   PARSEKEYS ("O|i", &points, &cache);
 
-  TYPETEST (is_list_or_string (points, kwl [0], 2, 2));
+  TYPETEST (is_list_or_string (points, kwl [0], 1, 0));
 
   if (cache < 0)
   {
@@ -521,11 +521,7 @@ static PyObject* SPLINE (PyObject *self, PyObject *args, PyObject *kwds)
     }
     else
     {
-      if (PyList_Size(points) < 4)
-      {
-	PyErr_SetString (PyExc_ValueError, "SPLINE must have at least two points");
-	return NULL;
-      }
+      TYPETEST (is_list_or_string (points, kwl [0], 2, 4));
 
       n = PyList_Size (points) / 2;
 
@@ -1252,8 +1248,18 @@ int input (const char *path)
   if (PyImport_AppendInittab("solfec", &PyInit_solfec_module) < 0) return -1;
 
   Py_Initialize();
+
+  wchar_t** wargv = (wchar_t**)PyMem_Malloc(sizeof(wchar_t*)*solfec::argc);
+  for (int i = 0; i < solfec::argc; i++) {
+    wchar_t* arg = Py_DecodeLocale(solfec::argv[i], NULL);
+    wargv[i] = arg;
+  }
+  PySys_SetArgv(solfec::argc, wargv);
+
 #else
   Py_Initialize();
+
+  PySys_SetArgv(solfec::argc, solfec::argv);
 
   if (!Py_InitModule3 ("solfec", methods, "solfec module")) return -1;
 #endif
