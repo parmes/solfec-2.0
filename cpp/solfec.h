@@ -119,11 +119,11 @@ struct friction_compare {
 /* gravity */
 struct gravity
 {
-  REAL gvalues [3]; /* constant values */
-  int64_t gsplines [3]; /* linear splines (when >= 0) */
+  REAL gvalue [3]; /* constant values */
+  int64_t gspline [3]; /* linear splines (when >= 0) */
   void* gcallback [3]; /* Python callback functions */
-  gravity(): gvalues{0,0,0}, gsplines{-1,-1,-1}, gcallback{NULL,NULL,NULL} {}
-  void clear() {gvalues[0]=gvalues[1],gvalues[2]=0.;gsplines[0]=gsplines[1]=gsplines[1]=-1;gcallback[0]=gcallback[1]=gcallback[2]=NULL;}
+  gravity(): gvalue{0,0,0}, gspline{-1,-1,-1}, gcallback{NULL,NULL,NULL} {}
+  void clear() {gvalue[0]=gvalue[1],gvalue[2]=0.;gspline[0]=gspline[1]=gspline[1]=-1;gcallback[0]=gcallback[1]=gcallback[2]=NULL;}
 };
 
 /* history */

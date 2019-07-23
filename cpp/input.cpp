@@ -33,6 +33,7 @@ SOFTWARE.
 #include "real.h"
 #include "err.h"
 #include "alg.h"
+#include "fmt.h"
 #include "solfec.h"
 #include "util_ispc.h"
 
@@ -206,7 +207,7 @@ static int is_non_negative (double num, const char *var)
   if (num < 0)
   {
     char buf [BUFLEN];
-    sprintf (buf, "'%s' must non-negative", var);
+    sprintf (buf, "'%s' must be non-negative", var);
     PyErr_SetString (PyExc_ValueError, buf);
     return 0;
   }
@@ -725,6 +726,8 @@ static PyObject* MESH (PyObject *self, PyObject *args, PyObject *kwds)
     /* global color */
     mesh.gcolor = PyInt_AsLong (PyList_GetItem (colors, 0));
 
+    TYPETEST (is_positive (mesh.gcolor, "[global] color"));
+
     /* read face colors */
     l = PyList_Size (colors);
     for (e = 0, i = 1; i < l; e ++)
@@ -764,6 +767,8 @@ static PyObject* MESH (PyObject *self, PyObject *args, PyObject *kwds)
 
       m = PyInt_AsLong (PyList_GetItem (colors, j)); /* color */
 
+      TYPETEST (is_positive (m, "[face] color"));
+
       mesh.colors.push_back (m);
 
       i = ++j;
@@ -780,6 +785,8 @@ static PyObject* MESH (PyObject *self, PyObject *args, PyObject *kwds)
   else
   {
     mesh.gcolor = PyInt_AsLong (colors);
+
+    TYPETEST (is_positive (mesh.gcolor, "[global] color"));
   }
 
   /* tranform nodes */
@@ -950,16 +957,21 @@ static PyObject* print_RESTRAIN (PyObject *self, PyObject *args, PyObject *kwds)
     struct restrain &restrain = solfec::restrains[resnum];
 
     std::cout << "RESTRAIN_" << resnum << "_bodnum = " << restrain.bodnum << std::endl;
-    std::cout << "RESTRAIN_" << resnum << "_points = ";
-    std::vector<std::array<REAL,3>>::iterator it = restrain.points.begin();
-    if (it == restrain.points.end()) std::cout << std::endl; else std::cout << "[";
-    for (; it != restrain.points.end(); it ++)
+    if (restrain.points.size() > 0)
     {
-      std::cout << "(" << (*it)[0] << "," << (*it)[1] <<  "," << (*it)[2];
-      if (it+1 != restrain.points.end()) std::cout << "),";
-      else std::cout << ")]" << std::endl;
+      std::cout << "RESTRAIN_" << resnum << "_points = [";
+      std::vector<std::array<REAL,3>>::iterator it = restrain.points.begin();
+      for (; it != restrain.points.end(); it ++)
+      {
+	std::cout << "(" << (*it)[0] << "," << (*it)[1] <<  "," << (*it)[2];
+	if (it+1 != restrain.points.end()) std::cout << "),";
+	else std::cout << ")]" << std::endl;
+      }
     }
-    std::cout << "RESTRAIN_" << resnum << "_color = " << restrain.color << std::endl;
+    if (restrain.color > 0)
+    {
+      std::cout << "RESTRAIN_" << resnum << "_color = " << restrain.color << std::endl;
+    }
   }
 
   Py_RETURN_NONE;
@@ -1022,6 +1034,8 @@ static PyObject* PRESCRIBE (PyObject *self, PyObject *args, PyObject *kwds)
     }
     else if (PyTuple_Check(linear))
     {
+      prescribe.linear_callback = NULL;
+
       if (PyTuple_Size(linear) != 3) 
       {
 	PyErr_SetString (PyExc_ValueError, "'linear' tuple size != 3");
@@ -1039,6 +1053,7 @@ static PyObject* PRESCRIBE (PyObject *self, PyObject *args, PyObject *kwds)
 #endif
 	if (PyFloat_Check(l[i]))
 	{
+          prescribe.linear_splines[i] = -1;
           prescribe.linear_values[i] = (REAL)PyFloat_AsDouble(l[i]);
 	}
 	else if (PyLong_Check(l[i]))
@@ -1048,6 +1063,7 @@ static PyObject* PRESCRIBE (PyObject *self, PyObject *args, PyObject *kwds)
 	  if (is_in_map(splnum, "SPLINE", solfec::splines))
 	  {
             prescribe.linear_splines[i] = PyInt_AsLong(l[i]);
+            prescribe.linear_values[i] = 0.0;
 	  }
 	  else
 	  {
@@ -1086,6 +1102,8 @@ static PyObject* PRESCRIBE (PyObject *self, PyObject *args, PyObject *kwds)
     }
     else if (PyTuple_Check(angular))
     {
+      prescribe.angular_callback = NULL;
+
       if (PyTuple_Size(angular) != 3) 
       {
 	PyErr_SetString (PyExc_ValueError, "'angular' tuple size != 3");
@@ -1098,6 +1116,7 @@ static PyObject* PRESCRIBE (PyObject *self, PyObject *args, PyObject *kwds)
       {
 	if (PyFloat_Check(l[i]))
 	{
+          prescribe.angular_splines[i] = -1;
           prescribe.angular_values[i] = (REAL)PyFloat_AsDouble(l[i]);
 	}
 	else if (PyLong_Check(l[i]))
@@ -1107,6 +1126,7 @@ static PyObject* PRESCRIBE (PyObject *self, PyObject *args, PyObject *kwds)
 	  if (is_in_map(splnum, "SPLINE", solfec::splines))
 	  {
             prescribe.angular_splines[i] = PyInt_AsLong(l[i]);
+            prescribe.angular_values[i] = 0.0;
 	  }
 	  else
 	  {
@@ -1158,7 +1178,10 @@ static PyObject* print_PRESCRIBE (PyObject *self, PyObject *args, PyObject *kwds
       if (it+1 != prescribe.points.end()) std::cout << "),";
       else std::cout << ")]" << std::endl;
     }
-    std::cout << "PRESCRIBE_" << prenum << "_color = " << prescribe.color << std::endl;
+    if (prescribe.color > 0)
+    {
+      std::cout << "PRESCRIBE_" << prenum << "_color = " << prescribe.color << std::endl;
+    }
     if (prescribe.linear_applied)
     {
       std::cout << "PRESCRIBE_" << prenum << "_linear = ";
@@ -1169,7 +1192,8 @@ static PyObject* print_PRESCRIBE (PyObject *self, PyObject *args, PyObject *kwds
 	for (int i = 0; i < 3; i ++)
 	{
 	  if (prescribe.linear_splines[i] >= 0) std::cout << prescribe.linear_splines[i];
-	  else std::cout << prescribe.linear_values[i];
+	  else std::cout << FMT("%e") << prescribe.linear_values[i];
+	  if (i == 0 || i == 1) std::cout << ",";
 	}
 	std::cout << ")" << std::endl;
       }
@@ -1184,7 +1208,8 @@ static PyObject* print_PRESCRIBE (PyObject *self, PyObject *args, PyObject *kwds
 	for (int i = 0; i < 3; i ++)
 	{
 	  if (prescribe.angular_splines[i] >= 0) std::cout << prescribe.angular_splines[i];
-	  else std::cout << prescribe.angular_values[i];
+	  else std::cout << FMT("%e") << prescribe.angular_values[i];
+	  if (i == 0 || i == 1) std::cout << ",";
 	}
 	std::cout << ")" << std::endl;
       }
@@ -1197,6 +1222,65 @@ static PyObject* print_PRESCRIBE (PyObject *self, PyObject *args, PyObject *kwds
 /* Set rigid velocity */
 static PyObject* VELOCITY (PyObject *self, PyObject *args, PyObject *kwds)
 {
+  KEYWORDS ("bodnum", "linear", "angular");
+  PyObject *linear, *angular;
+  struct velocity velocity; 
+
+  linear = angular = NULL;
+
+  PARSEKEYS ("K|OO", &velocity.bodnum, &linear, &angular);
+
+  TYPETEST (is_in_map (velocity.bodnum, "MESH", solfec::meshes) &&
+            is_tuple (linear, kwl[1], 3) && is_tuple (angular, kwl[2], 3));
+
+  if (linear)
+  {
+    velocity.linear_values[0] = (REAL)PyFloat_AsDouble (PyTuple_GetItem (linear, 0));
+    velocity.linear_values[1] = (REAL)PyFloat_AsDouble (PyTuple_GetItem (linear, 1));
+    velocity.linear_values[2] = (REAL)PyFloat_AsDouble (PyTuple_GetItem (linear, 2));
+  }
+  else
+  {
+    velocity.linear_values[0] = 
+    velocity.linear_values[1] = 
+    velocity.linear_values[2] = 0.0;
+  }
+
+  if (angular)
+  {
+    velocity.angular_values[0] = (REAL)PyFloat_AsDouble (PyTuple_GetItem (angular, 0));
+    velocity.angular_values[1] = (REAL)PyFloat_AsDouble (PyTuple_GetItem (angular, 1));
+    velocity.angular_values[2] = (REAL)PyFloat_AsDouble (PyTuple_GetItem (angular, 2));
+  }
+  else
+  {
+    velocity.angular_values[0] = 
+    velocity.angular_values[1] = 
+    velocity.angular_values[2] = 0.0;
+  }
+
+  solfec::velocities.push_back (velocity);
+
+  Py_RETURN_NONE;
+}
+
+/* print velocities */
+static PyObject* print_VELOCITIES (PyObject *self, PyObject *args, PyObject *kwds)
+{
+  if (solfec::notrun)
+  {
+    for (std::vector<velocity>::iterator it = solfec::velocities.begin(); it != solfec::velocities.end(); it++)
+    {
+      size_t velnum = it - solfec::velocities.begin();
+
+      std::cout << "VELOCITY_" << velnum << "_bodnum = " << (*it).bodnum << std::endl;
+      std::cout << "VELOCITY_" << velnum << "_linear = (" << (*it).linear_values[0] << ","
+		<< (*it).linear_values[1] << "," << (*it).linear_values[2] << ")" << std::endl;
+      std::cout << "VELOCITY_" << velnum << "_angular = (" << (*it).angular_values[0] << ","
+		<< (*it).angular_values[1] << "," << (*it).angular_values[2] << ")" << std::endl;
+    }
+  }
+
   Py_RETURN_NONE;
 }
 
@@ -1204,9 +1288,12 @@ static PyObject* VELOCITY (PyObject *self, PyObject *args, PyObject *kwds)
 static PyObject* FRICTION (PyObject *self, PyObject *args, PyObject *kwds)
 {
   KEYWORDS ("color1", "color2", "static", "dynamic");
+  double static_friction, dynamic_friction;
   struct friction friction;
 
-  PARSEKEYS ("KKdd", &friction.color1, &friction.color2, &friction.static_friction, &friction.dynamic_friction);
+  PARSEKEYS ("KKdd", &friction.color1, &friction.color2, &static_friction, &dynamic_friction);
+  friction.static_friction = (REAL)static_friction;
+  friction.dynamic_friction = (REAL)dynamic_friction;
 
   if (friction.color1 > friction.color2) std::swap(friction.color1, friction.color2);
 
@@ -1223,9 +1310,83 @@ static PyObject* FRICTION (PyObject *self, PyObject *args, PyObject *kwds)
   Py_RETURN_NONE;
 }
 
+/* print frictions */
+static PyObject* print_FRICTIONS (PyObject *self, PyObject *args, PyObject *kwds)
+{
+  size_t frinum = 0;
+
+  if (solfec::notrun)
+  {
+    for (std::set<friction,friction_compare>::iterator it = solfec::frictions.begin(); it != solfec::frictions.end(); it++, frinum ++)
+    {
+      std::cout << "FRICTION_" << frinum << "_color1 = " << (*it).color1 << std::endl;
+      std::cout << "FRICTION_" << frinum << "_color2 = " << (*it).color2 << std::endl;
+      std::cout << "FRICTION_" << frinum << "_static = " << (*it).static_friction << std::endl;
+      std::cout << "FRICTION_" << frinum << "_dynamic = " << (*it).dynamic_friction << std::endl;
+    }
+  }
+
+  Py_RETURN_NONE;
+}
+
 /* Set gravity */
 static PyObject* GRAVITY (PyObject *self, PyObject *args, PyObject *kwds)
 {
+  KEYWORDS ("gx", "gy", "gz");
+  PyObject *g[3];
+
+  PARSEKEYS ("OOO", &g[0], &g[1], &g[2]);
+
+  for (int i = 0; i < 3; i ++)
+  {
+    if (PyCallable_Check(g[i]))
+    {
+      solfec::gravity.gcallback[i] = g[i];
+    }
+    else if (PyFloat_Check(g[i]))
+    {
+      solfec::gravity.gvalue[i] = (REAL)PyFloat_AsDouble(g[i]);
+    }
+    else if (PyLong_Check(g[i]))
+    {
+      TYPETEST (is_in_map(PyInt_AsLong(g[i]), "SPLINE", solfec::splines));
+
+      solfec::gravity.gspline[i] = PyInt_AsLong(g[i]);
+    }
+    else
+    {
+      PyErr_SetString (PyExc_ValueError, "a gravity component is neither a float nor an integer nor a callback");
+      return NULL;
+    }
+  }
+
+  Py_RETURN_NONE;
+}
+
+/* print gravity */
+static PyObject* print_GRAVITY (PyObject *self, PyObject *args, PyObject *kwds)
+{
+  KEYWORDS ("gx", "gy", "gz");
+
+  if (solfec::notrun)
+  {
+    for (int i = 0; i < 3; i ++)
+    {
+      if (solfec::gravity.gcallback[i])
+      {
+	std::cout << "GRAVITY_" << kwl[i] << " = callback" << std::endl;
+      }
+      else if (solfec::gravity.gspline[i] >= 0)
+      {
+	std::cout << "GRAVITY_" << kwl[i] << " = " << solfec::gravity.gspline[i] << std::endl;
+      }
+      else
+      {
+	std::cout << "GRAVITY_" << kwl[i] << " = " << FMT("%e") << solfec::gravity.gvalue[i] << std::endl;
+      }
+    }
+  }
+
   Py_RETURN_NONE;
 }
 
@@ -1245,6 +1406,10 @@ static PyObject* OUTPUT (PyObject *self, PyObject *args, PyObject *kwds)
 static PyObject* RUN (PyObject *self, PyObject *args, PyObject *kwds)
 {
   solfec::notrun = false;
+
+  /* TODO */
+
+  solfec::velocities.clear();
 
   Py_RETURN_NONE;
 }
@@ -1312,8 +1477,11 @@ static PyMethodDef methods [] =
   {"PRESCRIBE", (PyCFunction)PRESCRIBE, METH_VARARGS|METH_KEYWORDS, "Prescribe motion"},
   {"print_PRESCRIBE", (PyCFunction)print_PRESCRIBE, METH_VARARGS|METH_KEYWORDS, "print prescribe"},
   {"VELOCITY", (PyCFunction)VELOCITY, METH_VARARGS|METH_KEYWORDS, "Set rigid velocity"},
+  {"print_VELOCITIES", (PyCFunction)print_VELOCITIES, METH_NOARGS, "print velocities"},
   {"FRICTION", (PyCFunction)FRICTION, METH_VARARGS|METH_KEYWORDS, "Define friction parameters"},
+  {"print_FRICTIONS", (PyCFunction)print_FRICTIONS, METH_NOARGS, "print frictions"},
   {"GRAVITY", (PyCFunction)GRAVITY, METH_VARARGS|METH_KEYWORDS, "Set gravity"},
+  {"print_GRAVITY", (PyCFunction)print_GRAVITY, METH_NOARGS, "print gravity"},
   {"HISTORY", (PyCFunction)HISTORY, METH_VARARGS|METH_KEYWORDS, "Retrieve time history"},
   {"OUTPUT", (PyCFunction)OUTPUT, METH_VARARGS|METH_KEYWORDS, "Declare output entities"},
   {"RUN", (PyCFunction)RUN, METH_VARARGS|METH_KEYWORDS, "Run simulation"},
@@ -1381,8 +1549,11 @@ int input (const char *path)
                       "from solfec import PRESCRIBE\n"
                       "from solfec import print_PRESCRIBE\n"
                       "from solfec import VELOCITY\n"
+                      "from solfec import print_VELOCITIES\n"
                       "from solfec import FRICTION\n"
+                      "from solfec import print_FRICTIONS\n"
                       "from solfec import GRAVITY\n"
+                      "from solfec import print_GRAVITY\n"
                       "from solfec import HISTORY\n"
                       "from solfec import OUTPUT\n"
                       "from solfec import RUN\n"
