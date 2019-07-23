@@ -1,5 +1,4 @@
 /* https://stackoverflow.com/questions/11989374/floating-point-format-for-stdostream */
-
 #include <iostream>
 #include <iomanip>
 #include <stdio.h>
@@ -10,7 +9,7 @@ public:
   explicit FMT(const char* fmt): m_fmt(fmt) {}
 
 private:
-  class fmter //actual worker class
+  class fmter /* actual worker class */
   {
   public:
     explicit fmter(std::ostream& strm, const FMT& fmt): m_strm(strm), m_fmt(fmt.m_fmt) {}
@@ -31,7 +30,7 @@ private:
 
   const char* m_fmt; /* save fmt string for inner class */
 
-  /*return derived stream to allow operator overloading */
+  /* return derived stream to allow operator overloading */
   friend FMT::fmter operator<<(std::ostream& strm, const FMT& fmt)
   {
     return FMT::fmter(strm, fmt);
