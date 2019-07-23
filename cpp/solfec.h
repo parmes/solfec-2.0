@@ -73,7 +73,8 @@ struct restrain
   size_t bodnum; /* body number */
   std::vector<std::array<REAL,3>> points; /* list of points */
   size_t color; /* surface color */
-  restrain() : bodnum(0), color(0) { }
+  REAL direction[3]; /* restrain direction */
+  restrain() : bodnum(0), color(0), direction{0.,0.,0.} { }
 };
 
 /* prescribe */

@@ -8,6 +8,9 @@ RESTRAIN_1_bodnum = 0
 RESTRAIN_1_points = [(0,0,0),(1,0,0)]
 RESTRAIN_2_bodnum = 0
 RESTRAIN_2_color = 4
+RESTRAIN_3_bodnum = 0
+RESTRAIN_3_color = 3
+RESTRAIN_3_direction = (0,0,1)
 '''
 
 class test(unittest.TestCase):

@@ -901,19 +901,21 @@ static PyObject* print_MESH (PyObject *self, PyObject *args, PyObject *kwds)
 /* Restrain motion */
 static PyObject* RESTRAIN (PyObject *self, PyObject *args, PyObject *kwds)
 {
-  KEYWORDS ("bodnum", "point", "color");
+  KEYWORDS ("bodnum", "point", "color", "direction");
   size_t tuple_lengths[1] = {3}, i, j, n;
-  PyObject *point;
+  PyObject *point, *direction;
 
   struct restrain &restrain = solfec::restrains[solfec::restrains_count++];
 
   restrain.color = 0;
+  direction = NULL;
   point = NULL;
 
-  PARSEKEYS ("K|OK", &restrain.bodnum, &point, &restrain.color);
+  PARSEKEYS ("K|OKO", &restrain.bodnum, &point, &restrain.color, &direction);
 
   TYPETEST (is_in_map (restrain.bodnum, "MESH", solfec::meshes) &&
-            is_tuple_or_list_of_tuples (point, kwl[1], tuple_lengths, 1));
+            is_tuple_or_list_of_tuples (point, kwl[1], tuple_lengths, 1) &&
+	    is_tuple (direction, kwl[3], 3));
 
   if (point)
   {
@@ -934,6 +936,14 @@ static PyObject* RESTRAIN (PyObject *self, PyObject *args, PyObject *kwds)
 	  temp[j] = (REAL)PyFloat_AsDouble (PyTuple_GetItem (tuple, j));
         restrain.points.push_back(temp);
       }
+    }
+  }
+
+  if (direction)
+  {
+    for (i = 0; i < 3; i ++)
+    {
+      restrain.direction[i] = (REAL)PyFloat_AsDouble (PyTuple_GetItem (direction, i));
     }
   }
 
@@ -971,6 +981,11 @@ static PyObject* print_RESTRAIN (PyObject *self, PyObject *args, PyObject *kwds)
     if (restrain.color > 0)
     {
       std::cout << "RESTRAIN_" << resnum << "_color = " << restrain.color << std::endl;
+    }
+    if (DOT(restrain.direction,restrain.direction)>0.)
+    {
+      std::cout << "RESTRAIN_" << resnum << "_direction = (" << restrain.direction[0] <<
+        "," << restrain.direction[1] << "," << restrain.direction[2] << ")" << std::endl;
     }
   }
 

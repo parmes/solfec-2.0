@@ -932,7 +932,7 @@ Restrain body point or surface motion.
 \end_layout
 
 \begin_layout Subsection*
-resnum = RESTRAIN (bodnum | point, color)
+resnum = RESTRAIN (bodnum | point, color, direction)
 \end_layout
 
 \begin_layout Itemize
@@ -975,6 +975,20 @@ not specified
 color
 \series default
  - optional surface color; default: 
+\emph on
+not specifiedA
+\end_layout
+
+\begin_layout Itemize
+
+\series bold
+direction
+\series default
+ - optional direction 
+\begin_inset Formula $\left(dx,dy,dz\right)$
+\end_inset
+
+; default: 
 \emph on
 not specified
 \end_layout
