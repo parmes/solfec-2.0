@@ -109,6 +109,40 @@ static int is_string (PyObject *obj, const char *var)
   return 1;
 }
 
+/* a particular string test */
+static int is_a_string (PyObject *obj, const char *var, const char **values, int nvalues)
+{
+  if (obj)
+  {
+    if (!PyString_Check (obj))
+    {
+      char buf [BUFLEN];
+      sprintf (buf, "'%s' must be a string", var);
+      PyErr_SetString (PyExc_TypeError, buf);
+      return 0;
+    }
+
+    const char *objstr = PyString_AsString (obj);
+
+    int i = 0;
+
+    for (; i < nvalues; i ++)
+    {
+      if (strcmp (objstr, values[i]) == 0) break;
+    }
+
+    if (i == nvalues)
+    {
+      char buf [BUFLEN];
+      sprintf (buf, "invalid '%s' string value", var);
+      PyErr_SetString (PyExc_TypeError, buf);
+      return 0;
+    }
+  }
+
+  return 1;
+}
+
 /* test whether an object is a list, of length >= len divisible by div, or a string */
 static int is_list_or_string (PyObject *obj, const char *var, int div, int len)
 {
@@ -279,42 +313,54 @@ static int is_bodnum (size_t bodnum)
 /* is body number */
 static int is_bodnum (PyObject *obj)
 {
-  if (!PyLong_Check (obj))
+  if (obj)
   {
-    char buf [BUFLEN];
-    sprintf (buf, "'bodnum' argument value is not integer");
-    PyErr_SetString (PyExc_ValueError, buf);
-    return 0;
+    if (!PyLong_Check (obj))
+    {
+      char buf [BUFLEN];
+      sprintf (buf, "'bodnum' argument value is not integer");
+      PyErr_SetString (PyExc_ValueError, buf);
+      return 0;
+    }
+
+    size_t bodnum = PyInt_AsLong (obj);
+
+    return is_bodnum (bodnum);
   }
 
-  size_t bodnum = PyInt_AsLong (obj);
-
-  return is_bodnum (bodnum);
+  return 1;
 }
 
 /* is file path */
 static int is_filepath (PyObject *obj, const char *var)
 {
-  if (!PyString_Check (obj))
+  if (obj)
   {
-    char buf [BUFLEN];
-    sprintf (buf, "'%s' argument value is not a sting", var);
-    PyErr_SetString (PyExc_ValueError, buf);
-    return 0;
+    if (!PyString_Check (obj))
+    {
+      char buf [BUFLEN];
+      sprintf (buf, "'%s' argument value is not a sting", var);
+      PyErr_SetString (PyExc_ValueError, buf);
+      return 0;
+    }
+
+    const char *path = PyString_AsString(obj);
+
+    FILE *f = fopen (path, "w");
+
+    if (!f)
+    {
+      char buf [BUFLEN];
+      sprintf (buf, "'%s' argument value [%s] is not a valid file path", var, path);
+      PyErr_SetString (PyExc_ValueError, buf);
+      return 0;
+    }
+    else
+    {
+      fclose(f);
+      remove (path);
+    }
   }
-
-  const char *path = PyString_AsString(obj);
-
-  FILE *f = fopen (path, "w");
-
-  if (!f)
-  {
-    char buf [BUFLEN];
-    sprintf (buf, "'%s' argument value [%s] is not a valid file path", var, path);
-    PyErr_SetString (PyExc_ValueError, buf);
-    return 0;
-  }
-  else fclose(f);
 
   return 1;
 }
@@ -1646,15 +1692,94 @@ static PyObject* HISTORY (PyObject *self, PyObject *args, PyObject *kwds)
   KEYWORDS ("entity", "point", "bodnum", "filepath");
   PyObject *entity, *point, *bodnum, *filepath;
   size_t tuple_lengths[1] = {3};
+  const char *ents[] = {"TIME", "CONTACTS", "PX", "PY", "PZ",
+    "|P|", "DX", "DY", "DZ", "|D|", "VX", "VY", "VZ", "|V|",
+    "SX", "SY", "SZ", "SXY", "SXZ", "SYZ", "|S|"};
+  struct history history;
+
+  point = NULL;
+  bodnum = NULL;
+  filepath = NULL;
 
   PARSEKEYS ("O|OOO", &entity, &point, &bodnum, &filepath);
 
-  TYPETEST (is_tuple_or_list_of_tuples (point, kwl[1], tuple_lengths, 1) &&
+  TYPETEST (is_a_string (entity, kwl[0], ents, sizeof(ents)/sizeof(char*)) &&
+            is_tuple_or_list_of_tuples (point, kwl[1], tuple_lengths, 1) &&
             is_bodnum (bodnum) && is_filepath (filepath, kwl[3]));
 
+  if ((point && !bodnum) || (!point && bodnum))
+  {
+    PyErr_SetString (PyExc_ValueError, "point and bodnum arguments must be specified together");
+    return NULL;
+  }
+
+  history.entity.assign(PyString_AsString(entity));
+
+  if (point)
+  {
+    int i, j, n;
+
+    std::array<REAL,3> temp;
+    if (PyTuple_Check(point))
+    {
+      for (i = 0; i < 3; i ++)
+	temp[i] = (REAL)PyFloat_AsDouble (PyTuple_GetItem (point, i));
+      history.points.push_back(temp);
+    }
+    else
+    {
+      n = PyList_Size (point);
+      for (i = 0; i < n; i ++)
+      {
+	PyObject *tuple = PyList_GetItem (point, i);
+	for (j = 0; j < 3; j ++)
+	  temp[j] = (REAL)PyFloat_AsDouble (PyTuple_GetItem (tuple, j));
+        history.points.push_back(temp);
+      }
+    }
+
+    history.bodnum = PyInt_AsLong(bodnum);
+  }
+
+  if (filepath) history.filepath.assign (PyString_AsString(filepath));
+
+  history.python_list = PyList_New(0);
+
+  solfec::histories.push_back (history);
+
+  return (PyObject*) history.python_list;
+}
+
+/* print histories */
+static PyObject* print_HISTORIES (PyObject *self, PyObject *args, PyObject *kwds)
+{
+  if (solfec::notrun)
+  {
+    for (std::vector<history>::iterator it = solfec::histories.begin(); it != solfec::histories.end(); it ++)
+    {
+      size_t hisnum = it - solfec::histories.begin();
+
+      struct history &history = *it;
+
+      std::cout << "HISTORY_" << hisnum << "_entity = '" << history.entity << "'" << std::endl;
+      if (history.points.size())
+      {
+	std::cout << "HISTORY_" << hisnum << "_bodnum = " << history.bodnum << std::endl;
+	std::cout << "HISTORY_" << hisnum << "_points = [";
+	for (std::vector<std::array<REAL,3>>::iterator it = history.points.begin(); it != history.points.end(); it ++)
+	{
+	  std::cout << "(" << (*it)[0] << "," << (*it)[1] <<  "," << (*it)[2];
+	  if (it+1 != history.points.end()) std::cout << "),";
+	  else std::cout << ")]" << std::endl;
+	}
+	if (history.filepath.length()) std::cout << "HISTORY_" << hisnum << "_filepath = " << history.filepath << std::endl;
+      }
+    }
+  }
 
   Py_RETURN_NONE;
 }
+
 
 /* Declare output entities */
 static PyObject* OUTPUT (PyObject *self, PyObject *args, PyObject *kwds)
@@ -1763,6 +1888,7 @@ static PyMethodDef methods [] =
   {"GRAVITY", (PyCFunction)GRAVITY, METH_VARARGS|METH_KEYWORDS, "Set gravity"},
   {"print_GRAVITY", (PyCFunction)print_GRAVITY, METH_NOARGS, "print gravity"},
   {"HISTORY", (PyCFunction)HISTORY, METH_VARARGS|METH_KEYWORDS, "Retrieve time history"},
+  {"print_HISTORIES", (PyCFunction)print_HISTORIES, METH_NOARGS, "print histories"},
   {"OUTPUT", (PyCFunction)OUTPUT, METH_VARARGS|METH_KEYWORDS, "Declare output entities"},
   {"RUN", (PyCFunction)RUN, METH_VARARGS|METH_KEYWORDS, "Run simulation"},
   {"DELETE", (PyCFunction)DELETE, METH_VARARGS|METH_KEYWORDS, "Delete object"},
@@ -1837,6 +1963,7 @@ int input (const char *path)
                       "from solfec import GRAVITY\n"
                       "from solfec import print_GRAVITY\n"
                       "from solfec import HISTORY\n"
+                      "from solfec import print_HISTORIES\n"
                       "from solfec import OUTPUT\n"
                       "from solfec import RUN\n"
                       "from solfec import DELETE\n");

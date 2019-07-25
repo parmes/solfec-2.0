@@ -138,7 +138,7 @@ struct gravity
   REAL gvalue [3]; /* constant values */
   int64_t gspline [3]; /* linear splines (when >= 0) */
   void* gcallback [3]; /* Python callback functions */
-  gravity(): gvalue{0,0,0}, gspline{-1,-1,-1}, gcallback{NULL,NULL,NULL} {}
+  gravity() : gvalue{0,0,0}, gspline{-1,-1,-1}, gcallback{NULL,NULL,NULL} {}
   void clear() {gvalue[0]=gvalue[1],gvalue[2]=0.;gspline[0]=gspline[1]=gspline[1]=-1;gcallback[0]=gcallback[1]=gcallback[2]=NULL;}
 };
 
@@ -146,10 +146,11 @@ struct gravity
 struct history
 {
   std::string entity; /* entity name */
-  REAL point [3]; /* referential point */
+  std::vector<std::array<REAL,3>> points; /* list of points */
   size_t bodnum; /* body number */
   std::string filepath; /* text file path */
-  std::vector<REAL> values; /* stored values */
+  void *python_list; /* python list */
+  history() : python_list(NULL) { }
 };
 
 /* output */

@@ -1483,9 +1483,17 @@ entity
 \series bold
 point
 \series default
- - referential point; default:
+ - optional referential point 
+\begin_inset Formula $\left(px,py,pz\right)$
+\end_inset
+
+ or list of points 
 \emph on
- not specified
+[point1, point2, point3, ...]
+\emph default
+ (in this case values are averaged over this set); default: 
+\emph on
+not specified
 \end_layout
 
 \begin_layout Itemize
