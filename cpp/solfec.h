@@ -52,19 +52,34 @@ struct material
   REAL viscosity; /* viscosisty coefficient */
 };
 
+/* body */
+struct body
+{
+  size_t matnum; /* material number */
+  size_t gcolor; /* global color */
+  std::set<size_t> restrains; /* applied restrains */
+  std::set<size_t> prescribes; /* applied prescribes */
+  body () : matnum(0), gcolor(0) { }
+};
+
 /* mesh */
-struct mesh
+struct mesh: public body
 {
   std::array<std::vector<REAL>,3> nodes; /* list of nodes */
   std::vector<size_t> elements; /* list of elements */
   std::vector<size_t> colors; /* face colors */
   size_t nhex, nwed, npyr, ntet; /* numbers of elements per kind */
   size_t nfaces; /* number of faces */
-  size_t matnum; /* material number */
-  size_t gcolor; /* global color */
-  std::set<size_t> restrains; /* applied restrains */
-  std::set<size_t> prescribes; /* applied prescribes */
-  mesh () : nhex(0), nwed(0), npyr(0), ntet(0), nfaces(0), matnum(0), gcolor(0) { }
+  mesh () : nhex(0), nwed(0), npyr(0), ntet(0), nfaces(0) { }
+};
+
+/* ellipsoid */
+struct ellip: public body
+{
+  REAL center[3];
+  REAL radius[3];
+  REAL rotation[9];
+  ellip () : rotation{1,0,0,0,1,0,0,0,1} { }
 };
 
 /* restrain */
@@ -157,7 +172,8 @@ extern size_t splines_count;
 extern std::map<size_t,material> materials;
 extern size_t materials_count;
 extern std::map<size_t,mesh> meshes;
-extern size_t meshes_count;
+extern std::map<size_t,ellip> ellips;
+extern size_t bodies_count;
 extern std::map<size_t,restrain> restrains;
 extern size_t restrains_count;
 extern std::map<size_t,prescribe> prescribes;

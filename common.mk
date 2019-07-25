@@ -18,7 +18,10 @@ LIBS=-lm $(PYTHONLIB) $(HDF5LIB)
 
 default: dirs version $(ISPC_HEADERS4) $(EXE)4 $(ISPC_HEADERS8) $(EXE)8
 
-.PHONY: dirs clean print
+.PHONY: dirs clean print test
+
+test:
+	cd tests && $(PYTHON) -m unittest
 
 print:
 	@echo $(ISPC_HEADERS4)

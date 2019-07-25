@@ -920,6 +920,111 @@ Mesh element types in Solfec-2.0.
 \begin_layout Section
 \begin_inset CommandInset label
 LatexCommand label
+name "subsec:ELLIP"
+
+\end_inset
+
+ELLIP
+\end_layout
+
+\begin_layout Standard
+Create a deformable ellipsoidal body.
+\end_layout
+
+\begin_layout Subsection*
+bodnum = ELLIP (center, radius, matnum, color | rotate)
+\end_layout
+
+\begin_layout Itemize
+
+\series bold
+bodnum
+\series default
+ - body number
+\end_layout
+
+\begin_layout Itemize
+
+\series bold
+center
+\series default
+ - referential point 
+\begin_inset Formula $\left(cx,cy,cz\right)$
+\end_inset
+
+
+\end_layout
+
+\begin_layout Itemize
+
+\series bold
+radius
+\series default
+ - radius vector 
+\begin_inset Formula $\left(rx,ry,rz\right)$
+\end_inset
+
+
+\end_layout
+
+\begin_layout Itemize
+
+\series bold
+matnum
+\series default
+ - material number
+\end_layout
+
+\begin_layout Itemize
+
+\series bold
+color
+\series default
+ - positive surface color
+\end_layout
+
+\begin_layout Itemize
+
+\series bold
+rotate
+\series default
+ - optional transformation; 
+\begin_inset Formula $\text{rotate}=\left(px,py,pz,ax,ay,az,angle\right)$
+\end_inset
+
+, where 
+\begin_inset Formula $px,$
+\end_inset
+
+
+\begin_inset Formula $py,$
+\end_inset
+
+
+\begin_inset Formula $pz$
+\end_inset
+
+ define the point and 
+\begin_inset Formula $ax,ay,az$
+\end_inset
+
+ define the direction of the rotation axis while 
+\begin_inset Formula $angle$
+\end_inset
+
+ defines the angle of rotation, or alternatively 
+\begin_inset Formula $\text{rotate}=\left(r_{11},r_{21},r_{31},r_{12},r_{22},r_{32},r_{13},r_{23},r_{33}\right)$
+\end_inset
+
+ is the rotation matrix (orthogonality is not checked, hence this matrix
+ can be used for more general transformations); default: 
+\emph on
+not specified
+\end_layout
+
+\begin_layout Section
+\begin_inset CommandInset label
+LatexCommand label
 name "subsec:RESTRAIN"
 
 \end_inset
@@ -1673,7 +1778,7 @@ objnum
 \series bold
 objkind
 \series default
- - object kind; one of: 'MESH', 'RESTRAIN', 'PRESCRIBE'
+ - object kind; one of: 'MESH', 'ELLIP', 'RESTRAIN', 'PRESCRIBE'
 \end_layout
 
 \begin_layout Chapter
@@ -1779,7 +1884,7 @@ For debugging purposes, the following Python commands are additionally defined:
 \begin_layout Standard
 \align center
 \begin_inset Tabular
-<lyxtabular version="3" rows="10" columns="1">
+<lyxtabular version="3" rows="11" columns="1">
 <features tabularvalignment="middle">
 <column alignment="center" valignment="top">
 <row>
@@ -1810,6 +1915,17 @@ print_MATERIAL(matnum)
 
 \begin_layout Plain Layout
 print_MESH(bodnum)
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+print_ELLIP(bodnum)
 \end_layout
 
 \end_inset
@@ -1901,8 +2017,8 @@ print_OUTPUTS()
 
 \begin_layout Standard
 \noindent
-These commands print to standard output formatted definitions of the correspondi
-ng input data, prior to a first invocation of the 
+These commands print, to standard output, formatted definitions of the correspon
+ding input data, prior to a first invocation of the 
 \begin_inset CommandInset ref
 LatexCommand nameref
 reference "subsec:RUN"
@@ -1913,6 +2029,235 @@ noprefix "false"
 \end_inset
 
  command, following which they are ignored.
+\end_layout
+
+\begin_layout Chapter
+\begin_inset CommandInset label
+LatexCommand label
+name "cha:Tests"
+
+\end_inset
+
+Tests
+\end_layout
+
+\begin_layout Standard
+Solfec-2.0 includes Python based self-consistency tests, located in 
+\family typewriter
+solfec-2.0/tests
+\family default
+ directory.
+ These can be invoked by typing:
+\end_layout
+
+\begin_layout Standard
+
+\family typewriter
+make test
+\end_layout
+
+\begin_layout Standard
+\noindent
+Tests can be extended by adding two files per test, as illustrated in Figures
+ 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:Test-file-1"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+ and 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:Test-file-1"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+.
+ The 
+\family typewriter
+output0
+\family default
+ variable in Figure 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:Test-file-2"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+ contains the expected standard output of running:
+\end_layout
+
+\begin_layout Standard
+
+\family typewriter
+../solfec4 material.py
+\end_layout
+
+\begin_layout Standard
+\noindent
+from within the tests directory.
+\end_layout
+
+\begin_layout Standard
+\align center
+\begin_inset Float figure
+placement h
+wide false
+sideways false
+status open
+
+\begin_layout LyX-Code
+# Solfec-2.0 input command test: MATERIAL
+\end_layout
+
+\begin_layout LyX-Code
+
+\end_layout
+
+\begin_layout LyX-Code
+matnum = MATERIAL (1E3, 1E9, 0.25, 0.0)
+\end_layout
+
+\begin_layout LyX-Code
+
+\end_layout
+
+\begin_layout LyX-Code
+print_MATERIAL(matnum)
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+\begin_inset CommandInset label
+LatexCommand label
+name "fig:Test-file-1"
+
+\end_inset
+
+Test file 1: 
+\family typewriter
+solfec-2.0/tests/material.py
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\align center
+\begin_inset Float figure
+placement h
+wide false
+sideways false
+status open
+
+\begin_layout LyX-Code
+# Solfec-2.0 unit test: MATERIAL input command
+\end_layout
+
+\begin_layout LyX-Code
+import unittest, os
+\end_layout
+
+\begin_layout LyX-Code
+
+\end_layout
+
+\begin_layout LyX-Code
+output0 = 
+\backslash
+
+\end_layout
+
+\begin_layout LyX-Code
+'''MATERIAL_0_density = 1000
+\end_layout
+
+\begin_layout LyX-Code
+MATERIAL_0_young = 1e+09
+\end_layout
+
+\begin_layout LyX-Code
+MATERIAL_0_poisson = 0.25
+\end_layout
+
+\begin_layout LyX-Code
+MATERIAL_0_viscosity = 0
+\end_layout
+
+\begin_layout LyX-Code
+'''
+\end_layout
+
+\begin_layout LyX-Code
+
+\end_layout
+
+\begin_layout LyX-Code
+class test(unittest.TestCase):
+\end_layout
+
+\begin_layout LyX-Code
+  def test(self):
+\end_layout
+
+\begin_layout LyX-Code
+    solfec = os.popen('../solfec4 material.py')
+\end_layout
+
+\begin_layout LyX-Code
+    output = solfec.read()
+\end_layout
+
+\begin_layout LyX-Code
+    solfec.close()
+\end_layout
+
+\begin_layout LyX-Code
+    self.assertEqual(output, output0)
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+\begin_inset CommandInset label
+LatexCommand label
+name "fig:Test-file-2"
+
+\end_inset
+
+Test file 2: 
+\family typewriter
+solfec-2.0/tests/test_material.py
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
 \end_layout
 
 \end_body

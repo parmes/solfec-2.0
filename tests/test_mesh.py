@@ -2,7 +2,8 @@
 import unittest, os
 
 output0 = \
-'''MESH_0_nodes = [0,0,0,
+'''MESH_0_material = 0
+MESH_0_nodes = [0,0,0,
 1,0,0,
 1,1,0,
 0,1,0,

@@ -16,6 +16,9 @@ ISPC_TARGETS=sse2,sse4,avx
 # MPI C++ compiler
 MPICXX=mpicxx
 
+# Python interpeter
+PYTHON=python3.7
+
 # Program name
 EXE=solfec
 

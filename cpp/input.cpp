@@ -217,7 +217,7 @@ static int is_non_negative (double num, const char *var)
 
 /* in map test */
 template <typename map_type>
-static int is_in_map (double objnum, const char *var, map_type objmap)
+static int is_in_map (size_t objnum, const char *var, map_type objmap)
 {
   typename map_type::iterator it = objmap.find(objnum);
 
@@ -228,6 +228,93 @@ static int is_in_map (double objnum, const char *var, map_type objmap)
     PyErr_SetString (PyExc_ValueError, buf);
     return 0;
   }
+
+  return 1;
+}
+
+/* is material */
+static int is_material (size_t matnum)
+{
+  if (matnum < 0 || matnum >= solfec::materials_count)
+  {
+    char buf [BUFLEN];
+    sprintf (buf, "'matnum' is not in range [%d, %d) of defined materials", 0, solfec::materials_count);
+    PyErr_SetString (PyExc_ValueError, buf);
+    return 0;
+  }
+
+  return 1;
+}
+
+/* is mesh */
+static int is_mesh (size_t bodnum)
+{
+  typename std::map<size_t,mesh>::iterator it = solfec::meshes.find(bodnum);
+
+  return it != solfec::meshes.end();
+}
+
+/* is ellip */
+static int is_ellip (size_t bodnum)
+{
+  typename std::map<size_t,ellip>::iterator jt = solfec::ellips.find(bodnum);
+
+  return jt != solfec::ellips.end();
+}
+
+/* is body number */
+static int is_bodnum (size_t bodnum)
+{
+  if (!is_mesh(bodnum) && !is_ellip(bodnum))
+  {
+    char buf [BUFLEN];
+    sprintf (buf, "a MESH or ELLIP object with number %zu does not exist", bodnum);
+    PyErr_SetString (PyExc_ValueError, buf);
+    return 0;
+  }
+
+  return 1;
+}
+
+/* is body number */
+static int is_bodnum (PyObject *obj)
+{
+  if (!PyLong_Check (obj))
+  {
+    char buf [BUFLEN];
+    sprintf (buf, "'bodnum' argument value is not integer");
+    PyErr_SetString (PyExc_ValueError, buf);
+    return 0;
+  }
+
+  size_t bodnum = PyInt_AsLong (obj);
+
+  return is_bodnum (bodnum);
+}
+
+/* is file path */
+static int is_filepath (PyObject *obj, const char *var)
+{
+  if (!PyString_Check (obj))
+  {
+    char buf [BUFLEN];
+    sprintf (buf, "'%s' argument value is not a sting", var);
+    PyErr_SetString (PyExc_ValueError, buf);
+    return 0;
+  }
+
+  const char *path = PyString_AsString(obj);
+
+  FILE *f = fopen (path, "w");
+
+  if (!f)
+  {
+    char buf [BUFLEN];
+    sprintf (buf, "'%s' argument value [%s] is not a valid file path", var, path);
+    PyErr_SetString (PyExc_ValueError, buf);
+    return 0;
+  }
+  else fclose(f);
 
   return 1;
 }
@@ -254,6 +341,42 @@ static int is_list_or_number (PyObject *obj, const char *var, int len)
 	PyErr_SetString (PyExc_ValueError, buf);
 	return 0;
       }
+    }
+  }
+
+  return 1;
+}
+
+/* is a variable length tuple */
+static int is_a_tuple (PyObject *obj, const char *var, size_t *tuple_lengths, size_t n_tuple_lengths)
+{
+  size_t i, j, k, n;
+
+  if (obj)
+  {
+    if (PyTuple_Check (obj))
+    {
+      j = PyTuple_Size (obj);
+
+      for (i = 0; i < n_tuple_lengths; i ++)
+      {
+        if (j == tuple_lengths[i]) break;
+      }
+
+      if (i == n_tuple_lengths)
+      {
+	char buf [BUFLEN];
+	snprintf (buf, BUFLEN, "tuple '%s' length is invalid", var);
+	PyErr_SetString (PyExc_ValueError, buf);
+	return 0;
+      }
+    }
+    else
+    {
+      char buf [BUFLEN];
+      snprintf (buf, BUFLEN, "'%s' must be a tuple", var);
+      PyErr_SetString (PyExc_TypeError, buf);
+      return 0;
     }
   }
 
@@ -341,7 +464,7 @@ static void dotransform (REAL *transform, size_t type, std::array<std::vector<RE
   case 7: /* axis rotate */
   {
     REAL rotation[9];
-    ROTATION_MATRIX (transform+3, transform[7], rotation);
+    ROTATION_MATRIX (transform+3, transform[6], rotation);
     ispc::axis_rotate (transform, rotation, &nodes[0][0], &nodes[1][0], &nodes[2][0], nodes[0].size());
   }
   break;
@@ -444,7 +567,8 @@ static PyObject* RESET (PyObject *self, PyObject *args, PyObject *kwds)
   solfec::materials.clear();
   solfec::materials_count = 0;
   solfec::meshes.clear();
-  solfec::meshes_count = 0;
+  solfec::ellips.clear();
+  solfec::bodies_count = 0;
   solfec::restrains.clear();
   solfec::restrains_count = 0;
   solfec::prescribes.clear();
@@ -630,10 +754,10 @@ static PyObject* MESH (PyObject *self, PyObject *args, PyObject *kwds)
   PARSEKEYS ("OOKO|O", &nodes, &elements, &matnum, &colors, &transform);
 
   TYPETEST (is_list (nodes, kwl[0], 0) && is_list (elements, kwl[1], 0) &&
-            is_list_or_number (colors, kwl[3], 0) &&
+            is_material (matnum) && is_list_or_number (colors, kwl[3], 0) &&
             is_tuple_or_list_of_tuples (transform, kwl[4], tuple_lengths, 4));
 
-  struct mesh &mesh = solfec::meshes[solfec::meshes_count++];
+  struct mesh &mesh = solfec::meshes[solfec::bodies_count++];
 
   mesh.matnum = matnum;
 
@@ -815,7 +939,7 @@ static PyObject* MESH (PyObject *self, PyObject *args, PyObject *kwds)
     }
   }
 
-  Py_RETURN_uint64_t (solfec::meshes_count-1);
+  Py_RETURN_uint64_t (solfec::bodies_count-1);
 }
 
 /* print meshed body */
@@ -833,6 +957,7 @@ static PyObject* print_MESH (PyObject *self, PyObject *args, PyObject *kwds)
     struct mesh &mesh = solfec::meshes[bodnum];
 
     {
+      std::cout << "MESH_" << bodnum << "_material = " << mesh.matnum << std::endl;
       std::cout << "MESH_" << bodnum << "_nodes = [";
       std::vector<REAL>::iterator it0 = mesh.nodes[0].begin();
       std::vector<REAL>::iterator it1 = mesh.nodes[1].begin();
@@ -897,6 +1022,102 @@ static PyObject* print_MESH (PyObject *self, PyObject *args, PyObject *kwds)
 
   Py_RETURN_NONE;
 }
+
+/* Create ellipsoidal body */
+static PyObject* ELLIP (PyObject *self, PyObject *args, PyObject *kwds)
+{
+  KEYWORDS ("center", "radius", "matnum", "color", "rotate");
+  PyObject *center, *radius, *rotate;
+  size_t tuple_lengths[4] = {7, 9};
+  size_t matnum, color;
+
+  rotate = NULL;
+
+  PARSEKEYS ("OOKK|O", &center, &radius, &matnum, &color, &rotate);
+
+  TYPETEST (is_tuple (center, kwl[0], 3) && is_tuple (radius, kwl[1], 3) &&
+            is_material (matnum) && is_positive (color, kwl[3]) &&
+	    is_a_tuple (rotate, kwl[4], tuple_lengths, 2));
+
+  struct ellip &ellip = solfec::ellips[solfec::bodies_count++];
+
+  ellip.matnum = matnum;
+
+  ellip.center[0] = (REAL)PyFloat_AsDouble (PyList_GetItem (center, 0));
+  ellip.center[1] = (REAL)PyFloat_AsDouble (PyList_GetItem (center, 1));
+  ellip.center[2] = (REAL)PyFloat_AsDouble (PyList_GetItem (center, 2));
+
+  ellip.radius[0] = (REAL)PyFloat_AsDouble (PyList_GetItem (radius, 0));
+  ellip.radius[1] = (REAL)PyFloat_AsDouble (PyList_GetItem (radius, 1));
+  ellip.radius[2] = (REAL)PyFloat_AsDouble (PyList_GetItem (radius, 2));
+
+  ellip.gcolor= color;
+
+  if (rotate)
+  {
+    REAL trans[9];
+    size_t type = PyTuple_Size (rotate);
+    for (int i = 0; i < type; i ++)
+      trans[i] = (REAL)PyFloat_AsDouble (PyTuple_GetItem (rotate, i));
+
+    switch (type)
+    {
+    case 7: /* axis rotate */
+    {
+      REAL rotation[9], v[3], w[3];
+      ROTATION_MATRIX (trans+3, trans[6], rotation);
+      SUB (ellip.center, trans, v);
+      NVMUL (rotation, v, w);
+      ACC (w, ellip.center);
+    }
+    break;
+    case 9: /* matrix transform */
+      NNCOPY (trans, ellip.rotation);
+    break;
+    }
+  }
+
+  Py_RETURN_uint64_t (solfec::bodies_count-1);
+}
+
+/* print ellipsoidal body */
+static PyObject* print_ELLIP (PyObject *self, PyObject *args, PyObject *kwds)
+{
+  KEYWORDS ("bodnum");
+  size_t bodnum;
+
+  if (solfec::notrun)
+  {
+    PARSEKEYS ("K", &bodnum);
+
+    TYPETEST (is_in_map (bodnum, "ELLIP", solfec::ellips));
+
+    struct ellip &ellip = solfec::ellips[bodnum];
+
+    std::cout << "ELLIP_" << bodnum << "_material = " << ellip.matnum << std::endl;
+
+    std::cout << "ELLIP_" << bodnum << "_center = (" << ellip.center[0] << ","
+	      << ellip.center[1] << "," << ellip.center[2] << ")" << std::endl;
+
+    std::cout << "ELLIP_" << bodnum << "_radius = (" << ellip.radius[0] << ","
+	      << ellip.radius[1] << "," << ellip.radius[2] << ")" << std::endl;
+
+    if (!(ellip.rotation[0] == 1. && ellip.rotation[1] == 0. && ellip.rotation[2] == 0. && ellip.rotation[3] == 0. &&
+          ellip.rotation[4] == 1. && ellip.rotation[5] == 0. && ellip.rotation[6] == 0. && ellip.rotation[7] == 0. &&
+	  ellip.rotation[8] == 1.))
+    {
+      std::cout << "ELLIP_" << bodnum << "_center = ("
+                << ellip.rotation[0] << "," << ellip.rotation[1] << "," << ellip.rotation[2] << ","
+		<< ellip.rotation[3] << "," << ellip.rotation[4] << "," << ellip.rotation[5] << ","
+		<< ellip.rotation[6] << "," << ellip.rotation[7] << "," << ellip.rotation[8] << ")" << std::endl;
+    }
+
+    std::cout << "ELLIP_" << bodnum << "_color = " << ellip.gcolor << std::endl;
+  }
+
+  Py_RETURN_NONE;
+}
+
  
 /* Restrain motion */
 static PyObject* RESTRAIN (PyObject *self, PyObject *args, PyObject *kwds)
@@ -913,7 +1134,7 @@ static PyObject* RESTRAIN (PyObject *self, PyObject *args, PyObject *kwds)
 
   PARSEKEYS ("K|OKO", &restrain.bodnum, &point, &restrain.color, &direction);
 
-  TYPETEST (is_in_map (restrain.bodnum, "MESH", solfec::meshes) &&
+  TYPETEST (is_bodnum (restrain.bodnum) &&
             is_tuple_or_list_of_tuples (point, kwl[1], tuple_lengths, 1) &&
 	    is_tuple (direction, kwl[3], 3));
 
@@ -947,7 +1168,14 @@ static PyObject* RESTRAIN (PyObject *self, PyObject *args, PyObject *kwds)
     }
   }
 
-  solfec::meshes[restrain.bodnum].restrains.insert(solfec::restrains_count-1);
+  if (is_mesh(restrain.bodnum))
+  {
+    solfec::meshes[restrain.bodnum].restrains.insert(solfec::restrains_count-1);
+  }
+  else if (is_ellip(restrain.bodnum))
+  {
+    solfec::ellips[restrain.bodnum].restrains.insert(solfec::restrains_count-1);
+  }
 
   Py_RETURN_uint64_t (solfec::restrains_count-1);
 }
@@ -1008,7 +1236,7 @@ static PyObject* PRESCRIBE (PyObject *self, PyObject *args, PyObject *kwds)
 
   PARSEKEYS ("K|OKOO", &prescribe.bodnum, &point, &prescribe.color, &linear, &angular);
 
-  TYPETEST (is_in_map (prescribe.bodnum, "MESH", solfec::meshes) &&
+  TYPETEST (is_bodnum (prescribe.bodnum) &&
             is_tuple_or_list_of_tuples (point, kwl[1], tuple_lengths, 1));
 
   if (point)
@@ -1164,7 +1392,14 @@ static PyObject* PRESCRIBE (PyObject *self, PyObject *args, PyObject *kwds)
   }
   else prescribe.angular_applied = false;
 
-  solfec::meshes[prescribe.bodnum].prescribes.insert(solfec::prescribes_count-1);
+  if (is_mesh(prescribe.bodnum))
+  {
+    solfec::meshes[prescribe.bodnum].prescribes.insert(solfec::prescribes_count-1);
+  }
+  else if (is_ellip(prescribe.bodnum))
+  {
+    solfec::ellips[prescribe.bodnum].prescribes.insert(solfec::prescribes_count-1);
+  }
 
   Py_RETURN_uint64_t (solfec::prescribes_count-1);
 }
@@ -1245,7 +1480,7 @@ static PyObject* VELOCITY (PyObject *self, PyObject *args, PyObject *kwds)
 
   PARSEKEYS ("K|OO", &velocity.bodnum, &linear, &angular);
 
-  TYPETEST (is_in_map (velocity.bodnum, "MESH", solfec::meshes) &&
+  TYPETEST (is_bodnum (velocity.bodnum) &&
             is_tuple (linear, kwl[1], 3) && is_tuple (angular, kwl[2], 3));
 
   if (linear)
@@ -1408,6 +1643,16 @@ static PyObject* print_GRAVITY (PyObject *self, PyObject *args, PyObject *kwds)
 /* Retrieve time history */
 static PyObject* HISTORY (PyObject *self, PyObject *args, PyObject *kwds)
 {
+  KEYWORDS ("entity", "point", "bodnum", "filepath");
+  PyObject *entity, *point, *bodnum, *filepath;
+  size_t tuple_lengths[1] = {3};
+
+  PARSEKEYS ("O|OOO", &entity, &point, &bodnum, &filepath);
+
+  TYPETEST (is_tuple_or_list_of_tuples (point, kwl[1], tuple_lengths, 1) &&
+            is_bodnum (bodnum) && is_filepath (filepath, kwl[3]));
+
+
   Py_RETURN_NONE;
 }
 
@@ -1456,6 +1701,24 @@ static PyObject* DELETE (PyObject *self, PyObject *args, PyObject *kwds)
 
     solfec::meshes.erase(objnum);
   }
+  ELIF (objkind,"ELLIP")
+  {
+    TYPETEST (is_in_map (objnum, "ELLIP", solfec::ellips));
+
+    struct ellip &ellip = solfec::ellips[objnum];
+
+    for (std::set<size_t>::iterator it = ellip.restrains.begin(); it != ellip.restrains.end(); it ++)
+    {
+      solfec::restrains.erase(*it);
+    }
+
+    for (std::set<size_t>::iterator it = ellip.prescribes.begin(); it != ellip.prescribes.end(); it ++)
+    {
+      solfec::prescribes.erase(*it);
+    }
+
+    solfec::ellips.erase(objnum);
+  }
   ELIF (objkind,"RESTRAIN")
   {
     TYPETEST (is_in_map (objnum, "RESTRAIN", solfec::restrains));
@@ -1487,6 +1750,8 @@ static PyMethodDef methods [] =
   {"print_MATERIAL", (PyCFunction)print_MATERIAL, METH_VARARGS|METH_KEYWORDS, "print material"},
   {"MESH", (PyCFunction)MESH, METH_VARARGS|METH_KEYWORDS, "Create meshed body"},
   {"print_MESH", (PyCFunction)print_MESH, METH_VARARGS|METH_KEYWORDS, "print meshed body"},
+  {"ELLIP", (PyCFunction)ELLIP, METH_VARARGS|METH_KEYWORDS, "Create ellipsoidal body"},
+  {"print_ELLIP", (PyCFunction)print_ELLIP, METH_VARARGS|METH_KEYWORDS, "print ellipsoidal body"},
   {"RESTRAIN", (PyCFunction)RESTRAIN, METH_VARARGS|METH_KEYWORDS, "Restrain motion"},
   {"print_RESTRAIN", (PyCFunction)print_RESTRAIN, METH_VARARGS|METH_KEYWORDS, "print restrain"},
   {"PRESCRIBE", (PyCFunction)PRESCRIBE, METH_VARARGS|METH_KEYWORDS, "Prescribe motion"},
@@ -1559,6 +1824,8 @@ int input (const char *path)
                       "from solfec import print_MATERIAL\n"
                       "from solfec import MESH\n"
                       "from solfec import print_MESH\n"
+                      "from solfec import ELLIP\n"
+                      "from solfec import print_ELLIP\n"
                       "from solfec import RESTRAIN\n"
                       "from solfec import print_RESTRAIN\n"
                       "from solfec import PRESCRIBE\n"
