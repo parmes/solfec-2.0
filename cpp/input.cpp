@@ -143,6 +143,26 @@ static int is_a_string (PyObject *obj, const char *var, const char **values, int
   return 1;
 }
 
+/* a string or liest of strings test */
+static int is_string_or_list_of_strings (PyObject *obj, const char *var, const char **values, int nvalues)
+{
+  if (obj)
+  {
+    if (PyList_Check(obj))
+    {
+      for (int i = 0; i < PyList_Size(obj); i ++)
+      {
+        PyObject *item = PyList_GetItem (obj, i);
+
+	if (!is_a_string(item, var, values, nvalues)) return 0;
+      }
+    }
+    else return is_a_string(obj, var, values, nvalues);
+  }
+
+  return 1;
+}
+
 /* test whether an object is a list, of length >= len divisible by div, or a string */
 static int is_list_or_string (PyObject *obj, const char *var, int div, int len)
 {
@@ -311,14 +331,15 @@ static int is_bodnum (size_t bodnum)
 }
 
 /* is body number */
-static int is_bodnum (PyObject *obj)
+static int is_bodnum (PyObject *obj, const char *var = NULL)
 {
   if (obj)
   {
     if (!PyLong_Check (obj))
     {
       char buf [BUFLEN];
-      sprintf (buf, "'bodnum' argument value is not integer");
+      if (var) sprintf (buf, "'bodnum' value in '%s' is not integer", var);
+      else sprintf (buf, "'bodnum' argument value is not integer");
       PyErr_SetString (PyExc_ValueError, buf);
       return 0;
     }
@@ -326,6 +347,26 @@ static int is_bodnum (PyObject *obj)
     size_t bodnum = PyInt_AsLong (obj);
 
     return is_bodnum (bodnum);
+  }
+
+  return 1;
+}
+
+/* is body number or list of body numbers */
+static int is_bodnum_or_list_of_bodnums (PyObject *obj, const char *var)
+{
+  if (obj)
+  {
+    if (PyList_Check (obj))
+    {
+      for (int i = 0; i < PyList_Size(obj); i ++)
+      {
+        PyObject *item = PyList_GetItem (obj, i);
+
+	if (!is_bodnum (item, var)) return 0;
+      }
+    }
+    else return is_bodnum (obj, var);
   }
 
   return 1;
@@ -1772,7 +1813,174 @@ static PyObject* print_HISTORIES (PyObject *self, PyObject *args, PyObject *kwds
 	  if (it+1 != history.points.end()) std::cout << "),";
 	  else std::cout << ")]" << std::endl;
 	}
-	if (history.filepath.length()) std::cout << "HISTORY_" << hisnum << "_filepath = " << history.filepath << std::endl;
+      }
+      if (history.filepath.length()) std::cout << "HISTORY_" << hisnum << "_filepath = " << history.filepath << std::endl;
+    }
+  }
+
+  Py_RETURN_NONE;
+}
+
+/* Declare output entities */
+static PyObject* OUTPUT (PyObject *self, PyObject *args, PyObject *kwds)
+{
+  KEYWORDS ("entities", "subset", "modes", "formats");
+  PyObject *entities, *subset, *modes, *formats;
+  const char *ents[] = {"NUMBER", "COLOR", "DISPL",
+    "LINVEL", "STRESS", "CF", "CFN", "CFT", "AREA",
+    "BPAIR", "CPAIR"};
+  const char *mods[] = {"MESH", "CD"};
+  const char *frms[] = {"VTK", "XDMF"};
+  struct output output;
+
+  entities = NULL;
+  subset = NULL;
+  modes = NULL;
+  formats = NULL;
+
+  PARSEKEYS ("|OOOO", &entities, &subset, &modes, &formats);
+
+  TYPETEST (is_string_or_list_of_strings (entities, kwl[0], ents, sizeof(ents)/sizeof(char*)) &&
+            is_bodnum_or_list_of_bodnums (subset, kwl[1]) &&
+            is_string_or_list_of_strings (modes, kwl[2], mods, sizeof(mods)/sizeof(char*)) &&
+            is_string_or_list_of_strings (formats, kwl[3], frms, sizeof(frms)/sizeof(char*)));
+
+  if (entities)
+  {
+    if (PyList_Check(entities))
+    {
+      for (int i = 0; i < PyList_Size(entities); i ++)
+      {
+	PyObject *item = PyList_GetItem(entities, i);
+
+	output.entities.insert(std::string(PyString_AsString(item)));
+      }
+    }
+    else output.entities.insert(std::string(PyString_AsString(entities)));
+  }
+  else
+  {
+    for (int i = 0; i < sizeof(ents)/sizeof(char*); i ++)
+    {
+      output.entities.insert(std::string(ents[i]));
+    }
+  }
+
+  if (subset)
+  {
+    if (PyList_Check(subset))
+    {
+      for (int i = 0; i < PyList_Size(subset); i ++)
+      {
+	PyObject *item = PyList_GetItem(subset, i);
+
+	output.subset.insert(PyInt_AsLong(item));
+      }
+    }
+    else output.subset.insert(PyInt_AsLong(subset));
+  }
+
+  if (modes)
+  {
+    if (PyList_Check(modes))
+    {
+      for (int i = 0; i < PyList_Size(modes); i ++)
+      {
+	PyObject *item = PyList_GetItem(modes, i);
+
+	output.modes.insert(std::string(PyString_AsString(item)));
+      }
+    }
+    else output.modes.insert(std::string(PyString_AsString(modes)));
+  }
+  else
+  {
+    for (int i = 0; i < sizeof(mods)/sizeof(char*); i ++)
+    {
+      output.modes.insert(std::string(mods[i]));
+    }
+  }
+
+  if (formats)
+  {
+    if (PyList_Check(formats))
+    {
+      for (int i = 0; i < PyList_Size(formats); i ++)
+      {
+	PyObject *item = PyList_GetItem(formats, i);
+
+	output.formats.insert(std::string(PyString_AsString(item)));
+      }
+    }
+    else output.formats.insert(std::string(PyString_AsString(formats)));
+  }
+  else
+  {
+    for (int i = 0; i < sizeof(frms)/sizeof(char*); i ++)
+    {
+      output.formats.insert(std::string(frms[i]));
+    }
+  }
+
+  solfec::outputs.push_back (output);
+
+  Py_RETURN_NONE;
+}
+
+/* print outputs */
+static PyObject* print_OUTPUTS (PyObject *self, PyObject *args, PyObject *kwds)
+{
+  if (solfec::notrun)
+  {
+    for (std::vector<output>::iterator it = solfec::outputs.begin(); it != solfec::outputs.end(); it ++)
+    {
+      size_t outnum = it - solfec::outputs.begin();
+
+      struct output &output = *it;
+
+      if (output.entities.size())
+      {
+	std::cout << "OUTPUT_" << outnum << "_entities = [";
+	for (std::set<std::string>::iterator it = output.entities.begin(); it != output.entities.end(); it ++)
+	{
+	  std::cout << "'" << (*it);
+          std::set<std::string>::iterator jt = it; jt ++;
+	  if (jt != output.entities.end()) std::cout << "',";
+	  else std::cout << "']" << std::endl;
+	}
+      }
+      if (output.subset.size())
+      {
+	std::cout << "OUTPUT_" << outnum << "_subset = [";
+	for (std::set<size_t>::iterator it = output.subset.begin(); it != output.subset.end(); it ++)
+	{
+	  std::cout << (*it);
+          std::set<size_t>::iterator jt = it; jt ++;
+	  if (jt != output.subset.end()) std::cout << ",";
+	  else std::cout << "]" << std::endl;
+	}
+      }
+      if (output.modes.size())
+      {
+	std::cout << "OUTPUT_" << outnum << "_modes = [";
+	for (std::set<std::string>::iterator it = output.modes.begin(); it != output.modes.end(); it ++)
+	{
+	  std::cout << "'" << (*it);
+          std::set<std::string>::iterator jt = it; jt ++;
+	  if (jt != output.modes.end()) std::cout << "',";
+	  else std::cout << "']" << std::endl;
+	}
+      }
+      if (output.formats.size())
+      {
+	std::cout << "OUTPUT_" << outnum << "_formats = [";
+	for (std::set<std::string>::iterator it = output.formats.begin(); it != output.formats.end(); it ++)
+	{
+	  std::cout << "'" << (*it);
+          std::set<std::string>::iterator jt = it; jt ++;
+	  if (jt != output.formats.end()) std::cout << "',";
+	  else std::cout << "']" << std::endl;
+	}
       }
     }
   }
@@ -1780,17 +1988,16 @@ static PyObject* print_HISTORIES (PyObject *self, PyObject *args, PyObject *kwds
   Py_RETURN_NONE;
 }
 
-
-/* Declare output entities */
-static PyObject* OUTPUT (PyObject *self, PyObject *args, PyObject *kwds)
-{
-  Py_RETURN_NONE;
-}
-
 /* Run simulation */
 static PyObject* RUN (PyObject *self, PyObject *args, PyObject *kwds)
 {
   solfec::notrun = false;
+
+  if (solfec::outputs.empty()) /* no output defined */
+  {
+    PyRun_SimpleString ("OUTPUT()"); /* add default output */
+    fprintf (stderr, "WARNING: added default OUTPUT since none was defined!\n");
+  }
 
   /* TODO */
 
@@ -1890,6 +2097,7 @@ static PyMethodDef methods [] =
   {"HISTORY", (PyCFunction)HISTORY, METH_VARARGS|METH_KEYWORDS, "Retrieve time history"},
   {"print_HISTORIES", (PyCFunction)print_HISTORIES, METH_NOARGS, "print histories"},
   {"OUTPUT", (PyCFunction)OUTPUT, METH_VARARGS|METH_KEYWORDS, "Declare output entities"},
+  {"print_OUTPUTS", (PyCFunction)print_OUTPUTS, METH_NOARGS, "print outputs"},
   {"RUN", (PyCFunction)RUN, METH_VARARGS|METH_KEYWORDS, "Run simulation"},
   {"DELETE", (PyCFunction)DELETE, METH_VARARGS|METH_KEYWORDS, "Delete object"},
   {NULL, NULL, 0, NULL}
@@ -1965,6 +2173,7 @@ int input (const char *path)
                       "from solfec import HISTORY\n"
                       "from solfec import print_HISTORIES\n"
                       "from solfec import OUTPUT\n"
+                      "from solfec import print_OUTPUTS\n"
                       "from solfec import RUN\n"
                       "from solfec import DELETE\n");
 

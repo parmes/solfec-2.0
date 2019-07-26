@@ -1596,7 +1596,7 @@ OUTPUT ( | entities, subset, modes, formats)
 entities
 \series default
  - list of output entities; default: ['NUMBER', 'COLOR', 'DISPL', 'LINVEL',
- STRESS, 'CF', 'CFN', 'CFT', 'AREA', 'BPAIR', 'CPAIR'] where:
+ 'STRESS', 'CF', 'CFN', 'CFT', 'AREA', 'BPAIR', 'CPAIR'] where:
 \end_layout
 
 \begin_deeper
