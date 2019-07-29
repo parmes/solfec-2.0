@@ -16,9 +16,19 @@ C_OBJS4=$(addprefix objs4/, $(C_SRC:.c=.o))
 C_OBJS8=$(addprefix objs8/, $(C_SRC:.c=.o))
 LIBS=-lm $(PYTHONLIB) $(HDF5LIB)
 
-default: dirs version $(ISPC_HEADERS4) $(EXE)4 $(ISPC_HEADERS8) $(EXE)8
+default: inc/taskflow inc/amgcl dirs version $(ISPC_HEADERS4) $(EXE)4 $(ISPC_HEADERS8) $(EXE)8
 
 .PHONY: dirs clean print test
+
+inc/taskflow:
+	@echo "Downloading taskflow headers from GitHub into inc/taskflow..."
+	cd inc && make taskflow
+	@echo "You can update inc/taskflow by issuing 'make taskflow' within inc/"
+
+inc/amgcl:
+	@echo "Downloading amgcl headers from GitHub into inc/amgcl..."
+	cd inc && make amgcl
+	@echo "You can update inc/amgcl by issuing 'make amgcl' within inc/"
 
 test:
 	cd tests && $(PYTHON) -m unittest

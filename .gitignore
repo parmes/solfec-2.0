@@ -1,3 +1,5 @@
+inc/taskflow/*
+inc/amgcl/*
 solfec4
 solfec8
 objs4/*
