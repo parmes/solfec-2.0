@@ -17,7 +17,7 @@ ISPC_TARGETS=sse2,sse4,avx
 MPICXX=mpicxx
 
 # Python interpeter
-PYTHON=python3.7
+PYTHON=python
 
 # Program name
 EXE=solfec

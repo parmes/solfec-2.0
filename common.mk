@@ -31,7 +31,7 @@ inc/amgcl:
 	@echo "You can update inc/amgcl by issuing 'make amgcl' within inc/"
 
 test:
-	cd tests && $(PYTHON) -m unittest
+	cd tests && $(PYTHON) -m unittest discover
 
 print:
 	@echo $(ISPC_HEADERS4)

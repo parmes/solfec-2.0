@@ -95,7 +95,7 @@
 \begin_body
 
 \begin_layout Title
-SOFLEC 2.0 USER MANUAL
+SOLFEC-2.0 USER MANUAL
 \end_layout
 
 \begin_layout Standard
@@ -161,7 +161,7 @@ literal "false"
 \end_layout
 
 \begin_layout LyX-Code
-# Python paths (used to parse input files)
+# Python {2 or 3} paths (Python is used to parse input files)
 \end_layout
 
 \begin_layout LyX-Code
@@ -177,7 +177,7 @@ PYTHONLIB=-L/usr/lib -lpython2.7
 \end_layout
 
 \begin_layout LyX-Code
-# HDF5 paths (used to write output files)
+# HDF5 paths (HDF5 is used to write output files)
 \end_layout
 
 \begin_layout LyX-Code

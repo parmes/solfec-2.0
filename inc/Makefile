@@ -10,5 +10,6 @@ amgcl:
 taskflow:
 	rm -fr taskflow
 	-svn export https://github.com/cpp-taskflow/cpp-taskflow.git/trunk/taskflow
+	-svn export https://github.com/cpp-taskflow/cpp-taskflow.git/trunk/LICENSE taskflow/
 	@if [ ! -d "taskflow" ]; then  unzip taskflow.zip; echo "taskflow svn export failed: unzipped local copy."; fi
 
