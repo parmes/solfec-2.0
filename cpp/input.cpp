@@ -35,6 +35,7 @@ SOFTWARE.
 #include "alg.h"
 #include "fmt.hpp"
 #include "solfec.hpp"
+#include "compute.hpp"
 #include "util_ispc.h"
 
 #if PY_MAJOR_VERSION >= 3
@@ -1026,6 +1027,8 @@ static PyObject* MESH (PyObject *self, PyObject *args, PyObject *kwds)
     }
   }
 
+  if (solfec::notrun == false) compute_insert_mesh(solfec::bodies_count-1);
+
   Py_RETURN_uint64_t (solfec::bodies_count-1);
 }
 
@@ -1991,6 +1994,21 @@ static PyObject* print_OUTPUTS (PyObject *self, PyObject *args, PyObject *kwds)
 /* Run simulation */
 static PyObject* RUN (PyObject *self, PyObject *args, PyObject *kwds)
 {
+  KEYWORDS ("duration", "step", "interval");
+  double duration, step;
+  PyObject *interval;
+
+  interval = NULL; 
+
+  PARSEKEYS ("dd|O", &duration, &step, &interval);
+
+  TYPETEST (is_non_negative (duration, kwl[0]) && is_positive (step, kwl[1]));
+
+  if (interval)
+  {
+    /* TODO */
+  }
+
   solfec::notrun = false;
 
   if (solfec::outputs.empty()) /* no output defined */
@@ -1999,7 +2017,9 @@ static PyObject* RUN (PyObject *self, PyObject *args, PyObject *kwds)
     fprintf (stderr, "WARNING: added default OUTPUT since none was defined!\n");
   }
 
-  /* TODO */
+  if (duration == 0) output_initial_model(); /* output initial model state */
+
+  compute_main_loop ();
 
   solfec::velocities.clear();
 
@@ -2032,6 +2052,8 @@ static PyObject* DELETE (PyObject *self, PyObject *args, PyObject *kwds)
     }
 
     solfec::meshes.erase(objnum);
+
+    if (solfec::notrun == false) compute_delete_mesh(objnum);
   }
   ELIF (objkind,"ELLIP")
   {
@@ -2113,7 +2135,7 @@ static PyObject* PyInit_solfec_module(void)
 #endif
 
 /* interpret an input file (return 0 on success) */
-int input (const char *path)
+int input_python (const char *path)
 {
   int error, len;
   char *line;

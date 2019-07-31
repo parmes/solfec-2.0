@@ -30,6 +30,7 @@ SOFTWARE.
 #include "real.h"
 #include "version.h"
 #include "solfec.hpp"
+#include "compute.hpp"
 
 /* solfec global variables */
 namespace solfec
@@ -74,7 +75,8 @@ int main (int argc, char *argv[])
 
   MPI_Comm_rank (MPI_COMM_WORLD, &rank);
 
-  if (rank == 0) input (argv[1]);
+  if (rank == 0) input_python (argv[1]);
+  else compute_main_loop();
  
   MPI_Finalize ();
 
