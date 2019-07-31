@@ -14,11 +14,19 @@ CPP_OBJS4=$(addprefix objs4/, $(CPP_SRC:.cpp=.o))
 CPP_OBJS8=$(addprefix objs8/, $(CPP_SRC:.cpp=.o))
 C_OBJS4=$(addprefix objs4/, $(C_SRC:.c=.o))
 C_OBJS8=$(addprefix objs8/, $(C_SRC:.c=.o))
-LIBS=-lm $(PYTHONLIB) $(HDF5LIB)
+LIBS=-lm $(PYTHONLIB) $(HDF5LIB) -Llib/metis -lgklib -lmetis
 
-default: inc/taskflow inc/amgcl dirs version $(ISPC_HEADERS4) $(EXE)4 $(ISPC_HEADERS8) $(EXE)8
+default: libmetis inc/taskflow inc/amgcl dirs version $(ISPC_HEADERS4) $(EXE)4 $(ISPC_HEADERS8) $(EXE)8
 
 .PHONY: dirs clean print test
+
+libmetis: lib/metis
+	cd lib/metis && make
+
+lib/metis:
+	@echo "Unzipping local copy of METIS graph partitioning library..."
+	cd lib && unzip metis.zip
+	@echo "METIS extracted."
 
 inc/taskflow:
 	@echo "Downloading taskflow headers from GitHub into inc/taskflow..."
@@ -57,6 +65,7 @@ del:
 clean:
 	/bin/rm -rf objs* *~ $(EXE)4 $(EXE)8 *.dSYM
 	find ./ -iname "*.dump" -exec rm '{}' ';'
+	cd lib/metis && make clean
 
 version:
 	python python/version.py

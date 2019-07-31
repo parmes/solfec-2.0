@@ -1,5 +1,6 @@
 inc/taskflow/*
 inc/amgcl/*
+lib/metis/*
 solfec4
 solfec8
 objs4/*
