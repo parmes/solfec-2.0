@@ -29,7 +29,7 @@ SOFTWARE.
 #include <mpi.h>
 #include "real.h"
 #include "version.h"
-#include "solfec.h"
+#include "solfec.hpp"
 
 /* solfec global variables */
 namespace solfec

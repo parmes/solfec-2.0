@@ -29,7 +29,7 @@ SOFTWARE.
 #include <float.h>
 #include "real.h"
 #include "err.h"
-#include "solfec.h"
+#include "solfec.hpp"
 
 static size_t findmarker (std::vector<std::array<REAL,2>>::iterator begin, std::vector<std::array<REAL,2>>::iterator end, REAL xval)
 {

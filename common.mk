@@ -62,9 +62,10 @@ dirs:
 del:
 	find ./ -iname "*.dump" -exec rm '{}' ';'
 
-clean:
+clean: del
 	/bin/rm -rf objs* *~ $(EXE)4 $(EXE)8 *.dSYM
-	find ./ -iname "*.dump" -exec rm '{}' ';'
+
+cleanall: clean
 	cd lib/metis && make clean
 
 version:

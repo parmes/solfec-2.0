@@ -33,8 +33,8 @@ SOFTWARE.
 #include "real.h"
 #include "err.h"
 #include "alg.h"
-#include "fmt.h"
-#include "solfec.h"
+#include "fmt.hpp"
+#include "solfec.hpp"
 #include "util_ispc.h"
 
 #if PY_MAJOR_VERSION >= 3

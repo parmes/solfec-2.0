@@ -133,7 +133,7 @@ Nodes and DOFs, partitioned (driven by partitioning elements) and stored
 
 \begin_layout Itemize
 Elements, partitioned by their connectivity and weight of assembly (serial
- METIS on rank 0 process); Element types: hex, wed, pyr, tet, ellip
+ METIS on rank 0 process); Element types: hex, wed, pyr, tet
 \end_layout
 
 \begin_layout Itemize
@@ -150,9 +150,13 @@ Only MPI rank 0 process is processing the input file; the other processes
 \end_layout
 
 \begin_layout Itemize
-Optional repartitioning and recreation of node and element structures, depending
- on the degree of imbalance due to insertions and deletions of bodies, occurs
- prior to RUN()s
+Optional re-partitioning and recreation of node and element structures,
+ depending on the degree of imbalance due to insertions and deletions of
+ bodies, occurs prior to RUN()s
+\end_layout
+
+\begin_layout Itemize
+Independent partitioning and re-partitioning of ELLIPs.
 \end_layout
 
 \begin_layout Itemize
@@ -213,7 +217,19 @@ Data structures
 \end_layout
 
 \begin_layout Section
-Finite element assembly
+Partitioning and re-partitioning of finite elements
+\end_layout
+
+\begin_layout Section
+Partitioning and re-partitioning of ellipsoids
+\end_layout
+
+\begin_layout Section
+Finite elements assembly
+\end_layout
+
+\begin_layout Section
+Ellipsoids assembly
 \end_layout
 
 \begin_layout Section
