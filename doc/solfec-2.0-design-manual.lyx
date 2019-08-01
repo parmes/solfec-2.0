@@ -216,8 +216,32 @@ Files
 Data structures
 \end_layout
 
+\begin_layout Itemize
+Elements partitioned into bunches using METIS
+\end_layout
+
+\begin_layout Itemize
+Bunches of elements uniformly distributed across enlarged MPI windows –
+ allowing for extra room for insertion and deletion without repartitioning
+\end_layout
+
+\begin_layout Itemize
+Related node sets similarly distributed across enlarged MPI windows – allowing
+ for extra room for insertion and deletion without repartitioning
+\end_layout
+
+\begin_layout Itemize
+Faces dynamically partitioned using a geometrical approach
+\end_layout
+
+\begin_layout Itemize
+Bunches of faces uniformly distributed across enlarged MPI windows - allowing
+ for extra room for movement based migration without repartitioning; repartition
+ing upon filling up any of the windows
+\end_layout
+
 \begin_layout Section
-Partitioning and re-partitioning of finite elements
+Partitioning and re-partitioning of meshes
 \end_layout
 
 \begin_layout Section

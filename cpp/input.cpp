@@ -274,7 +274,7 @@ static int is_non_negative (double num, const char *var)
 template <typename map_type>
 static int is_in_map (size_t objnum, const char *var, map_type objmap)
 {
-  typename map_type::iterator it = objmap.find(objnum);
+  auto it = objmap.find(objnum);
 
   if (it == objmap.end())
   {
@@ -304,7 +304,7 @@ static int is_material (size_t matnum)
 /* is mesh */
 static int is_mesh (size_t bodnum)
 {
-  typename std::map<size_t,mesh>::iterator it = solfec::meshes.find(bodnum);
+  auto it = solfec::meshes.find(bodnum);
 
   return it != solfec::meshes.end();
 }
@@ -312,7 +312,7 @@ static int is_mesh (size_t bodnum)
 /* is ellip */
 static int is_ellip (size_t bodnum)
 {
-  typename std::map<size_t,ellip>::iterator jt = solfec::ellips.find(bodnum);
+  auto jt = solfec::ellips.find(bodnum);
 
   return jt != solfec::ellips.end();
 }
@@ -657,8 +657,10 @@ static PyObject* RESET (PyObject *self, PyObject *args, PyObject *kwds)
   solfec::meshes.clear();
   solfec::ellips.clear();
   solfec::bodies_count = 0;
+  solfec::body_restrains.clear();
   solfec::restrains.clear();
   solfec::restrains_count = 0;
+  solfec::body_prescribes.clear();
   solfec::prescribes.clear();
   solfec::prescribes_count = 0;
   solfec::velocities.clear();
@@ -770,7 +772,7 @@ static PyObject* print_SPLINE (PyObject *self, PyObject *args, PyObject *kwds)
     struct spline &spline = solfec::splines[splnum];
 
     std::cout << "SPLINE_" << splnum << "_points = ";
-    std::vector<std::array<REAL,2>>::iterator it = spline.points.begin();
+    auto it = spline.points.begin();
     if (it == spline.points.end()) std::cout << std::endl; else std::cout << "[";
     for (; it != spline.points.end(); it ++)
     {
@@ -1049,9 +1051,9 @@ static PyObject* print_MESH (PyObject *self, PyObject *args, PyObject *kwds)
     {
       std::cout << "MESH_" << bodnum << "_material = " << mesh.matnum << std::endl;
       std::cout << "MESH_" << bodnum << "_nodes = [";
-      std::vector<REAL>::iterator it0 = mesh.nodes[0].begin();
-      std::vector<REAL>::iterator it1 = mesh.nodes[1].begin();
-      std::vector<REAL>::iterator it2 = mesh.nodes[2].begin();
+      auto it0 = mesh.nodes[0].begin();
+      auto it1 = mesh.nodes[1].begin();
+      auto it2 = mesh.nodes[2].begin();
       for (; it0 != mesh.nodes[0].end()-1; it0 ++, it1++, it2++)
       {
 	 std::cout << (*it0) << "," << (*it1) << "," << (*it2) << "," << std::endl;
@@ -1061,7 +1063,7 @@ static PyObject* print_MESH (PyObject *self, PyObject *args, PyObject *kwds)
     {
       std::cout << "MESH_" << bodnum << "_elements = [";
       size_t ne = mesh.elements.size();
-      std::vector<size_t>::iterator it = mesh.elements.begin();
+      auto it = mesh.elements.begin();
       for (; it != mesh.elements.end(); )
       {
 	switch (*it)
@@ -1090,7 +1092,7 @@ static PyObject* print_MESH (PyObject *self, PyObject *args, PyObject *kwds)
     }
     {
       std::cout << "MESH_" << bodnum << "_colors = [" << mesh.gcolor << ",";
-      std::vector<size_t>::iterator it = mesh.colors.begin();
+      auto it = mesh.colors.begin();
       for (; it != mesh.colors.end(); )
       {
 	switch (*it)
@@ -1166,6 +1168,8 @@ static PyObject* ELLIP (PyObject *self, PyObject *args, PyObject *kwds)
     break;
     }
   }
+
+  if (solfec::notrun == false) compute_insert_ellip(solfec::bodies_count-1);
 
   Py_RETURN_uint64_t (solfec::bodies_count-1);
 }
@@ -1258,14 +1262,9 @@ static PyObject* RESTRAIN (PyObject *self, PyObject *args, PyObject *kwds)
     }
   }
 
-  if (is_mesh(restrain.bodnum))
-  {
-    solfec::meshes[restrain.bodnum].restrains.insert(solfec::restrains_count-1);
-  }
-  else if (is_ellip(restrain.bodnum))
-  {
-    solfec::ellips[restrain.bodnum].restrains.insert(solfec::restrains_count-1);
-  }
+  solfec::body_restrains[restrain.bodnum].insert(solfec::restrains_count-1);
+
+  if (solfec::notrun == false) compute_insert_restrain(solfec::restrains_count-1);
 
   Py_RETURN_uint64_t (solfec::restrains_count-1);
 }
@@ -1288,7 +1287,7 @@ static PyObject* print_RESTRAIN (PyObject *self, PyObject *args, PyObject *kwds)
     if (restrain.points.size() > 0)
     {
       std::cout << "RESTRAIN_" << resnum << "_points = [";
-      std::vector<std::array<REAL,3>>::iterator it = restrain.points.begin();
+      auto it = restrain.points.begin();
       for (; it != restrain.points.end(); it ++)
       {
 	std::cout << "(" << (*it)[0] << "," << (*it)[1] <<  "," << (*it)[2];
@@ -1482,14 +1481,9 @@ static PyObject* PRESCRIBE (PyObject *self, PyObject *args, PyObject *kwds)
   }
   else prescribe.angular_applied = false;
 
-  if (is_mesh(prescribe.bodnum))
-  {
-    solfec::meshes[prescribe.bodnum].prescribes.insert(solfec::prescribes_count-1);
-  }
-  else if (is_ellip(prescribe.bodnum))
-  {
-    solfec::ellips[prescribe.bodnum].prescribes.insert(solfec::prescribes_count-1);
-  }
+  solfec::body_prescribes[prescribe.bodnum].insert(solfec::prescribes_count-1);
+
+  if (solfec::notrun == false) compute_insert_prescribe(solfec::prescribes_count-1);
 
   Py_RETURN_uint64_t (solfec::prescribes_count-1);
 }
@@ -1510,7 +1504,7 @@ static PyObject* print_PRESCRIBE (PyObject *self, PyObject *args, PyObject *kwds
 
     std::cout << "PRESCRIBE_" << prenum << "_bodnum = " << prescribe.bodnum << std::endl;
     std::cout << "PRESCRIBE_" << prenum << "_points = ";
-    std::vector<std::array<REAL,3>>::iterator it = prescribe.points.begin();
+    auto it = prescribe.points.begin();
     if (it == prescribe.points.end()) std::cout << std::endl; else std::cout << "[";
     for (; it != prescribe.points.end(); it ++)
     {
@@ -1609,7 +1603,7 @@ static PyObject* print_VELOCITIES (PyObject *self, PyObject *args, PyObject *kwd
 {
   if (solfec::notrun)
   {
-    for (std::vector<velocity>::iterator it = solfec::velocities.begin(); it != solfec::velocities.end(); it++)
+    for (auto it = solfec::velocities.begin(); it != solfec::velocities.end(); it++)
     {
       size_t velnum = it - solfec::velocities.begin();
 
@@ -1639,7 +1633,7 @@ static PyObject* FRICTION (PyObject *self, PyObject *args, PyObject *kwds)
 
   TYPETEST (is_non_negative (friction.static_friction, kwl[2]) && is_non_negative (friction.dynamic_friction, kwl[3]));
 
-  std::pair<std::set<struct friction,friction_compare>::iterator,bool> ret = solfec::frictions.insert (friction);
+  auto ret = solfec::frictions.insert (friction);
 
   if (ret.second == false) /* redefine */
   {
@@ -1657,7 +1651,7 @@ static PyObject* print_FRICTIONS (PyObject *self, PyObject *args, PyObject *kwds
 
   if (solfec::notrun)
   {
-    for (std::set<friction,friction_compare>::iterator it = solfec::frictions.begin(); it != solfec::frictions.end(); it++, frinum ++)
+    for (auto it = solfec::frictions.begin(); it != solfec::frictions.end(); it++, frinum ++)
     {
       std::cout << "FRICTION_" << frinum << "_color1 = " << (*it).color1 << std::endl;
       std::cout << "FRICTION_" << frinum << "_color2 = " << (*it).color2 << std::endl;
@@ -1799,7 +1793,7 @@ static PyObject* print_HISTORIES (PyObject *self, PyObject *args, PyObject *kwds
 {
   if (solfec::notrun)
   {
-    for (std::vector<history>::iterator it = solfec::histories.begin(); it != solfec::histories.end(); it ++)
+    for (auto it = solfec::histories.begin(); it != solfec::histories.end(); it ++)
     {
       size_t hisnum = it - solfec::histories.begin();
 
@@ -1810,7 +1804,7 @@ static PyObject* print_HISTORIES (PyObject *self, PyObject *args, PyObject *kwds
       {
 	std::cout << "HISTORY_" << hisnum << "_bodnum = " << history.bodnum << std::endl;
 	std::cout << "HISTORY_" << hisnum << "_points = [";
-	for (std::vector<std::array<REAL,3>>::iterator it = history.points.begin(); it != history.points.end(); it ++)
+	for (auto it = history.points.begin(); it != history.points.end(); it ++)
 	{
 	  std::cout << "(" << (*it)[0] << "," << (*it)[1] <<  "," << (*it)[2];
 	  if (it+1 != history.points.end()) std::cout << "),";
@@ -1935,7 +1929,7 @@ static PyObject* print_OUTPUTS (PyObject *self, PyObject *args, PyObject *kwds)
 {
   if (solfec::notrun)
   {
-    for (std::vector<output>::iterator it = solfec::outputs.begin(); it != solfec::outputs.end(); it ++)
+    for (auto it = solfec::outputs.begin(); it != solfec::outputs.end(); it ++)
     {
       size_t outnum = it - solfec::outputs.begin();
 
@@ -1944,10 +1938,10 @@ static PyObject* print_OUTPUTS (PyObject *self, PyObject *args, PyObject *kwds)
       if (output.entities.size())
       {
 	std::cout << "OUTPUT_" << outnum << "_entities = [";
-	for (std::set<std::string>::iterator it = output.entities.begin(); it != output.entities.end(); it ++)
+	for (auto it = output.entities.begin(); it != output.entities.end(); it ++)
 	{
 	  std::cout << "'" << (*it);
-          std::set<std::string>::iterator jt = it; jt ++;
+          auto jt = it; jt ++;
 	  if (jt != output.entities.end()) std::cout << "',";
 	  else std::cout << "']" << std::endl;
 	}
@@ -1955,10 +1949,10 @@ static PyObject* print_OUTPUTS (PyObject *self, PyObject *args, PyObject *kwds)
       if (output.subset.size())
       {
 	std::cout << "OUTPUT_" << outnum << "_subset = [";
-	for (std::set<size_t>::iterator it = output.subset.begin(); it != output.subset.end(); it ++)
+	for (auto it = output.subset.begin(); it != output.subset.end(); it ++)
 	{
 	  std::cout << (*it);
-          std::set<size_t>::iterator jt = it; jt ++;
+          auto jt = it; jt ++;
 	  if (jt != output.subset.end()) std::cout << ",";
 	  else std::cout << "]" << std::endl;
 	}
@@ -1966,10 +1960,10 @@ static PyObject* print_OUTPUTS (PyObject *self, PyObject *args, PyObject *kwds)
       if (output.modes.size())
       {
 	std::cout << "OUTPUT_" << outnum << "_modes = [";
-	for (std::set<std::string>::iterator it = output.modes.begin(); it != output.modes.end(); it ++)
+	for (auto it = output.modes.begin(); it != output.modes.end(); it ++)
 	{
 	  std::cout << "'" << (*it);
-          std::set<std::string>::iterator jt = it; jt ++;
+          auto jt = it; jt ++;
 	  if (jt != output.modes.end()) std::cout << "',";
 	  else std::cout << "']" << std::endl;
 	}
@@ -1977,10 +1971,10 @@ static PyObject* print_OUTPUTS (PyObject *self, PyObject *args, PyObject *kwds)
       if (output.formats.size())
       {
 	std::cout << "OUTPUT_" << outnum << "_formats = [";
-	for (std::set<std::string>::iterator it = output.formats.begin(); it != output.formats.end(); it ++)
+	for (auto it = output.formats.begin(); it != output.formats.end(); it ++)
 	{
 	  std::cout << "'" << (*it);
-          std::set<std::string>::iterator jt = it; jt ++;
+          auto jt = it; jt ++;
 	  if (jt != output.formats.end()) std::cout << "',";
 	  else std::cout << "']" << std::endl;
 	}
@@ -2004,9 +1998,99 @@ static PyObject* RUN (PyObject *self, PyObject *args, PyObject *kwds)
 
   TYPETEST (is_non_negative (duration, kwl[0]) && is_positive (step, kwl[1]));
 
+  struct interval &i = solfec::interval;
+
   if (interval)
   {
-    /* TODO */
+    if (PyTuple_Check(interval))
+    {
+      if (PyTuple_Size(interval) != 2)
+      {
+	PyErr_SetString (PyExc_ValueError, "Invalid output interval");
+	return NULL;
+      }
+
+      PyObject *dt0 = PyTuple_GetItem (interval, 0);
+
+      if (PyCallable_Check (dt0))
+      {
+	i.dt_function[0] = dt0;
+	i.dt_spline[0] = -1;
+	i.dt[0] = 0.0;
+      }
+      else if (PyInt_Check (dt0))
+      {
+	i.dt[0] = 0.0;
+	i.dt_function[0] = NULL;
+	i.dt_spline[0] = PyInt_AsLong (dt0);
+
+	TYPETEST(is_in_map(i.dt_spline[0], "SPLINE", solfec::splines));
+      }
+      else
+      {
+	i.dt[0] = PyFloat_AsDouble (dt0);
+	i.dt_function[0] = NULL;
+	i.dt_spline[0] = -1;
+      }
+
+      PyObject *dt1 = PyTuple_GetItem (interval, 1);
+
+      if (PyCallable_Check (dt1))
+      {
+	i.dt_function[1] = dt1;
+	i.dt_spline[1] = -1;
+	i.dt[1] = 0.0;
+      }
+      else if (PyInt_Check (dt1))
+      {
+	i.dt[1] = 0.0;
+	i.dt_function[1] = NULL;
+	i.dt_spline[1] = PyInt_AsLong (dt1);
+
+	TYPETEST(is_in_map(i.dt_spline[1], "SPLINE", solfec::splines));
+      }
+      else
+      {
+	i.dt[1] = PyFloat_AsDouble (dt1);
+	i.dt_function[1] = NULL;
+	i.dt_spline[1] = -1;
+      }
+    }
+    else 
+    {
+      if (PyCallable_Check (interval))
+      {
+	i.dt_function[0] = i.dt_function[1] = interval;
+	i.dt_spline[0] = i.dt_spline[1] = -1;
+        i.dt[0] = i.dt[1] = 0.0;
+      }
+      else if (PyInt_Check (interval))
+      {
+        i.dt[0] = i.dt[1] = 0.0;
+	i.dt_function[0] = i.dt_function[1] = NULL;
+	i.dt_spline[0] = i.dt_spline[1] = PyInt_AsLong (interval);
+
+	TYPETEST(is_in_map(i.dt_spline[0], "SPLINE", solfec::splines));
+      }
+      else
+      {
+        i.dt[0] = i.dt[1] = PyFloat_AsDouble (interval);
+	i.dt_function[0] = i.dt_function[1] = NULL;
+	i.dt_spline[0] = i.dt_spline[1] = -1;
+      }
+    }
+
+    if (i.dt[0] < 0.0 || i.dt[1] < 0.0)
+    {
+      PyErr_SetString (PyExc_ValueError, "Invalid, negative, output interval");
+      return NULL;
+    }
+  }
+  else
+  {
+    i.dt_function[0] = i.dt_function[1] = NULL;
+    i.dt_spline[0] = i.dt_spline[1] = -1;
+    i.dt[0] = i.dt[1] = step;
   }
 
   solfec::notrun = false;
@@ -2039,16 +2123,26 @@ static PyObject* DELETE (PyObject *self, PyObject *args, PyObject *kwds)
   {
     TYPETEST (is_in_map (objnum, "MESH", solfec::meshes));
 
-    struct mesh &mesh = solfec::meshes[objnum];
-
-    for (std::set<size_t>::iterator it = mesh.restrains.begin(); it != mesh.restrains.end(); it ++)
+    if (solfec::body_restrains.find(objnum) != solfec::body_restrains.end())
     {
-      solfec::restrains.erase(*it);
+      for (auto it = solfec::body_restrains[objnum].begin();
+           it != solfec::body_restrains[objnum].end(); it ++)
+      {
+	solfec::restrains.erase(*it);
+
+	if (solfec::notrun == false) compute_delete_restrain(*it);
+      }
     }
 
-    for (std::set<size_t>::iterator it = mesh.prescribes.begin(); it != mesh.prescribes.end(); it ++)
+    if (solfec::body_prescribes.find(objnum) != solfec::body_prescribes.end())
     {
-      solfec::prescribes.erase(*it);
+      for (auto it = solfec::body_prescribes[objnum].begin();
+           it != solfec::body_prescribes[objnum].end(); it ++)
+      {
+	solfec::prescribes.erase(*it);
+
+	if (solfec::notrun == false) compute_delete_prescribe(*it);
+      }
     }
 
     solfec::meshes.erase(objnum);
@@ -2059,31 +2153,51 @@ static PyObject* DELETE (PyObject *self, PyObject *args, PyObject *kwds)
   {
     TYPETEST (is_in_map (objnum, "ELLIP", solfec::ellips));
 
-    struct ellip &ellip = solfec::ellips[objnum];
-
-    for (std::set<size_t>::iterator it = ellip.restrains.begin(); it != ellip.restrains.end(); it ++)
+    if (solfec::body_restrains.find(objnum) != solfec::body_restrains.end())
     {
-      solfec::restrains.erase(*it);
+      for (auto it = solfec::body_restrains[objnum].begin();
+           it != solfec::body_restrains[objnum].end(); it ++)
+      {
+	solfec::restrains.erase(*it);
+
+	if (solfec::notrun == false) compute_delete_restrain(*it);
+      }
     }
 
-    for (std::set<size_t>::iterator it = ellip.prescribes.begin(); it != ellip.prescribes.end(); it ++)
+    if (solfec::body_prescribes.find(objnum) != solfec::body_prescribes.end())
     {
-      solfec::prescribes.erase(*it);
+      for (auto it = solfec::body_prescribes[objnum].begin();
+           it != solfec::body_prescribes[objnum].end(); it ++)
+      {
+	solfec::prescribes.erase(*it);
+
+	if (solfec::notrun == false) compute_delete_prescribe(*it);
+      }
     }
 
     solfec::ellips.erase(objnum);
+
+    if (solfec::notrun == false) compute_delete_ellip(objnum);
   }
   ELIF (objkind,"RESTRAIN")
   {
     TYPETEST (is_in_map (objnum, "RESTRAIN", solfec::restrains));
 
+    solfec::body_restrains[solfec::restrains[objnum].bodnum].erase(objnum);
+
     solfec::restrains.erase(objnum);
+
+    if (solfec::notrun == false) compute_delete_restrain(objnum);
   }
   ELIF (objkind,"PRESCRIBE")
   {
     TYPETEST (is_in_map (objnum, "PRESCRIBE", solfec::prescribes));
 
+    solfec::body_prescribes[solfec::prescribes[objnum].bodnum].erase(objnum);
+
     solfec::prescribes.erase(objnum);
+
+    if (solfec::notrun == false) compute_delete_prescribe(objnum);
   }
   ELSE
   {

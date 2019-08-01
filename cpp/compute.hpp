@@ -25,11 +25,29 @@ SOFTWARE.
 #ifndef __compute__
 #define __compute__
 
-/* insert solfec::meshes[bodnum] into the existing window partitioning */
+/* insert solfec::meshes[bodnum] into computation */
 void compute_insert_mesh(size_t bodnum);
 
-/* delete solfec::meshes[bodnum] from the existing window partitioning */
+/* delete mesh from computation */
 void compute_delete_mesh(size_t bodnum);
+
+/* insert solfec::ellips[bodnum] into computation */
+void compute_insert_ellip(size_t bodnum);
+
+/* delete ellip from computation */
+void compute_delete_ellip(size_t bodnum);
+
+/* insert solfec::restrains[resnum] into computation */
+void compute_insert_restrain(size_t resnum);
+
+/* delete restrain from computation */
+void compute_delete_restrain(size_t resnum);
+
+/* insert solfec::prescribes[prenum] into computation */
+void compute_insert_prescribe(size_t prenum);
+
+/* delete prescribe from computation */
+void compute_delete_prescribe(size_t prenum);
 
 /* join compute main loop */
 void compute_main_loop();

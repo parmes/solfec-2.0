@@ -14,7 +14,7 @@ ISPC_SRC=ispc/util.ispc
 ISPC_TARGETS=sse2,sse4,avx
 
 # MPI C++ compiler
-MPICXX=mpicxx
+MPICXX=mpicxx -std=c++17
 
 # Python interpeter
 PYTHON=python

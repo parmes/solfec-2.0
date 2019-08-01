@@ -45,8 +45,10 @@ size_t materials_count = 0;
 std::map<size_t,mesh> meshes;
 std::map<size_t,ellip> ellips;
 size_t bodies_count = 0;
+std::map<size_t,std::set<size_t>> body_restrains;
 std::map<size_t, restrain> restrains;
 size_t restrains_count = 0;
+std::map<size_t,std::set<size_t>> body_prescribes;
 std::map<size_t,prescribe> prescribes;
 size_t prescribes_count = 0;
 std::vector<velocity> velocities;
@@ -55,6 +57,7 @@ struct gravity gravity;
 std::vector<history> histories;
 std::vector<output> outputs;
 bool notrun = true;
+struct interval interval;
 };
 
 int main (int argc, char *argv[])

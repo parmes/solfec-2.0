@@ -57,8 +57,6 @@ struct body
 {
   size_t matnum; /* material number */
   size_t gcolor; /* global color */
-  std::set<size_t> restrains; /* applied restrains */
-  std::set<size_t> prescribes; /* applied prescribes */
   body () : matnum(0), gcolor(0) { }
 };
 
@@ -162,6 +160,17 @@ struct output
   std::set<std::string> formats; /* output formats */
 };
 
+/* Python callback function */
+typedef void* pointer_t;
+
+/* interval */
+struct interval
+{
+  pointer_t dt_function[2];
+  int64_t dt_spline[2];
+  REAL dt[2];
+};
+
 /* solfec global variables */
 namespace solfec
 {
@@ -175,8 +184,10 @@ extern size_t materials_count;
 extern std::map<size_t,mesh> meshes;
 extern std::map<size_t,ellip> ellips;
 extern size_t bodies_count;
+extern std::map<size_t,std::set<size_t>> body_restrains;
 extern std::map<size_t,restrain> restrains;
 extern size_t restrains_count;
+extern std::map<size_t,std::set<size_t>> body_prescribes;
 extern std::map<size_t,prescribe> prescribes;
 extern size_t prescribes_count;
 extern std::vector<velocity> velocities;
@@ -185,6 +196,7 @@ extern struct gravity gravity;
 extern std::vector<history> histories;
 extern std::vector<output> outputs;
 extern bool notrun;
+extern struct interval interval;
 };
 
 /* read spline from file */
