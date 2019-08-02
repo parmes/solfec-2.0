@@ -29,6 +29,7 @@ SOFTWARE.
 #include <mpi.h>
 #include <map>
 #include "real.h"
+#include "mesh.hpp"
 #include "solfec.hpp"
 #include "compute.hpp"
 
@@ -113,49 +114,72 @@ MPI_Win mpi_elements_window; /* storing elements data */
 MPI_Win mpi_faces_window; /* storing faces data */
 };
 
-/* repartition all solfec::meshes from MPI rank 0 process and distribute them into
- * compute::mpi_nodes_window, compute::mpi_elements_window, compute::mpi_faces_window
- structures */
-static void repartition_meshes()
+/* mesh partitioning */
+struct part
+{
+  idx_t nn, ne, nf, neparts, nfparts;
+  std::vector<idx_t> eptr, eind, epart, npart;
+  std::vector<idx_t> fptr, find, fpart;
+  std::vector<size_t> color;
+};
+
+/* partition input meshes and turn parts data */
+static std::map<size_t, part> partition_meshes(const std::map<size_t,mesh> &meshes)
 {
   tf::Executor executor;
   tf::Taskflow taskflow;
 
+  std::map<size_t, part> parts;
+
+  for (auto& [bodnum, m] : meshes)
+  {
+    parts[bodnum]; /* populate map so that tasks only READ it */
+  }
+
   taskflow.parallel_for(solfec::meshes.begin(), solfec::meshes.end(), [&] (const std::pair<size_t,mesh> &it)
   { 
-    std::vector<idx_t> eptr, eind, epart, npart;
-    idx_t nn, ne, ncommon, nparts, objval;
+    idx_t ncommon, objval;
     const struct mesh &mesh = it.second;
+    auto &part = parts[it.first];
+    std::vector<idx_t> temp;
 
-    nn = mesh.nodes.size();
-    ne = mesh.nhex+mesh.nwed+mesh.npyr+mesh.ntet;
-    ncommon = 3;
-    nparts = 1+ne/ELEMENTS_BUNCH;
-    eptr.push_back(0);
+    part.nn = mesh.nodes.size();
+    part.ne = mesh.nhex+mesh.nwed+mesh.npyr+mesh.ntet;
+    part.eptr.push_back(0);
     for(auto e = mesh.elements.begin(); e != mesh.elements.end();)
     {
       for (auto i = e+1; i != e+1+e[0]; i++)
       {
-	eind.push_back(*i);
+	part.eind.push_back(*i);
       }
       e += e[0]+2;
-      eptr.push_back(e-mesh.elements.begin());
+      part.eptr.push_back(e-mesh.elements.begin());
     }
-    epart.resize(ne);
-    npart.resize(nn);
 
     /* partition elements into <= ELEMENTS_BUNCH sized sets */
-    METIS_PartMeshDual(&ne, &nn, &eptr[0], &eind[0], NULL, NULL, &ncommon,
-                       &nparts, NULL, NULL, &objval, &epart[0], &npart[0]);
+    part.epart.resize(part.ne);
+    part.npart.resize(part.nn);
+    ncommon = 3;
+    part.neparts = 1+part.ne/ELEMENTS_BUNCH;
+    METIS_PartMeshDual(&part.ne, &part.nn, &part.eptr[0], &part.eind[0], NULL, NULL, &ncommon,
+                       &part.neparts, NULL, NULL, &objval, &part.epart[0], &part.npart[0]);
 
-    /* TODO: using mesh.gcolor and mesh.colors create vector of all mesh faces */
+    /* using mesh.elements, mesh.gcolor and mesh.colors create surface faces and colors */
+    mesh_create_metis_faces (mesh.elements, mesh.gcolor, mesh.colors,
+                             part.nf, part.fptr, part.find, part.color);
 
-    /* TODO: partition faces into <= FACES_BUNCH sized sets */
-
-    /* TODO: create element and face bunch structures */
+    /* partition faces into <= FACES_BUNCH sized sets */
+    part.fpart.resize(part.ne);
+    temp.resize(part.nn);
+    ncommon = 2;
+    part.nfparts = 1+part.nf/ELEMENTS_BUNCH;
+    METIS_PartMeshDual(&part.nf, &part.nn, &part.fptr[0], &part.find[0], NULL, NULL, &ncommon,
+                       &part.nfparts, NULL, NULL, &objval, &part.fpart[0], &temp[0]);
   });
 
   executor.run(taskflow).get();
+
+  return parts;
 }
 
 /* insert solfec::meshes[bodnum] into computation */
