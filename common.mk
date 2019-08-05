@@ -1,9 +1,11 @@
 ifeq ($(DEBUG),yes)
   CFLAGS=-g -O0 -m64 -fopenmp -DDEBUG
   ISPC=ispc -g -O0 --arch=x86-64 -DDEBUG
+  OUTS = $(ISPC_HEADERS4) $(EXE)4
 else
   CFLAGS=-O2 -m64 -fopenmp
   ISPC=ispc -O2 --arch=x86-64 --woff
+  OUTS = $(ISPC_HEADERS4) $(EXE)4 $(ISPC_HEADERS8) $(EXE)8
 endif
 
 ISPC_OBJS4=$(addprefix objs4/, $(ISPC_SRC:.ispc=_ispc.o) $(ISPC_SRC:.ispc=_ispc_sse2.o) $(ISPC_SRC:.ispc=_ispc_sse4.o) $(ISPC_SRC:.ispc=_ispc_avx.o))
@@ -16,7 +18,7 @@ C_OBJS4=$(addprefix objs4/, $(C_SRC:.c=.o))
 C_OBJS8=$(addprefix objs8/, $(C_SRC:.c=.o))
 LIBS=-lm $(PYTHONLIB) $(HDF5LIB) -Llib/metis -lgklib -lmetis
 
-default: libmetis inc/taskflow inc/amgcl dirs version $(ISPC_HEADERS4) $(EXE)4 $(ISPC_HEADERS8) $(EXE)8
+default: libmetis inc/taskflow inc/amgcl dirs version $(OUTS)
 
 .PHONY: dirs clean print test
 

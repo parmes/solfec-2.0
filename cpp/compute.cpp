@@ -28,6 +28,7 @@ SOFTWARE.
 #include <metis/include/metis.h>
 #include <mpi.h>
 #include <map>
+#include <set>
 #include "real.h"
 #include "mesh.hpp"
 #include "solfec.hpp"
@@ -108,46 +109,71 @@ struct faces_window /* face bunches in mpi_faces_window */
 /* compute gobal variables */
 namespace compute
 {
+/* rank 0 --- */
+bool partitioned = false; /* initially paritioned */
+
+std::set<size_t> inserted_meshes;
+std::set<size_t> deleted_meshes;
+std::set<size_t> inserted_ellips;
+std::set<size_t> deleted_ellips;
+std::set<size_t> inserted_restrains;
+std::set<size_t> deleted_restrains;
+std::set<size_t> inserted_prescribes;
+std::set<size_t> deleted_prescribes;
+/* --- rank 0 */
+
+/* all ranks --- */
 std::map<size_t,material> materials; /* local MPI rank copy of all nominal materials */
+
 MPI_Win mpi_nodes_window; /* storing nodes and dgreees of freedom data */
 MPI_Win mpi_elements_window; /* storing elements data */
 MPI_Win mpi_faces_window; /* storing faces data */
+/* --- all ranks */
 };
 
 /* mesh partitioning */
 struct part
 {
-  idx_t nn, ne, nf, neparts, nfparts;
-  std::vector<idx_t> eptr, eind, epart, npart;
-  std::vector<idx_t> fptr, find, fpart;
-  std::vector<size_t> color;
+  /* partition_meshes --- */
+  idx_t nn, ne, nf, neparts, nfparts; /* number of: nodes, elements, faces, element parts, face parts */
+  std::vector<idx_t> eptr, eind, epart, npart; /* element pointers, element indices, element partitioning, node partitioning */
+  std::vector<idx_t> fptr, find, fpart; /* face pointers, face indices, face partitioning */
+  std::vector<size_t> material; /* element materials */
+  std::vector<size_t> color; /* face colors */
+  /* --- partition_meshes */
+
+  /* rank and bunch assignments --- */
+  std::vector<int> erank, frank; /* element and face MPI rank assignment */
+  std::vector<size_t> ebunch, fbunch; /* element and face data bunch assignment */
+  /* --- rank and bunch assignments */
 };
 
 /* partition input meshes and turn parts data */
-static std::map<size_t, part> partition_meshes(const std::map<size_t,mesh> &meshes)
+static std::map<size_t, part> partition_meshes(const std::set<size_t> &bodnum_subset)
 {
   tf::Executor executor;
   tf::Taskflow taskflow;
 
   std::map<size_t, part> parts;
 
-  for (auto& [bodnum, m] : meshes)
+  for (auto& bodnum : bodnum_subset)
   {
     parts[bodnum]; /* populate map so that tasks only READ it */
   }
 
-  taskflow.parallel_for(solfec::meshes.begin(), solfec::meshes.end(), [&] (const std::pair<size_t,mesh> &it)
+  taskflow.parallel_for(bodnum_subset.begin(), bodnum_subset.end(), [&] (const size_t bodnum)
   { 
-    idx_t ncommon, objval;
-    const struct mesh &mesh = it.second;
-    auto &part = parts[it.first];
+    const struct mesh &mesh = solfec::meshes[bodnum];
+    auto &part = parts[bodnum];
     std::vector<idx_t> temp;
+    idx_t ncommon, objval;
 
     part.nn = mesh.nodes.size();
     part.ne = mesh.nhex+mesh.nwed+mesh.npyr+mesh.ntet;
     part.eptr.push_back(0);
     for(auto e = mesh.elements.begin(); e != mesh.elements.end();)
     {
+      part.material.push_back(e[e[0]+1]);
       for (auto i = e+1; i != e+1+e[0]; i++)
       {
 	part.eind.push_back(*i);
@@ -185,69 +211,154 @@ static std::map<size_t, part> partition_meshes(const std::map<size_t,mesh> &mesh
 /* insert solfec::meshes[bodnum] into computation */
 void compute_insert_mesh(size_t bodnum)
 {
+  compute::inserted_meshes.insert(bodnum);
 }
 
 /* delete mesh from computation */
 void compute_delete_mesh(size_t bodnum)
 {
+  if (compute::inserted_meshes.count(bodnum))
+    compute::inserted_meshes.erase(bodnum);
+  else compute::deleted_meshes.insert(bodnum);
 }
 
 /* insert solfec::ellips[bodnum] into computation */
 void compute_insert_ellip(size_t bodnum)
 {
+  compute::inserted_ellips.insert(bodnum);
 }
 
 /* delete ellip from computation */
 void compute_delete_ellip(size_t bodnum)
 {
+  if (compute::inserted_ellips.count(bodnum))
+    compute::inserted_ellips.erase(bodnum);
+  else compute::deleted_ellips.insert(bodnum);
 }
 
 /* insert solfec::restrains[resnum] into computation */
 void compute_insert_restrain(size_t resnum)
 {
+  compute::inserted_restrains.insert(resnum);
 }
 
 /* delete restrain from computation */
 void compute_delete_restrain(size_t resnum)
 {
+  if (compute::inserted_restrains.count(resnum))
+    compute::inserted_restrains.erase(resnum);
+  else compute::deleted_restrains.insert(resnum);
 }
 
 /* insert solfec::prescribes[prenum] into computation */
 void compute_insert_prescribe(size_t prenum)
 {
+  compute::inserted_prescribes.insert(prenum);
 }
 
 /* delete prescribe from computation */
 void compute_delete_prescribe(size_t prenum)
 {
+  if (compute::inserted_prescribes.count(prenum))
+    compute::inserted_prescribes.erase(prenum);
+  else compute::deleted_prescribes.insert(prenum);
 }
 
 /* join compute main loop */
 void compute_main_loop()
 {
-  /* TODO rank 0:
+  using namespace compute;
+  int rank, size;
 
-    if (partitioned and inserted/deleted bodies)
+  MPI_Comm_rank (MPI_COMM_WORLD, &rank);
+  MPI_Comm_size (MPI_COMM_WORLD, &size);
 
-      if (something to delete)
+  if (rank == 0)
+  {
+    if (partitioned && (!inserted_meshes.empty() || !deleted_meshes.empty() ||
+                        !inserted_ellips.empty() || !deleted_ellips.empty() ||
+                        !inserted_restrains.empty() || !deleted_restrains.empty() ||
+                        !inserted_prescribes.empty() || !deleted_prescribes.empty()))
+    {
+      if (!deleted_meshes.empty())
+      {
+       /*
+	  TODO:
+	  delete data bunches from individual MPI windows
 
-	delete bunches from individual MPI windows
-	
-	rebalances bunches in windows for uniform load
+	  rebalances bunches in windows for uniform load
+        */
+      }
+      if (!deleted_ellips.empty())
+      {
+	/* TODO */
+      }
+      if (!deleted_restrains.empty())
+      {
+	/* TODO */
+      }
+      if (!deleted_prescribes.empty())
+      {
+	/* TODO */
+      }
 
-      if (inserted meshes) parition them
-
-      if (not enough space)
+      if (!inserted_meshes.empty())
+      {
+       /*
+          TODO:
+          parition inserted meshes
 	 
-	 resize windows
+	  if (not enough space) resize windows
 
-      uniformly migrate inserted bunches into MPI windows with most free space
+	  uniformly migrate inserted bunches into MPI windows with most free space
+       */
+      }
+      if (!inserted_ellips.empty())
+      {
+	/* TODO */
+      }
+      if (!inserted_restrains.empty())
+      {
+	/* TODO */
+      }
+      if (!inserted_prescribes.empty())
+      {
+	/* TODO */
+      }
 
-    else if (not partitioned)
-       
-       partition meshes
-       
-       create node sets, element bunches and face bunches and distribute them into MPI windows,
-       in a way that balances parallel processing and memory usage
-  */
+      
+    }
+    else if (!partitioned)
+    {
+      std::map<size_t, part> parts = partition_meshes(inserted_meshes);
+
+      size_t etot = 0, ftot = 0, ntot = 0;
+
+      for (auto& [bodnum, part] : parts)
+      {
+        etot += part.neparts; /* total number of element parititons */
+	ftot += part.nfparts; /* total number of face partitions */
+	ntot += part.nn; /* total numbre of nodes */
+      }
+
+      size_t esplit = etot / size, fsplit = ftot / size;
+
+      int currank = 0;
+
+      for (auto& [bodnum, part] : parts)
+      {
+	/* TODO: map local to global data */
+      }
+
+      /* TODO: use one MPI_Scatterv for uint64_t data and one for REAL */
+
+      /* TODO: use MPI_Scatterv to distribute mesh partitioning information to all ranks and then construct data bunches locally */
+
+      /* TODO: use MPI_Scatterv to distribute ellip partitioning ... */
+
+      /* TODO: use MPI to distribute restrains and prescribes ... */
+
+      partitioned = true;
+    }
+  }
 }

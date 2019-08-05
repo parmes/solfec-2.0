@@ -1029,7 +1029,7 @@ static PyObject* MESH (PyObject *self, PyObject *args, PyObject *kwds)
     }
   }
 
-  if (solfec::notrun == false) compute_insert_mesh(solfec::bodies_count-1);
+  compute_insert_mesh(solfec::bodies_count-1);
 
   Py_RETURN_uint64_t (solfec::bodies_count-1);
 }
@@ -1169,7 +1169,7 @@ static PyObject* ELLIP (PyObject *self, PyObject *args, PyObject *kwds)
     }
   }
 
-  if (solfec::notrun == false) compute_insert_ellip(solfec::bodies_count-1);
+  compute_insert_ellip(solfec::bodies_count-1);
 
   Py_RETURN_uint64_t (solfec::bodies_count-1);
 }
@@ -1264,7 +1264,7 @@ static PyObject* RESTRAIN (PyObject *self, PyObject *args, PyObject *kwds)
 
   solfec::body_restrains[restrain.bodnum].insert(solfec::restrains_count-1);
 
-  if (solfec::notrun == false) compute_insert_restrain(solfec::restrains_count-1);
+  compute_insert_restrain(solfec::restrains_count-1);
 
   Py_RETURN_uint64_t (solfec::restrains_count-1);
 }
@@ -1483,7 +1483,7 @@ static PyObject* PRESCRIBE (PyObject *self, PyObject *args, PyObject *kwds)
 
   solfec::body_prescribes[prescribe.bodnum].insert(solfec::prescribes_count-1);
 
-  if (solfec::notrun == false) compute_insert_prescribe(solfec::prescribes_count-1);
+  compute_insert_prescribe(solfec::prescribes_count-1);
 
   Py_RETURN_uint64_t (solfec::prescribes_count-1);
 }
@@ -2130,7 +2130,7 @@ static PyObject* DELETE (PyObject *self, PyObject *args, PyObject *kwds)
       {
 	solfec::restrains.erase(*it);
 
-	if (solfec::notrun == false) compute_delete_restrain(*it);
+	compute_delete_restrain(*it);
       }
     }
 
@@ -2141,13 +2141,13 @@ static PyObject* DELETE (PyObject *self, PyObject *args, PyObject *kwds)
       {
 	solfec::prescribes.erase(*it);
 
-	if (solfec::notrun == false) compute_delete_prescribe(*it);
+	compute_delete_prescribe(*it);
       }
     }
 
     solfec::meshes.erase(objnum);
 
-    if (solfec::notrun == false) compute_delete_mesh(objnum);
+    compute_delete_mesh(objnum);
   }
   ELIF (objkind,"ELLIP")
   {
@@ -2160,7 +2160,7 @@ static PyObject* DELETE (PyObject *self, PyObject *args, PyObject *kwds)
       {
 	solfec::restrains.erase(*it);
 
-	if (solfec::notrun == false) compute_delete_restrain(*it);
+	compute_delete_restrain(*it);
       }
     }
 
@@ -2171,13 +2171,13 @@ static PyObject* DELETE (PyObject *self, PyObject *args, PyObject *kwds)
       {
 	solfec::prescribes.erase(*it);
 
-	if (solfec::notrun == false) compute_delete_prescribe(*it);
+	compute_delete_prescribe(*it);
       }
     }
 
     solfec::ellips.erase(objnum);
 
-    if (solfec::notrun == false) compute_delete_ellip(objnum);
+    compute_delete_ellip(objnum);
   }
   ELIF (objkind,"RESTRAIN")
   {
@@ -2187,7 +2187,7 @@ static PyObject* DELETE (PyObject *self, PyObject *args, PyObject *kwds)
 
     solfec::restrains.erase(objnum);
 
-    if (solfec::notrun == false) compute_delete_restrain(objnum);
+    compute_delete_restrain(objnum);
   }
   ELIF (objkind,"PRESCRIBE")
   {
@@ -2197,7 +2197,7 @@ static PyObject* DELETE (PyObject *self, PyObject *args, PyObject *kwds)
 
     solfec::prescribes.erase(objnum);
 
-    if (solfec::notrun == false) compute_delete_prescribe(objnum);
+    compute_delete_prescribe(objnum);
   }
   ELSE
   {
