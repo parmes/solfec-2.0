@@ -22,13 +22,35 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-#ifndef __mesh__
-#define __mesh__
+#include <vector>
+#include <map>
 
-/* create METIS-style all faces pointer and index vectors, and colors,
- * from elements definitions, a global color, and colors of selected faces;
- * returns [number of faces, face pointers, face indices, face colors] */
-void mesh_create_metis_faces (const std::vector<uint64_t> &elements, uint64_t gcolor, const std::vector<uint64_t> &colors, /* input */
-                              idx_t &nf, std::vector<idx_t> &fptr, std::vector<idx_t> &find, std::vector<uint64_t> &color); /* output */
+#ifndef __part__
+#define __part__
+
+/* mesh partitioning */
+struct part
+{
+  int64_t nn, ne, nf, neparts, nfparts; /* number of: nodes, elements, faces, element parts, face parts */
+  std::vector<int64_t> eptr, eind, epart, npart; /* element pointers, element indices, element partitioning, node partitioning */
+  std::vector<int64_t> fptr, find, fpart; /* face pointers, face indices, face partitioning */
+  std::vector<uint64_t> material; /* element materials */
+  std::vector<uint64_t> color; /* face colors */
+};
+
+/* mesh mapping */
+struct mapping
+{
+  std::vector<int> nrank; /* node MPI rank mapping */
+  std::vector<uint64_t> nindex; /* node index within MPI rank */
+  std::vector<int> erank; /* element MPI rank mapping */
+  std::vector<int> frank; /* face MPI rank mapping */
+};
+
+/* partition input meshes and turn parts data */
+std::map<uint64_t, part> partition_meshes(const std::set<uint64_t> &bodnum_subset);
+
+/* map mesh partitioning to MPI ranks */
+std::map<uint64_t, mapping> map_parts(const std::map<uint64_t, part>  &parts);
 
 #endif

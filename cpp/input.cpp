@@ -272,7 +272,7 @@ static int is_non_negative (double num, const char *var)
 
 /* in map test */
 template <typename map_type>
-static int is_in_map (size_t objnum, const char *var, map_type objmap)
+static int is_in_map (uint64_t objnum, const char *var, map_type objmap)
 {
   auto it = objmap.find(objnum);
 
@@ -288,7 +288,7 @@ static int is_in_map (size_t objnum, const char *var, map_type objmap)
 }
 
 /* is material */
-static int is_material (size_t matnum)
+static int is_material (uint64_t matnum)
 {
   if (matnum < 0 || matnum >= solfec::materials_count)
   {
@@ -302,7 +302,7 @@ static int is_material (size_t matnum)
 }
 
 /* is mesh */
-static int is_mesh (size_t bodnum)
+static int is_mesh (uint64_t bodnum)
 {
   auto it = solfec::meshes.find(bodnum);
 
@@ -310,7 +310,7 @@ static int is_mesh (size_t bodnum)
 }
 
 /* is ellip */
-static int is_ellip (size_t bodnum)
+static int is_ellip (uint64_t bodnum)
 {
   auto jt = solfec::ellips.find(bodnum);
 
@@ -318,7 +318,7 @@ static int is_ellip (size_t bodnum)
 }
 
 /* is body number */
-static int is_bodnum (size_t bodnum)
+static int is_bodnum (uint64_t bodnum)
 {
   if (!is_mesh(bodnum) && !is_ellip(bodnum))
   {
@@ -345,7 +345,7 @@ static int is_bodnum (PyObject *obj, const char *var = NULL)
       return 0;
     }
 
-    size_t bodnum = PyInt_AsLong (obj);
+    uint64_t bodnum = PyInt_AsLong (obj);
 
     return is_bodnum (bodnum);
   }
@@ -436,9 +436,9 @@ static int is_list_or_number (PyObject *obj, const char *var, int len)
 }
 
 /* is a variable length tuple */
-static int is_a_tuple (PyObject *obj, const char *var, size_t *tuple_lengths, size_t n_tuple_lengths)
+static int is_a_tuple (PyObject *obj, const char *var, uint64_t *tuple_lengths, uint64_t n_tuple_lengths)
 {
-  size_t i, j, k, n;
+  uint64_t i, j, k, n;
 
   if (obj)
   {
@@ -472,9 +472,9 @@ static int is_a_tuple (PyObject *obj, const char *var, size_t *tuple_lengths, si
 }
 
 /* tuple or list of tuples check */
-static int is_tuple_or_list_of_tuples (PyObject *obj, const char *var, size_t *tuple_lengths, size_t n_tuple_lengths)
+static int is_tuple_or_list_of_tuples (PyObject *obj, const char *var, uint64_t *tuple_lengths, uint64_t n_tuple_lengths)
 {
-  size_t i, j, k, n;
+  uint64_t i, j, k, n;
 
   if (obj)
   {
@@ -542,7 +542,7 @@ static int is_tuple_or_list_of_tuples (PyObject *obj, const char *var, size_t *t
 }
 
 /* transform mesh nodes */
-static void dotransform (REAL *transform, size_t type, std::array<std::vector<REAL>,3> &nodes)
+static void dotransform (REAL *transform, uint64_t type, std::array<std::vector<REAL>,3> &nodes)
 {
   switch (type)
   {
@@ -761,7 +761,7 @@ static PyObject* SPLINE (PyObject *self, PyObject *args, PyObject *kwds)
 static PyObject* print_SPLINE (PyObject *self, PyObject *args, PyObject *kwds)
 {
   KEYWORDS ("splnum");
-  size_t splnum;
+  uint64_t splnum;
 
   if (solfec::notrun)
   {
@@ -812,7 +812,7 @@ static PyObject* MATERIAL (PyObject *self, PyObject *args, PyObject *kwds)
 static PyObject* print_MATERIAL (PyObject *self, PyObject *args, PyObject *kwds)
 {
   KEYWORDS ("matnum");
-  size_t matnum;
+  uint64_t matnum;
 
   if (solfec::notrun)
   {
@@ -835,9 +835,9 @@ static PyObject* print_MATERIAL (PyObject *self, PyObject *args, PyObject *kwds)
 static PyObject* MESH (PyObject *self, PyObject *args, PyObject *kwds)
 {
   KEYWORDS ("nodes", "elements", "matnum", "colors", "transform");
-  size_t tuple_lengths[4] = {3, 7, 9, 4}, i, j, k, l, n, m, e;
+  uint64_t tuple_lengths[4] = {3, 7, 9, 4}, i, j, k, l, n, m, e;
   PyObject *nodes, *elements, *colors, *transform;
-  size_t matnum;
+  uint64_t matnum;
 
   transform = NULL;
 
@@ -1009,7 +1009,7 @@ static PyObject* MESH (PyObject *self, PyObject *args, PyObject *kwds)
     if (PyTuple_Check (transform))
     {
       REAL trans[9];
-      size_t type = PyTuple_Size (transform);
+      uint64_t type = PyTuple_Size (transform);
       for (i = 0; i < type; i ++)
 	trans[i] = (REAL)PyFloat_AsDouble (PyTuple_GetItem (transform, i)),
       dotransform (trans, type, mesh.nodes);
@@ -1021,7 +1021,7 @@ static PyObject* MESH (PyObject *self, PyObject *args, PyObject *kwds)
       {
 	REAL trans[9];
 	PyObject *tuple = PyList_GetItem (transform, i);
-	size_t type = PyTuple_Size (tuple);
+	uint64_t type = PyTuple_Size (tuple);
 	for (j = 0; j < type; j ++)
 	  trans[j] = (REAL)PyFloat_AsDouble (PyTuple_GetItem (tuple, j)),
 	dotransform (trans, type, mesh.nodes);
@@ -1038,7 +1038,7 @@ static PyObject* MESH (PyObject *self, PyObject *args, PyObject *kwds)
 static PyObject* print_MESH (PyObject *self, PyObject *args, PyObject *kwds)
 {
   KEYWORDS ("bodnum");
-  size_t bodnum;
+  uint64_t bodnum;
 
   if (solfec::notrun)
   {
@@ -1062,7 +1062,7 @@ static PyObject* print_MESH (PyObject *self, PyObject *args, PyObject *kwds)
     }
     {
       std::cout << "MESH_" << bodnum << "_elements = [";
-      size_t ne = mesh.elements.size();
+      uint64_t ne = mesh.elements.size();
       auto it = mesh.elements.begin();
       for (; it != mesh.elements.end(); )
       {
@@ -1120,8 +1120,8 @@ static PyObject* ELLIP (PyObject *self, PyObject *args, PyObject *kwds)
 {
   KEYWORDS ("center", "radius", "matnum", "color", "rotate");
   PyObject *center, *radius, *rotate;
-  size_t tuple_lengths[4] = {7, 9};
-  size_t matnum, color;
+  uint64_t tuple_lengths[4] = {7, 9};
+  uint64_t matnum, color;
 
   rotate = NULL;
 
@@ -1148,7 +1148,7 @@ static PyObject* ELLIP (PyObject *self, PyObject *args, PyObject *kwds)
   if (rotate)
   {
     REAL trans[9];
-    size_t type = PyTuple_Size (rotate);
+    uint64_t type = PyTuple_Size (rotate);
     for (int i = 0; i < type; i ++)
       trans[i] = (REAL)PyFloat_AsDouble (PyTuple_GetItem (rotate, i));
 
@@ -1178,7 +1178,7 @@ static PyObject* ELLIP (PyObject *self, PyObject *args, PyObject *kwds)
 static PyObject* print_ELLIP (PyObject *self, PyObject *args, PyObject *kwds)
 {
   KEYWORDS ("bodnum");
-  size_t bodnum;
+  uint64_t bodnum;
 
   if (solfec::notrun)
   {
@@ -1217,7 +1217,7 @@ static PyObject* print_ELLIP (PyObject *self, PyObject *args, PyObject *kwds)
 static PyObject* RESTRAIN (PyObject *self, PyObject *args, PyObject *kwds)
 {
   KEYWORDS ("bodnum", "point", "color", "direction");
-  size_t tuple_lengths[1] = {3}, i, j, n;
+  uint64_t tuple_lengths[1] = {3}, i, j, n;
   PyObject *point, *direction;
 
   struct restrain &restrain = solfec::restrains[solfec::restrains_count++];
@@ -1273,7 +1273,7 @@ static PyObject* RESTRAIN (PyObject *self, PyObject *args, PyObject *kwds)
 static PyObject* print_RESTRAIN (PyObject *self, PyObject *args, PyObject *kwds)
 {
   KEYWORDS ("resnum");
-  size_t resnum;
+  uint64_t resnum;
 
   if (solfec::notrun)
   {
@@ -1313,7 +1313,7 @@ static PyObject* print_RESTRAIN (PyObject *self, PyObject *args, PyObject *kwds)
 static PyObject* PRESCRIBE (PyObject *self, PyObject *args, PyObject *kwds)
 {
   KEYWORDS ("bodnum", "point", "color", "linear", "angular");
-  size_t tuple_lengths[1] = {3}, i, j, n;
+  uint64_t tuple_lengths[1] = {3}, i, j, n;
   PyObject *point, *linear, *angular;
 
   struct prescribe &prescribe = solfec::prescribes[solfec::prescribes_count++];
@@ -1390,7 +1390,7 @@ static PyObject* PRESCRIBE (PyObject *self, PyObject *args, PyObject *kwds)
 	}
 	else if (PyLong_Check(l[i]))
 	{
-	  size_t splnum = PyInt_AsLong(l[i]);
+	  uint64_t splnum = PyInt_AsLong(l[i]);
 
 	  if (is_in_map(splnum, "SPLINE", solfec::splines))
 	  {
@@ -1453,7 +1453,7 @@ static PyObject* PRESCRIBE (PyObject *self, PyObject *args, PyObject *kwds)
 	}
 	else if (PyLong_Check(l[i]))
 	{
-	  size_t splnum = PyInt_AsLong(l[i]);
+	  uint64_t splnum = PyInt_AsLong(l[i]);
 
 	  if (is_in_map(splnum, "SPLINE", solfec::splines))
 	  {
@@ -1492,7 +1492,7 @@ static PyObject* PRESCRIBE (PyObject *self, PyObject *args, PyObject *kwds)
 static PyObject* print_PRESCRIBE (PyObject *self, PyObject *args, PyObject *kwds)
 {
   KEYWORDS ("prenum");
-  size_t prenum;
+  uint64_t prenum;
 
   if (solfec::notrun)
   {
@@ -1605,7 +1605,7 @@ static PyObject* print_VELOCITIES (PyObject *self, PyObject *args, PyObject *kwd
   {
     for (auto it = solfec::velocities.begin(); it != solfec::velocities.end(); it++)
     {
-      size_t velnum = it - solfec::velocities.begin();
+      uint64_t velnum = it - solfec::velocities.begin();
 
       std::cout << "VELOCITY_" << velnum << "_bodnum = " << (*it).bodnum << std::endl;
       std::cout << "VELOCITY_" << velnum << "_linear = (" << (*it).linear_values[0] << ","
@@ -1647,7 +1647,7 @@ static PyObject* FRICTION (PyObject *self, PyObject *args, PyObject *kwds)
 /* print frictions */
 static PyObject* print_FRICTIONS (PyObject *self, PyObject *args, PyObject *kwds)
 {
-  size_t frinum = 0;
+  uint64_t frinum = 0;
 
   if (solfec::notrun)
   {
@@ -1729,7 +1729,7 @@ static PyObject* HISTORY (PyObject *self, PyObject *args, PyObject *kwds)
 {
   KEYWORDS ("entity", "point", "bodnum", "filepath");
   PyObject *entity, *point, *bodnum, *filepath;
-  size_t tuple_lengths[1] = {3};
+  uint64_t tuple_lengths[1] = {3};
   const char *ents[] = {"TIME", "CONTACTS", "PX", "PY", "PZ",
     "|P|", "DX", "DY", "DZ", "|D|", "VX", "VY", "VZ", "|V|",
     "SX", "SY", "SZ", "SXY", "SXZ", "SYZ", "|S|"};
@@ -1795,7 +1795,7 @@ static PyObject* print_HISTORIES (PyObject *self, PyObject *args, PyObject *kwds
   {
     for (auto it = solfec::histories.begin(); it != solfec::histories.end(); it ++)
     {
-      size_t hisnum = it - solfec::histories.begin();
+      uint64_t hisnum = it - solfec::histories.begin();
 
       struct history &history = *it;
 
@@ -1931,7 +1931,7 @@ static PyObject* print_OUTPUTS (PyObject *self, PyObject *args, PyObject *kwds)
   {
     for (auto it = solfec::outputs.begin(); it != solfec::outputs.end(); it ++)
     {
-      size_t outnum = it - solfec::outputs.begin();
+      uint64_t outnum = it - solfec::outputs.begin();
 
       struct output &output = *it;
 
@@ -2115,7 +2115,7 @@ static PyObject* DELETE (PyObject *self, PyObject *args, PyObject *kwds)
 {
   KEYWORDS ("objnum", "objkind");
   PyObject *objkind;
-  size_t objnum;
+  uint64_t objnum;
 
   PARSEKEYS ("KO", &objnum, &objkind);
 

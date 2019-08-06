@@ -35,11 +35,11 @@ SOFTWARE.
 struct spline
 {
   std::vector<std::array<REAL,2>> points; /* vector of (x, y) pairs */
-  size_t cache; /* partial cache size */
+  uint64_t cache; /* partial cache size */
   std::string path; /* file path for partially cached splines */
   std::vector<off_t> offset; /* file offsets */
   std::vector<REAL> xval; /* x values maching file offsets */
-  size_t marker; /* index of the last read interval */
+  uint64_t marker; /* index of the last read interval */
   spline(): marker(0), cache(0) {}
 };
 
@@ -55,8 +55,8 @@ struct material
 /* body */
 struct body
 {
-  size_t matnum; /* material number */
-  size_t gcolor; /* global color */
+  uint64_t matnum; /* material number */
+  uint64_t gcolor; /* global color */
   body () : matnum(0), gcolor(0) { }
 };
 
@@ -64,10 +64,10 @@ struct body
 struct mesh: public body
 {
   std::array<std::vector<REAL>,3> nodes; /* list of nodes */
-  std::vector<size_t> elements; /* list of elements */
-  std::vector<size_t> colors; /* face colors */
-  size_t nhex, nwed, npyr, ntet; /* numbers of elements per kind */
-  size_t nfaces; /* number of faces */
+  std::vector<uint64_t> elements; /* list of elements */
+  std::vector<uint64_t> colors; /* face colors */
+  uint64_t nhex, nwed, npyr, ntet; /* numbers of elements per kind */
+  uint64_t nfaces; /* number of faces */
   mesh () : nhex(0), nwed(0), npyr(0), ntet(0), nfaces(0) { }
 };
 
@@ -83,9 +83,9 @@ struct ellip: public body
 /* restrain */
 struct restrain
 {
-  size_t bodnum; /* body number */
+  uint64_t bodnum; /* body number */
   std::vector<std::array<REAL,3>> points; /* list of points */
-  size_t color; /* surface color */
+  uint64_t color; /* surface color */
   REAL direction[3]; /* restrain direction */
   restrain() : bodnum(0), color(0), direction{0.,0.,0.} { }
 };
@@ -93,9 +93,9 @@ struct restrain
 /* prescribe */
 struct prescribe
 {
-  size_t bodnum; /* body number */
+  uint64_t bodnum; /* body number */
   std::vector<std::array<REAL,3>> points; /* list of points */
-  size_t color; /* surface color */
+  uint64_t color; /* surface color */
   bool linear_applied; /* linear applied flag */
   REAL linear_values [3]; /* constant linear velocity */
   int64_t linear_splines [3]; /* linear splines (when >= 0) */
@@ -110,7 +110,7 @@ struct prescribe
 /* velocity */
 struct velocity
 {
-  size_t bodnum; /* body number */
+  uint64_t bodnum; /* body number */
   REAL linear_values [3]; /* linear velocity */
   REAL angular_values [3]; /* linear velocity */
 };
@@ -118,8 +118,8 @@ struct velocity
 /* friction */
 struct friction
 {
-  size_t color1; /* first face color */
-  size_t color2; /* second face color */
+  uint64_t color1; /* first face color */
+  uint64_t color2; /* second face color */
   REAL static_friction; /* static Coulomb's friction */
   REAL dynamic_friction;/* dynamic Coulomb's friction */
 };
@@ -145,7 +145,7 @@ struct history
 {
   std::string entity; /* entity name */
   std::vector<std::array<REAL,3>> points; /* list of points */
-  size_t bodnum; /* body number */
+  uint64_t bodnum; /* body number */
   std::string filepath; /* text file path */
   void *python_list; /* python list */
   history() : python_list(NULL) { }
@@ -155,7 +155,7 @@ struct history
 struct output
 {
   std::set<std::string> entities; /* output entities */
-  std::set<size_t> subset; /* subset of body numbers */
+  std::set<uint64_t> subset; /* subset of body numbers */
   std::set<std::string> modes; /* output modes */
   std::set<std::string> formats; /* output formats */
 };
@@ -177,19 +177,19 @@ namespace solfec
 extern int argc;
 extern char **argv;
 extern std::string outname;
-extern std::map<size_t,spline> splines;
-extern size_t splines_count;
-extern std::map<size_t,material> materials;
-extern size_t materials_count;
-extern std::map<size_t,mesh> meshes;
-extern std::map<size_t,ellip> ellips;
-extern size_t bodies_count;
-extern std::map<size_t,std::set<size_t>> body_restrains;
-extern std::map<size_t,restrain> restrains;
-extern size_t restrains_count;
-extern std::map<size_t,std::set<size_t>> body_prescribes;
-extern std::map<size_t,prescribe> prescribes;
-extern size_t prescribes_count;
+extern std::map<uint64_t,spline> splines;
+extern uint64_t splines_count;
+extern std::map<uint64_t,material> materials;
+extern uint64_t materials_count;
+extern std::map<uint64_t,mesh> meshes;
+extern std::map<uint64_t,ellip> ellips;
+extern uint64_t bodies_count;
+extern std::map<uint64_t,std::set<uint64_t>> body_restrains;
+extern std::map<uint64_t,restrain> restrains;
+extern uint64_t restrains_count;
+extern std::map<uint64_t,std::set<uint64_t>> body_prescribes;
+extern std::map<uint64_t,prescribe> prescribes;
+extern uint64_t prescribes_count;
 extern std::vector<velocity> velocities;
 extern std::set<friction,friction_compare> frictions;
 extern struct gravity gravity;

@@ -60,19 +60,19 @@ static int tet [][4] =  /* 1-based indexing as the element lists start with the 
 /* create METIS-style all faces pointer and index vectors, and colors,
  * from elements definitions, a global color, and colors of selected faces;
  * returns [number of faces, face pointers, face indices, face colors] */
-void mesh_create_metis_faces (const std::vector<size_t> &elements, size_t gcolor, const std::vector<size_t> &colors, /* input */
-                              idx_t &nf, std::vector<idx_t> &fptr, std::vector<idx_t> &find, std::vector<size_t> &color) /* output */
+void mesh_create_metis_faces (const std::vector<uint64_t> &elements, uint64_t gcolor, const std::vector<uint64_t> &colors, /* input */
+                              idx_t &nf, std::vector<idx_t> &fptr, std::vector<idx_t> &find, std::vector<uint64_t> &color) /* output */
 {
   std::array<int(*)[4],9> ef = {NULL, NULL, NULL, NULL, mesh::tet, mesh::pyr, mesh::wed, NULL, mesh::hex};
-  std::map<std::array<size_t,4>,int64_t> colored_faces;
-  std::map<std::array<size_t,4>,int64_t> all_faces;
+  std::map<std::array<uint64_t,4>,int64_t> colored_faces;
+  std::map<std::array<uint64_t,4>,int64_t> all_faces;
   int nef[] = {0, 0, 0, 0, 4, 5, 6, 0, 8};
 
   for(auto e = elements.begin(); e != elements.end(); e += e[0] + 2)
   {
     for (int i = 0; i < nef[e[0]]; i ++)
     {
-      std::array<size_t,4> f = {e[ef[e[0]][i][0]]+1, e[ef[e[0]][i][1]]+1, e[ef[e[0]][i][2]]+1, e[ef[e[0]][i][3]] > 0 ? e[ef[e[0]][i][3]]+1 : 0};
+      std::array<uint64_t,4> f = {e[ef[e[0]][i][0]]+1, e[ef[e[0]][i][1]]+1, e[ef[e[0]][i][2]]+1, e[ef[e[0]][i][3]] > 0 ? e[ef[e[0]][i][3]]+1 : 0};
       std::sort(f.begin(), f.end());
       all_faces[f] ++; /* see zero value-initialization: https://en.cppreference.com/w/cpp/language/zero_initialization */
     }
@@ -80,7 +80,7 @@ void mesh_create_metis_faces (const std::vector<size_t> &elements, size_t gcolor
 
   for(auto e = colors.begin(); e != colors.end(); e += e[0] + 2)
   {
-    std::array<size_t,4> f = {e[1]+1, e[2]+1, e[3]+1, e[0] == 4 ? e[4]+1 : 0}; /* 1-based indexing */
+    std::array<uint64_t,4> f = {e[1]+1, e[2]+1, e[3]+1, e[0] == 4 ? e[4]+1 : 0}; /* 1-based indexing */
     std::sort(f.begin(), f.end());
     colored_faces[f] = e[e[0]+1];
   }
