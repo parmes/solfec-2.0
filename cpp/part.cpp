@@ -96,7 +96,7 @@ std::map<uint64_t, part> partition_meshes(const std::set<uint64_t> &bodnum_subse
 }
 
 /* map mesh partitioning to MPI ranks */
-std::map<uint64_t, mapping> map_parts(const std::map<uint64_t, part>  &parts)
+std::map<uint64_t, mapping> map_parts(const std::map<uint64_t, part> &parts)
 {
   int size;
 
@@ -145,4 +145,63 @@ std::map<uint64_t, mapping> map_parts(const std::map<uint64_t, part>  &parts)
   }
 
   return output;
+}
+
+/* return [maxnodes, maxeles, maxfaces] */
+std::tuple<uint64_t, uint64_t, uint64_t> max_per_rank (const std::map<uint64_t, mapping> &maps)
+{
+  int size;
+
+  MPI_Comm_size (MPI_COMM_WORLD, &size);
+
+  tf::Executor executor;
+  tf::Taskflow taskflow;
+
+  typedef std::tuple<uint64_t, uint64_t, uint64_t> x_type;
+
+  x_type x(0, 0, 0);
+
+  taskflow.transform_reduce(maps.begin(), maps.end(), x,
+    [] (x_type l, x_type r)
+    { 
+      return x_type(std::max(std::get<0>(l), std::get<0>(r)),
+                    std::max(std::get<1>(l), std::get<1>(r)),
+                    std::max(std::get<2>(l), std::get<2>(r)));
+    },
+    [] (const std::pair<uint64_t, mapping> &it)
+    {
+      const struct mapping &mapping = it.second;
+
+      std::map<int,uint64_t> nrank, erank, frank;
+
+      for (auto& r : mapping.nrank)
+      {
+        nrank[r] ++;
+      }
+
+      for (auto& r : mapping.erank)
+      {
+        erank[r] ++;
+      }
+
+      for (auto& r : mapping.frank)
+      {
+        frank[r] ++;
+      }
+
+      using pair_type = decltype(nrank)::value_type;
+
+      auto pair_cmp = [] (const pair_type &a, const pair_type &b) { return a.second < b.second; };
+
+      auto n = std::max_element (std::begin(nrank), std::end(nrank), pair_cmp);
+      auto e = std::max_element (std::begin(erank), std::end(erank), pair_cmp);
+      auto f = std::max_element (std::begin(frank), std::end(frank), pair_cmp);
+
+      return x_type(n->second, e->second, f->second);
+    }
+  );
+
+  executor.run(taskflow).get();
+
+  return x;
 }

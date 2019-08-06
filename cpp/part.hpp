@@ -23,6 +23,7 @@ SOFTWARE.
 */
 
 #include <vector>
+#include <tuple>
 #include <map>
 
 #ifndef __part__
@@ -51,6 +52,9 @@ struct mapping
 std::map<uint64_t, part> partition_meshes(const std::set<uint64_t> &bodnum_subset);
 
 /* map mesh partitioning to MPI ranks */
-std::map<uint64_t, mapping> map_parts(const std::map<uint64_t, part>  &parts);
+std::map<uint64_t, mapping> map_parts(const std::map<uint64_t, part> &parts);
+
+/* return [maxnodes, maxeles, maxfaces] */
+std::tuple<uint64_t, uint64_t, uint64_t> max_per_rank (const std::map<uint64_t, mapping> &maps);
 
 #endif

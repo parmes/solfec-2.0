@@ -117,10 +117,9 @@ void compute_delete_prescribe(uint64_t prenum)
 void compute_main_loop()
 {
   using namespace compute;
-  int rank, size;
+  int rank;
 
   MPI_Comm_rank (MPI_COMM_WORLD, &rank);
-  MPI_Comm_size (MPI_COMM_WORLD, &size);
 
   if (rank == 0)
   {
@@ -179,15 +178,16 @@ void compute_main_loop()
     {
       std::map<uint64_t, part> parts = partition_meshes(inserted_meshes);
 
-      std::map<uint64_t, mapping> mappings = map_parts (parts);
+      std::map<uint64_t, mapping> maps = map_parts (parts);
 
-      /* TODO: use one MPI_Scatterv for uint64_t data and one for REAL */
+      auto [maxnodes, maxeles, maxfaces] = max_per_rank (maps);
 
-      /* TODO: use MPI_Scatterv to distribute mesh partitioning information to all ranks and then construct data bunches locally */
+      /* TODO: using max and bunch sizes create node, element, face windows */
 
-      /* TODO: use MPI_Scatterv to distribute ellip partitioning ... */
+      /* TODO: start putting node data to remote ranks */
 
-      /* TODO: use MPI to distribute restrains and prescribes ... */
+      /* TODO: put element and  face data to ranks > 0, overallping
+               communication and creation of bunch structures if possible */
 
       partitioned = true;
     }
