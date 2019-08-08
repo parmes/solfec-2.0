@@ -4,8 +4,10 @@ include Config.mak
 C_INC=inc/err.h inc/alg.h inc/real.h cpp/version.h
 
 # C++ files
-CPP_INC=cpp/solfec.hpp inc/fmt.hpp cpp/compute.hpp cpp/mesh.hpp cpp/part.hpp
-CPP_SRC=cpp/tasksys.cpp cpp/solfec.cpp cpp/input.cpp cpp/spline.cpp cpp/output.cpp cpp/compute.cpp cpp/mesh.cpp cpp/part.cpp
+CPP_INC=cpp/solfec.hpp inc/fmt.hpp cpp/compute.hpp cpp/mesh.hpp cpp/part.hpp\
+        cpp/mutex.hpp cpp/lock.hpp
+CPP_SRC=cpp/tasksys.cpp cpp/solfec.cpp cpp/input.cpp cpp/spline.cpp cpp/output.cpp\
+        cpp/compute.cpp cpp/mesh.cpp cpp/part.cpp cpp/mutex.cpp cpp/lock.cpp
 
 # ISPC files
 ISPC_SRC=ispc/util.ispc
