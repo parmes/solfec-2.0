@@ -38,9 +38,6 @@ SOFTWARE.
 #ifndef __dlist__
 #define __dlist__
 
-#define MAX_KEY_SIZE 64
-#define MAX_VALUE_SIZE 256
-
 struct RemotePointer
 {
   MPI_Aint disp; /* Displacement in window */
@@ -54,7 +51,7 @@ struct DListElm
   RemotePointer next;
   key_type key;
   value_type value;
-} ;
+};
 
 #define DispInListElm( _dptr, _field ) \
         (MPI_Aint)&(((DListElm<key_type,value_type> *)((_dptr).disp))->_field)
@@ -96,9 +93,9 @@ struct DList
     MPI_Type_create_struct(2, blens, displ, dtypes, &dptrType);
     MPI_Type_commit(&dptrType);
 
-    blens[0] = 1;              dtypes[0] = dptrType;
-    blens[1] = MAX_KEY_SIZE;   dtypes[1] = MPI_CHAR;
-    blens[2] = MAX_VALUE_SIZE; dtypes[2] = MPI_CHAR;
+    blens[0] = 1;                  dtypes[0] = dptrType;
+    blens[1] = sizeof(key_type);   dtypes[1] = MPI_CHAR;
+    blens[2] = sizeof(value_type); dtypes[2] = MPI_CHAR;
     MPI_Get_address(&sampleElm.next,&displ[0]);
     MPI_Get_address(&sampleElm.key[0],&displ[1]);
     MPI_Get_address(&sampleElm.value[0],&displ[2]);
@@ -200,7 +197,7 @@ struct DList
     MPI_Win_get_attr(listwin, MPE_LISTWIN_KEY_RANK, &attrval, &flag);
     if (!flag) {
       /* listwin not properly initialized */
-      return NULL;
+      return {nullDptr, NULL};
     }
     myrank = (int)(MPI_Aint)attrval;  /* We store the rank in the attrval,
                                          which is an address-sized value */
@@ -213,7 +210,7 @@ struct DList
 	MPI_Win_flush(ptr.rank, listwin);
 	local_copy_ptr = &local_copy;
       } else
-	local_copy_ptr = (DListElm *)(ptr.local_pointer);
+	local_copy_ptr = (DListElm *)(ptr.local_pointer); /* FIXME: local_pointer is never set */
 
       if (key == local_copy_ptr->key) {
         MPI_Win_unlock_all(listwin);
