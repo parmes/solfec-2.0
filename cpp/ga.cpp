@@ -33,7 +33,7 @@ SOFTWARE.
 
 #include "ga.hpp"
 
-GA::GA(MPI_Comm comm, int dim1, int dim2, MPI_Datatype dtype): dim1(dim1), dim2(dim2)
+GA::GA(MPI_Comm comm, uint64_t dim1, uint64_t dim2, MPI_Datatype dtype): dim1(dim1), dim2(dim2)
 {
   MPI_Aint local_size;
   void *ga_win_ptr;
@@ -74,9 +74,10 @@ GA::~GA()
   mutex.free(&lock_win);
 }
 
-int GA::acc(int ilo, int ihigh, int jlo, int jhigh, void *buf)
+int GA::acc(uint64_t ilo, uint64_t ihigh, uint64_t jlo, uint64_t jhigh, void *buf)
 {
-  int jcur, jfirst, jlast, j, rank, rank_first, rank_last;
+  uint64_t jcur, jfirst, jlast, j;
+  int rank, rank_first, rank_last;
   MPI_Aint disp;
 
   /* In order to ensure that the entire update is atomic, we must
@@ -112,10 +113,11 @@ int GA::acc(int ilo, int ihigh, int jlo, int jhigh, void *buf)
   return 0;
 }
 
-int GA::get(int ilo, int ihigh, int jlo, int jhigh, void *buf)
+int GA::get(uint64_t ilo, uint64_t ihigh, uint64_t jlo, uint64_t jhigh, void *buf)
 {
-  int jcur, jfirst, jlast, j, rank;
+  uint64_t jcur, jfirst, jlast, j;
   MPI_Aint disp;
+  int rank;
 
   jcur = jlo;
   while (jcur <= jhigh) {
@@ -145,10 +147,11 @@ int GA::get(int ilo, int ihigh, int jlo, int jhigh, void *buf)
   return 0;
 }
 
-int GA::put(int ilo, int ihigh, int jlo, int jhigh, void *buf)
+int GA::put(uint64_t ilo, uint64_t ihigh, uint64_t jlo, uint64_t jhigh, void *buf)
 {
-  int jcur, jfirst, jlast, j, rank;
+  uint64_t jcur, jfirst, jlast, j;
   MPI_Aint disp;
+  int rank;
 
   jcur = jlo;
   while (jcur <= jhigh) {

@@ -44,12 +44,12 @@ struct GA
   MPI_Datatype dtype;
   int dtype_size;
   /* sizes of the global array */
-  int dim1, dim2, chunk2;
-  GA(MPI_Comm comm, int dim1, int dim2, MPI_Datatype dtype);
+  uint64_t dim1, dim2, chunk2;
+  GA(MPI_Comm comm, uint64_t dim1, uint64_t dim2, MPI_Datatype dtype);
   ~GA();
-  int acc(int ilo, int ihigh, int jlo, int jhigh, void *buf);
-  int get(int ilo, int ihigh, int jlo, int jhigh, void *buf);
-  int put(int ilo, int ihigh, int jlo, int jhigh, void *buf);
+  int acc(uint64_t ilo, uint64_t ihigh, uint64_t jlo, uint64_t jhigh, void *buf);
+  int get(uint64_t ilo, uint64_t ihigh, uint64_t jlo, uint64_t jhigh, void *buf);
+  int put(uint64_t ilo, uint64_t ihigh, uint64_t jlo, uint64_t jhigh, void *buf);
 };
 
 #endif
