@@ -27,6 +27,7 @@ SOFTWARE.
 #include <stdlib.h>
 #include <string.h>
 #include <float.h>
+#include <mpi.h>
 #include "real.h"
 #include "err.h"
 #include "solfec.hpp"

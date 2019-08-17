@@ -31,12 +31,11 @@ SOFTWARE.
 #include "real.h"
 #include "mesh.hpp"
 #include "solfec.hpp"
-#include "compute.hpp"
 
 /* Contributors: Tomasz Koziara */
 
 /* partition input meshes and turn parts data */
-std::map<uint64_t, part> partition_meshes(const std::set<uint64_t> &bodnum_subset)
+std::map<uint64_t, part> partition_meshes(const std::set<uint64_t> &bodnum_subset, int elements_perpart, int faces_perpart)
 {
   tf::Executor executor;
   tf::Taskflow taskflow;
@@ -69,11 +68,11 @@ std::map<uint64_t, part> partition_meshes(const std::set<uint64_t> &bodnum_subse
       part.eptr.push_back(e-mesh.elements.begin());
     }
 
-    /* partition elements into <= ELEMENTS_BUNCH sized sets */
+    /* partition elements into <= elements_perpart sized sets */
     part.epart.resize(part.ne);
     part.npart.resize(part.nn);
     ncommon = 3;
-    part.neparts = 1+part.ne/ELEMENTS_BUNCH;
+    part.neparts = 1+part.ne/elements_perpart;
     METIS_PartMeshDual(&part.ne, &part.nn, &part.eptr[0], &part.eind[0], NULL, NULL, &ncommon,
                        &part.neparts, NULL, NULL, &objval, &part.epart[0], &part.npart[0]);
 
@@ -81,11 +80,11 @@ std::map<uint64_t, part> partition_meshes(const std::set<uint64_t> &bodnum_subse
     mesh_create_metis_faces (mesh.elements, mesh.gcolor, mesh.colors,
                              part.nf, part.fptr, part.find, part.color);
 
-    /* partition faces into <= FACES_BUNCH sized sets */
+    /* partition faces into <= faces_perpart sized sets */
     part.fpart.resize(part.ne);
     temp.resize(part.nn);
     ncommon = 2;
-    part.nfparts = 1+part.nf/ELEMENTS_BUNCH;
+    part.nfparts = 1+part.nf/faces_perpart;
     METIS_PartMeshDual(&part.nf, &part.nn, &part.fptr[0], &part.find[0], NULL, NULL, &ncommon,
                        &part.nfparts, NULL, NULL, &objval, &part.fpart[0], &temp[0]);
   });

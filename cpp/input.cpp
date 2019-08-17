@@ -30,6 +30,7 @@ SOFTWARE.
 #include <iostream>
 #include <string.h>
 #include <stdio.h>
+#include <mpi.h>
 #include "real.h"
 #include "err.h"
 #include "alg.h"
@@ -804,6 +805,8 @@ static PyObject* MATERIAL (PyObject *self, PyObject *args, PyObject *kwds)
   material.young = (REAL)young;
   material.poisson = (REAL)poisson;
   material.viscosity = (REAL)viscosity;
+
+  compute_insert_material(solfec::materials_count-1);
 
   Py_RETURN_uint64_t (solfec::materials_count-1);
 }

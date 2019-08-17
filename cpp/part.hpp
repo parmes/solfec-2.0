@@ -49,7 +49,7 @@ struct mapping
 };
 
 /* partition input meshes and turn parts data */
-std::map<uint64_t, part> partition_meshes(const std::set<uint64_t> &bodnum_subset);
+std::map<uint64_t, part> partition_meshes(const std::set<uint64_t> &bodnum_subset, int elements_perpart, int faces_perpart);
 
 /* map mesh partitioning to MPI ranks */
 std::map<uint64_t, mapping> map_parts(const std::map<uint64_t, part> &parts);

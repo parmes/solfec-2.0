@@ -82,28 +82,28 @@ int GA::acc(uint64_t ilo, uint64_t ihigh, uint64_t jlo, uint64_t jhigh, void *bu
 
   /* In order to ensure that the entire update is atomic, we must
      first mutex-lock all of the windows that we will access */
-  rank_first = (jlo - 1) / chunk2;
-  rank_last  = (jhigh - 1) / chunk2;
-  for (rank = rank_first; rank <= rank_last; rank++) {
+  rank_first = jlo / chunk2;
+  rank_last = jhigh / chunk2;
+  for (rank = rank_first; rank < rank_last; rank++) {
       mutex.acquire(lock_win, rank);
   }
 
   jcur = jlo;
-  while (jcur <= jhigh) {
+  while (jcur < jhigh) {
     rank   = (jcur - 1) /chunk2;
     jfirst = rank * chunk2 + 1;
     jlast  = (rank + 1) * chunk2;
-    if (jlast > jhigh) jlast = jhigh;
+    if (jlast >= jhigh) jlast = jhigh;
 
     MPI_Win_lock(MPI_LOCK_SHARED, rank, MPI_MODE_NOCHECK,
                  ga_win);
     for (j=jcur; j<=jlast; j++) {
-      disp = (j - jfirst) * dim1 + (ilo - 1);
-      MPI_Accumulate(buf, ihigh - ilo + 1, dtype,
-                     rank, disp, ihigh - ilo + 1, dtype,
+      disp = (j - jfirst) * dim1 + ilo;
+      MPI_Accumulate(buf, ihigh - ilo, dtype,
+                     rank, disp, ihigh - ilo, dtype,
                      MPI_SUM, ga_win);
       buf = (void *)( ((char *)buf) +
-                      (ihigh - ilo + 1) *  dtype_size);
+                      (ihigh - ilo) *  dtype_size);
     }
     MPI_Win_unlock(rank, ga_win);
 
@@ -120,11 +120,11 @@ int GA::get(uint64_t ilo, uint64_t ihigh, uint64_t jlo, uint64_t jhigh, void *bu
   int rank;
 
   jcur = jlo;
-  while (jcur <= jhigh) {
+  while (jcur < jhigh) {
       rank   = (jcur - 1) /chunk2;
       jfirst = rank * chunk2 + 1;
       jlast  = (rank + 1) * chunk2;
-      if (jlast > jhigh) jlast = jhigh;
+      if (jlast >= jhigh) jlast = jhigh;
 
       mutex.acquire(lock_win,rank);
 
@@ -132,12 +132,12 @@ int GA::get(uint64_t ilo, uint64_t ihigh, uint64_t jlo, uint64_t jhigh, void *bu
       MPI_Win_lock(MPI_LOCK_SHARED, rank, MPI_MODE_NOCHECK,
 		   ga_win);
       for (j=jcur; j<=jlast; j++) {
-	  disp = (j - jfirst) * dim1 + (ilo - 1);
-	  MPI_Get(buf, ihigh - ilo + 1, dtype,
-		  rank, disp, ihigh - ilo + 1, dtype,
+	  disp = (j - jfirst) * dim1 + ilo;
+	  MPI_Get(buf, ihigh - ilo, dtype,
+		  rank, disp, ihigh - ilo, dtype,
 		  ga_win);
 	  buf = (void *)( ((char *)buf) +
-			  (ihigh - ilo + 1) *  dtype_size );
+			  (ihigh - ilo) *  dtype_size );
       }
       MPI_Win_unlock(rank, ga_win);
 
@@ -154,11 +154,11 @@ int GA::put(uint64_t ilo, uint64_t ihigh, uint64_t jlo, uint64_t jhigh, void *bu
   int rank;
 
   jcur = jlo;
-  while (jcur <= jhigh) {
+  while (jcur < jhigh) {
       rank   = (jcur - 1) /chunk2;
       jfirst = rank * chunk2 + 1;
       jlast  = (rank + 1) * chunk2;
-      if (jlast > jhigh) jlast = jhigh;
+      if (jlast >= jhigh) jlast = jhigh;
 
       mutex.acquire(lock_win,rank);
 
@@ -166,12 +166,12 @@ int GA::put(uint64_t ilo, uint64_t ihigh, uint64_t jlo, uint64_t jhigh, void *bu
       MPI_Win_lock(MPI_LOCK_SHARED, rank, MPI_MODE_NOCHECK,
 		   ga_win);
       for (j=jcur; j<=jlast; j++) {
-	  disp = (j - jfirst) * dim1 + (ilo - 1);
-	  MPI_Put(buf, ihigh - ilo + 1, dtype,
-		  rank, disp, ihigh - ilo + 1, dtype,
+	  disp = (j - jfirst) * dim1 + ilo;
+	  MPI_Put(buf, ihigh - ilo, dtype,
+		  rank, disp, ihigh - ilo, dtype,
 		  ga_win);
 	  buf = (void *)( ((char *)buf) +
-			  (ihigh - ilo + 1) *  dtype_size );
+			  (ihigh - ilo) *  dtype_size );
       }
       MPI_Win_unlock(rank, ga_win);
 
@@ -179,4 +179,9 @@ int GA::put(uint64_t ilo, uint64_t ihigh, uint64_t jlo, uint64_t jhigh, void *bu
       jcur = jlast + 1;
   }
   return 0;
+}
+
+void GA::fence()
+{
+  MPI_Win_fence (0, ga_win);
 }
