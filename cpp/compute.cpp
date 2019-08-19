@@ -69,7 +69,9 @@ GA *ga_counters; /* global array of MPI_UINT64_T counters; per rank:
 enum {cn_materials, sz_materials,
       cn_nodes, sz_nodes,
       cn_elements, sz_elements,
-      cn_faces, sz_faces, cn_last};
+      cn_faces, sz_faces,
+      cn_ellips, sz_ellips,
+      cn_last};
 
 GA *ga_materials; /* global array of materials */
 enum {mt_density,
@@ -79,10 +81,9 @@ enum {mt_density,
       mt_last};
 
 GA *ga_nodes; /* global array of nodal data */
-enum {nd_X, nd_Y, nd_Z,
-      nd_x, nd_y, nd_z,
-      nd_dx, nd_dy, nd_dz,
-      nd_vx, nd_vy, nd_vz,
+enum {nd_vx, nd_vy, nd_vz,   /* linear velocity */
+      nd_x, nd_y, nd_z,      /* current position */
+      nd_X, nd_Y, nd_Z,      /* reference position */
       nd_last};
 
 GA *ga_elements; /* global array of element data */
@@ -94,10 +95,30 @@ enum {el_bodnum,
       el_last};
 
 GA *ga_faces; /* global array of face data */
-enum {fa_type, /* 3, 4 => triangle, quadrilateral */
+enum {fa_bodnum,
+      fa_color,
+      fa_type, /* 3, 4 => triangle, quadrilateral */
       fa_nd0_rnk, fa_nd0_idx, fa_nd1_rnk, fa_nd1_idx, fa_nd2_rnk, fa_nd2_idx, fa_nd3_rnk, fa_nd3_idx,
-      fa_color, fa_bodnum,
       fa_last};
+
+GA *ga_elldata; /* global array of ellipsoids data */
+enum {ll_vF0, ll_vF1, ll_vF2, ll_vF3, ll_vF4, ll_vF5, ll_vF6, ll_vF7, ll_vF8, /* deformation gradient velocity */
+      ll_vx, ll_vy, ll_vz,                                                    /* linear velocity */
+      ll_F0, ll_F1, ll_F2, ll_F3, ll_F4, ll_F5, ll_F6, ll_F7, ll_F8,          /* deformation gradient */
+      ll_x, ll_y, ll_z,                                                       /* current position */
+      ll_a, ll_b, ll_c,                                                       /* current radii */
+      ll_r0, ll_r1, ll_r2, ll_r3, ll_r4, ll_r5, ll_r6, ll_r7, ll_r8,          /* current rotation */
+      ll_X, ll_Y, ll_Z,                                                       /* reference position */
+      ll_A, ll_B, ll_C,                                                       /* reference radii */
+      ll_R0, ll_R1, ll_R2, ll_R3, ll_R4, ll_R5, ll_R6, ll_R7, ll_R8,          /* reference rotation */
+      ll_last0};
+
+GA *ga_ellips; /* global array of ellipsoids */
+enum {ll_bodnum,
+      ll_matnum,
+      ll_color,
+      ll_rnk, ll_idx, /* ellipsoid data rank and index */
+      ll_last1};
 
 /* --- all ranks */
 };
@@ -175,7 +196,7 @@ void compute_main_loop()
 
   if (!partitioned)
   {
-    ga_counters = new GA(MPI_COMM_WORLD, 8, size, MPI_UINT64_T);
+    ga_counters = new GA(MPI_COMM_WORLD, cn_last, size, MPI_UINT64_T);
 
     ERRMEM (ga_counters);
 
@@ -193,11 +214,15 @@ void compute_main_loop()
       ga_nodes = new GA(MPI_COMM_WORLD, counts[sz_nodes], nd_last*size, MPI_REAL);
       ga_elements = new GA(MPI_COMM_WORLD, counts[sz_elements], el_last*size, MPI_UINT64_T);
       ga_faces = new GA(MPI_COMM_WORLD, counts[sz_faces], fa_last*size, MPI_UINT64_T);
+      ga_elldata = new GA(MPI_COMM_WORLD, counts[sz_ellips], ll_last0*size, MPI_REAL);
+      ga_ellips = new GA(MPI_COMM_WORLD, counts[sz_ellips], ll_last1*size, MPI_UINT64_T);
 
       ERRMEM (ga_materials);
       ERRMEM (ga_nodes);
       ERRMEM (ga_elements);
       ERRMEM (ga_faces);
+      ERRMEM (ga_elldata);
+      ERRMEM (ga_ellips);
     };
 
     if (rank == 0) /* partition meshes and estimate array sizes */
@@ -217,9 +242,11 @@ void compute_main_loop()
 		             0,
 		             maxeles * 2,
 		             0,
-		             maxfaces * 2};
+		             maxfaces * 2,
+			     0,
+			     inserted_ellips.size() * 2};
 
-	ga_counters->put (0, 8, r, r+1, counts);
+	ga_counters->put (0, cn_last, r, r+1, counts);
       }
 
       GA_ALL_CREATE (rank, size); /* create global arrays */
@@ -249,6 +276,8 @@ void compute_main_loop()
 
       delete[] matdata;
 
+      /* write mesh data */
+
       for (auto& [bodnum, map] : maps)
       {
          /* wrie nodes */
@@ -270,18 +299,15 @@ void compute_main_loop()
 	    REAL x = mesh.nodes[i][0],
 	         y = mesh.nodes[i][1],
 	         z = mesh.nodes[i][2];
-	    noddata[nd_X*nodsize + nodidx] = x;
-	    noddata[nd_Y*nodsize + nodidx] = y;
-	    noddata[nd_Z*nodsize + nodidx] = z;
-	    noddata[nd_x*nodsize + nodidx] = x;
-	    noddata[nd_y*nodsize + nodidx] = y;
-	    noddata[nd_z*nodsize + nodidx] = z;
-	    noddata[nd_dx*nodsize + nodidx] = 0.;
-	    noddata[nd_dy*nodsize + nodidx] = 0.;
-	    noddata[nd_dz*nodsize + nodidx] = 0.;
 	    noddata[nd_vx*nodsize + nodidx] = 0.;
 	    noddata[nd_vy*nodsize + nodidx] = 0.;
 	    noddata[nd_vz*nodsize + nodidx] = 0.;
+	    noddata[nd_x*nodsize + nodidx] = x;
+	    noddata[nd_y*nodsize + nodidx] = y;
+	    noddata[nd_z*nodsize + nodidx] = z;
+	    noddata[nd_X*nodsize + nodidx] = x;
+	    noddata[nd_Y*nodsize + nodidx] = y;
+	    noddata[nd_Z*nodsize + nodidx] = z;
 	    nodidx ++;
 	  }
 
@@ -329,14 +355,24 @@ void compute_main_loop()
 	    if (eltype > 4)
 	    { eledata[el_nd4_rnk*elesize + eleidx] = map.nrank[j+4];
 	      eledata[el_nd4_idx*elesize + eleidx] = map.nindex[j+4]; }
+	    else
+	    { eledata[el_nd4_rnk*elesize + eleidx] = 0;
+	      eledata[el_nd4_idx*elesize + eleidx] = 0; }
 	    if (eltype > 5)
 	    { eledata[el_nd5_rnk*elesize + eleidx] = map.nrank[j+5];
 	      eledata[el_nd5_idx*elesize + eleidx] = map.nindex[j+5]; }
+	    { eledata[el_nd5_rnk*elesize + eleidx] = 0;
+	      eledata[el_nd5_idx*elesize + eleidx] = 0; }
 	    if (eltype > 7)
 	    { eledata[el_nd6_rnk*elesize + eleidx] = map.nrank[j+6];
 	      eledata[el_nd6_idx*elesize + eleidx] = map.nindex[j+6];
 	      eledata[el_nd7_rnk*elesize + eleidx] = map.nrank[j+7];
 	      eledata[el_nd7_idx*elesize + eleidx] = map.nindex[j+7]; }
+	    else
+	    { eledata[el_nd6_rnk*elesize + eleidx] = 0;
+	      eledata[el_nd6_idx*elesize + eleidx] = 0;
+	      eledata[el_nd7_rnk*elesize + eleidx] = 0;
+	      eledata[el_nd7_idx*elesize + eleidx] = 0; }
 
 	    eleidx ++;
 	  }
@@ -353,8 +389,141 @@ void compute_main_loop()
 
         /* write faces */
 
-        /* TODO */
+        for (auto r = map.frank.begin(); r != map.frank.end(); )
+	{
+	  auto eqr = std::equal_range(r, map.frank.end(), *r);
+
+	  uint64_t facsize = eqr.second - eqr.first;
+	  uint64_t *facdata = new uint64_t [facsize * fa_last];
+	  uint64_t facidx = 0;
+	  ERRMEM (facdata);
+
+	  for (auto k = eqr.first; k != eqr.second; k++)
+	  {
+	    auto i = k - map.frank.begin();
+	    auto j = part.fptr[i];
+	    auto factype = part.fptr[i+1]-j;
+
+	    facdata[fa_bodnum*facsize + facidx] = bodnum;
+	    facdata[fa_color*facsize + facidx] = part.color[i];
+	    facdata[fa_type*facsize + facidx] = factype;
+
+	    facdata[fa_nd0_rnk*facsize + facidx] = map.nrank[j];
+	    facdata[fa_nd0_idx*facsize + facidx] = map.nindex[j];
+	    facdata[fa_nd1_rnk*facsize + facidx] = map.nrank[j+1];
+	    facdata[fa_nd1_idx*facsize + facidx] = map.nindex[j+1];
+	    facdata[fa_nd2_rnk*facsize + facidx] = map.nrank[j+2];
+	    facdata[fa_nd2_idx*facsize + facidx] = map.nindex[j+2];
+	    if (factype > 3)
+	    { facdata[fa_nd3_rnk*facsize + facidx] = map.nrank[j+3];
+	      facdata[fa_nd3_idx*facsize + facidx] = map.nindex[j+3]; }
+	    else
+	    { facdata[fa_nd3_rnk*facsize + facidx] = 0;
+	      facdata[fa_nd3_idx*facsize + facidx] = 0; }
+
+	    facidx ++;
+	  }
+
+	  uint64_t count;
+	  ga_counters->get(cn_faces, cn_faces+1, *r, (*r)+1, &count);
+	  ga_nodes->put(count, count+facidx, (*r)*fa_last, ((*r)+1)*fa_last, facdata);
+	  ga_counters->acc(cn_faces, cn_faces+1, *r, (*r)+1, &facidx);
+
+	  delete[] facdata;
+
+	  r = eqr.second;
+	}
       }
+
+      /* write ellipsoids */
+
+      uint64_t ellsize = inserted_ellips.size();
+      REAL *elldata = new REAL [ellsize * ll_last0];
+      uint64_t *ellips = new uint64_t [ellsize * ll_last1];
+      uint64_t ellidx = 0;
+      ERRMEM (elldata);
+      ERRMEM (ellips);
+
+      std::vector<int> ellip_rank; /* TODO -> use dynlb load balance to assign ranks */
+      std::vector<uint64_t> ellip_index; /* TODO -> count rank assignments */
+
+      for (auto& bodnum : inserted_ellips)
+      {
+	struct ellip &ellip = solfec::ellips[bodnum];
+
+	elldata[ll_vF0*ellsize + ellidx] = 0.;
+	elldata[ll_vF1*ellsize + ellidx] = 0.;
+	elldata[ll_vF2*ellsize + ellidx] = 0.;
+	elldata[ll_vF3*ellsize + ellidx] = 0.;
+	elldata[ll_vF4*ellsize + ellidx] = 0.;
+	elldata[ll_vF5*ellsize + ellidx] = 0.;
+	elldata[ll_vF6*ellsize + ellidx] = 0.;
+	elldata[ll_vF7*ellsize + ellidx] = 0.;
+	elldata[ll_vF8*ellsize + ellidx] = 0.;
+	elldata[ll_vx*ellsize + ellidx] = 0.;
+	elldata[ll_vy*ellsize + ellidx] = 0.;
+	elldata[ll_vz*ellsize + ellidx] = 0.;
+
+	elldata[ll_F0*ellsize + ellidx] = 1.;
+	elldata[ll_F1*ellsize + ellidx] = 0.;
+	elldata[ll_F2*ellsize + ellidx] = 0.;
+	elldata[ll_F3*ellsize + ellidx] = 0.;
+	elldata[ll_F4*ellsize + ellidx] = 1.;
+	elldata[ll_F5*ellsize + ellidx] = 0.;
+	elldata[ll_F6*ellsize + ellidx] = 0.;
+	elldata[ll_F7*ellsize + ellidx] = 0.;
+	elldata[ll_F8*ellsize + ellidx] = 1.;
+
+	elldata[ll_x*ellsize + ellidx] = ellip.center[0];
+	elldata[ll_y*ellsize + ellidx] = ellip.center[1];
+	elldata[ll_z*ellsize + ellidx] = ellip.center[2];
+	elldata[ll_a*ellsize + ellidx] = ellip.radius[0];
+	elldata[ll_b*ellsize + ellidx] = ellip.radius[1];
+	elldata[ll_c*ellsize + ellidx] = ellip.radius[2];
+	elldata[ll_r0*ellsize + ellidx] = ellip.rotation[0];
+	elldata[ll_r1*ellsize + ellidx] = ellip.rotation[1];
+	elldata[ll_r2*ellsize + ellidx] = ellip.rotation[2];
+	elldata[ll_r3*ellsize + ellidx] = ellip.rotation[3];
+	elldata[ll_r4*ellsize + ellidx] = ellip.rotation[4];
+	elldata[ll_r5*ellsize + ellidx] = ellip.rotation[5];
+	elldata[ll_r6*ellsize + ellidx] = ellip.rotation[6];
+	elldata[ll_r7*ellsize + ellidx] = ellip.rotation[7];
+	elldata[ll_r8*ellsize + ellidx] = ellip.rotation[8];
+
+	elldata[ll_X*ellsize + ellidx] = ellip.center[0];
+	elldata[ll_Y*ellsize + ellidx] = ellip.center[1];
+	elldata[ll_Z*ellsize + ellidx] = ellip.center[2];
+	elldata[ll_A*ellsize + ellidx] = ellip.radius[0];
+	elldata[ll_B*ellsize + ellidx] = ellip.radius[1];
+	elldata[ll_C*ellsize + ellidx] = ellip.radius[2];
+	elldata[ll_R0*ellsize + ellidx] = ellip.rotation[0];
+	elldata[ll_R1*ellsize + ellidx] = ellip.rotation[1];
+	elldata[ll_R2*ellsize + ellidx] = ellip.rotation[2];
+	elldata[ll_R3*ellsize + ellidx] = ellip.rotation[3];
+	elldata[ll_R4*ellsize + ellidx] = ellip.rotation[4];
+	elldata[ll_R5*ellsize + ellidx] = ellip.rotation[5];
+	elldata[ll_R6*ellsize + ellidx] = ellip.rotation[6];
+	elldata[ll_R7*ellsize + ellidx] = ellip.rotation[7];
+	elldata[ll_R8*ellsize + ellidx] = ellip.rotation[8];
+
+	ellips[ll_bodnum*ellsize + ellidx] = bodnum;
+	ellips[ll_matnum*ellsize + ellidx] = ellip.matnum;
+	ellips[ll_color*ellsize + ellidx] = ellip.gcolor;
+	ellips[ll_rnk*ellsize + ellidx] = ellip_rank[ellidx];
+	ellips[ll_idx*ellsize + ellidx] = ellip_index[ellidx];
+
+        ellidx ++;
+      }
+
+      for (int r = 0; r < size; r ++)
+      {
+	ga_elldata->put(0, ellidx, r*ll_last0, (r+1)*ll_last0, elldata);
+	ga_ellips->put(0, ellidx, r*ll_last1, (r+1)*ll_last1, ellips);
+	ga_counters->acc(cn_ellips, cn_ellips+1, r, r+1, &ellidx);
+      }
+
+      delete[] elldata;
+      delete[] ellips;
     }
     else /* create global arrays */
     {
@@ -365,6 +534,8 @@ void compute_main_loop()
     ga_nodes->fence();
     ga_elements->fence();
     ga_faces->fence();
+    ga_elldata->fence();
+    ga_ellips->fence();
     partitioned = true;
   }
   else
