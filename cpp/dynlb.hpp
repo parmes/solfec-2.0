@@ -31,26 +31,27 @@ struct dynlb /* load balancer interface */
 {
   int64_t cutoff; /* partitioning tree cutoff; 0 means use default selection */
   REAL epsilon; /* imbalance epsilon; rebalance when imbalance > 1.0 + epsilon */
-
   ispc::partitioning *ptree; /* partitioning tree; used internally */
   int ptree_size; /* partitioning tree size; used internally */
-
   REAL imbalance; /* current imbalance */
+
+  /* default constructor */
+  dynlb(): cutoff(0), epsilon(0.), ptree(NULL), ptree_size(0), imbalance(1.) { }
+
+  /* create local load balancer */
+  void local_create (uint64_t n, REAL *point[3], int64_t cutoff = 0, REAL epsilon = 0.1);
+
+  /* assign an MPI rank to a point; return this rank */
+  int point_assign (REAL point[]);
+
+  /* assign MPI ranks to a box spanned between lo and hi points; return the number of ranks assigned */
+  int box_assign (REAL lo[], REAL hi[], int ranks[]);
+
+  /* update local load balancer */
+  void local_update (uint64_t n, REAL *point[3]);
+
+  /* destroy load balancer */
+  ~dynlb();
 };
-
-/* create local load balancer */
-struct dynlb* dynlb_local_create (uint64_t n, REAL *point[3], int64_t cutoff = 0, REAL epsilon = 0.1);
-
-/* assign an MPI rank to a point; return this rank */
-int dynlb_point_assign (struct dynlb *lb, REAL point[]);
-
-/* assign MPI ranks to a box spanned between lo and hi points; return the number of ranks assigned */
-int dynlb_box_assign (struct dynlb *lb, REAL lo[], REAL hi[], int ranks[]);
-
-/* update local load balancer */
-void dynlb_local_update (struct dynlb *lb, uint64_t n, REAL *point[3]);
-
-/* destroy load balancer */
-void dynlb_destroy (struct dynlb *lb);
 
 #endif

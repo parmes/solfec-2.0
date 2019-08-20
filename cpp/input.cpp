@@ -43,6 +43,7 @@ SOFTWARE.
 #define PyInt_AsLong PyLong_AsSize_t
 #define PyString_FromString PyUnicode_FromString
 #define PyString_Check PyUnicode_Check
+#define PyInt_Check PyLong_Check
 #define PyString_AsString PyUnicode_AsUTF8
 #define Py_RETURN_uint64_t(arg) return PyLong_FromUnsignedLongLong(arg)
 #else

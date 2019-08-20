@@ -32,8 +32,10 @@ SOFTWARE.
 #include "err.h"
 #include "ga.hpp"
 #include "part.hpp"
+#include "dynlb.hpp"
 #include "solfec.hpp"
 #include "compute.hpp"
+#include "alloc_ispc.h"
 
 /* compute gobal variables */
 namespace compute
@@ -440,12 +442,46 @@ void compute_main_loop()
       uint64_t ellsize = inserted_ellips.size();
       REAL *elldata = new REAL [ellsize * ll_last0];
       uint64_t *ellips = new uint64_t [ellsize * ll_last1];
-      uint64_t ellidx = 0;
+      uint64_t ellidx = 0, i;
+      using namespace ispc;
       ERRMEM (elldata);
       ERRMEM (ellips);
+      REAL *point[3] = {aligned_real_alloc(ellsize),
+                        aligned_real_alloc(ellsize),
+                        aligned_real_alloc(ellsize)};
+      dynlb lb;
 
-      std::vector<int> ellip_rank; /* TODO -> use dynlb load balance to assign ranks */
-      std::vector<uint64_t> ellip_index; /* TODO -> count rank assignments */
+     
+      i = 0;
+      for (auto& bodnum : inserted_ellips)
+      {
+	struct ellip &ellip = solfec::ellips[bodnum];
+	point[0][i] = ellip.center[0];
+	point[1][i] = ellip.center[1];
+	point[2][i] = ellip.center[2];
+        i ++;
+      }
+
+      lb.local_create (ellidx, point); /* create local load balancer */
+      aligned_real_free(point[0]);
+      aligned_real_free(point[1]);
+      aligned_real_free(point[2]);
+
+      std::vector<int> ellip_rank(ellsize);
+      i = 0;
+      for (auto& bodnum : inserted_ellips)
+      {
+	struct ellip &ellip = solfec::ellips[bodnum];
+	ellip_rank[i++] = lb.point_assign(ellip.center); /* assign ranks */
+      }
+
+      std::vector<uint64_t> ellinrank(size);
+      std::vector<uint64_t> ellip_index(ellsize);
+      for (i = 0; i < ellsize; i ++)
+      {
+	ellip_index[i] = ellinrank[ellip_rank[i]];
+	ellinrank[ellip_rank[i]] ++;
+      }
 
       for (auto& bodnum : inserted_ellips)
       {

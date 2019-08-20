@@ -36,27 +36,23 @@ SOFTWARE.
 #include "dynlb.hpp"
 
 /* create local load balancer */
-struct dynlb* dynlb_local_create (uint64_t n, REAL *point[3], int64_t cutoff, REAL epsilon)
+void dynlb::local_create (uint64_t n, REAL *point[3], int64_t cutoff, REAL epsilon)
 {
   using namespace ispc;
   int i, size, *rank_size;
-  partitioning *ptree;
-  struct dynlb *lb;
-  REAL *gpoint[3];
   uint64_t leaf_count;
 
   MPI_Comm_size (MPI_COMM_WORLD, &size);
-
-  ERRMEM (lb = (struct dynlb*)malloc (sizeof(struct dynlb)));
-  lb->cutoff = cutoff;
-  lb->epsilon = epsilon;
 
   if (cutoff <= 0)
   {
     cutoff = -size; /* as many leaves as ranks */
   }
 
-  ptree = partitioning_create (0, n, point, cutoff, &lb->ptree_size, &leaf_count);
+  this->cutoff = cutoff;
+  this->epsilon = epsilon;
+
+  ptree = partitioning_create (0, n, point, cutoff, &ptree_size, &leaf_count);
 
   partitioning_assign_ranks (ptree, leaf_count / size, leaf_count % size);
 
@@ -66,7 +62,7 @@ struct dynlb* dynlb_local_create (uint64_t n, REAL *point[3], int64_t cutoff, RE
 
   ERRMEM (rank_size = (int*)calloc (size, sizeof (int)));
 
-  for (i = 0; i < lb->ptree_size; i ++)
+  for (i = 0; i < ptree_size; i ++)
   {
     if (ptree[i].dimension < 0) /* leaf */
     {
@@ -82,38 +78,33 @@ struct dynlb* dynlb_local_create (uint64_t n, REAL *point[3], int64_t cutoff, RE
     max_size = MAX (max_size, rank_size[i]);
   }
 
-  lb->imbalance = (REAL)max_size/(REAL)min_size;
+  imbalance = (REAL)max_size/(REAL)min_size;
 
-  if (isnan(lb->imbalance)) lb->imbalance = (REAL)1/(REAL)0; /* inf istead */
-
-  lb->ptree = ptree;
+  if (isnan(imbalance)) imbalance = (REAL)1/(REAL)0; /* inf istead */
 
   free (rank_size);
-
-  return lb;
 }
 
 /* assign an MPI rank to a point; return this rank */
-int dynlb_point_assign (struct dynlb *lb, REAL point[])
+int dynlb::point_assign (REAL point[])
 {
-  return ispc::partitioning_point_assign (lb->ptree, 0, point);
+  return ispc::partitioning_point_assign (ptree, 0, point);
 }
 
 /* assign MPI ranks to a box spanned between lo and hi points; return the number of ranks assigned */
-int dynlb_box_assign (struct dynlb *lb, REAL lo[], REAL hi[], int ranks[])
+int dynlb::box_assign (REAL lo[], REAL hi[], int ranks[])
 {
   int count = 0;
 
-  ispc::partitioning_box_assign (lb->ptree, 0, lo, hi, ranks, &count);
+  ispc::partitioning_box_assign (ptree, 0, lo, hi, ranks, &count);
 
   return count;
 }
 
 /* update local load balancer */
-void dynlb_local_update (struct dynlb *lb, uint64_t n, REAL *point[3])
+void dynlb::local_update (uint64_t n, REAL *point[3])
 {
   using namespace ispc;
-  partitioning *ptree = lb->ptree;
   int i, size, *rank_size;
 
   MPI_Comm_size (MPI_COMM_WORLD, &size);
@@ -122,7 +113,7 @@ void dynlb_local_update (struct dynlb *lb, uint64_t n, REAL *point[3])
 
   ERRMEM (rank_size = (int*)calloc (size, sizeof (int)));
 
-  for (i = 0; i < lb->ptree_size; i ++)
+  for (i = 0; i < ptree_size; i ++)
   {
     if (ptree[i].dimension < 0) /* leaf */
     {
@@ -138,27 +129,23 @@ void dynlb_local_update (struct dynlb *lb, uint64_t n, REAL *point[3])
     max_size = MAX (max_size, rank_size[i]);
   }
 
-  lb->imbalance = (REAL)max_size/(REAL)min_size;
+  imbalance = (REAL)max_size/(REAL)min_size;
 
   free (rank_size);
 
-  if (isnan (lb->imbalance) || isinf(lb->imbalance) || lb->imbalance > 1.0 + lb->epsilon) /* update partitioning */
+  if (isnan (imbalance) || isinf(imbalance) || imbalance > 1.0 + epsilon) /* update partitioning */
   {
-    struct dynlb *dy = dynlb_local_create (n, point, lb->cutoff, lb->epsilon);
+    dynlb dy; dy.local_create (n, point, cutoff, epsilon);
 
-    partitioning_destroy (lb->ptree);
-    lb->ptree = dy->ptree;
-    lb->ptree_size = dy->ptree_size;
-
-    lb->imbalance = dy->imbalance;
-
-    free (dy);
+    partitioning_destroy (ptree);
+    ptree = dy.ptree;
+    ptree_size = dy.ptree_size;
+    imbalance = dy.imbalance;
   }
 }
 
 /* destroy load balancer */
-void dynlb_destroy (struct dynlb *lb)
+dynlb::~dynlb ()
 {
-  ispc::partitioning_destroy (lb->ptree);
-  free (lb);
+  ispc::partitioning_destroy (ptree);
 }
