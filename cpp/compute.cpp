@@ -30,8 +30,10 @@ SOFTWARE.
 #include <set>
 #include "real.h"
 #include "err.h"
+#include "alg.h"
 #include "ga.hpp"
 #include "part.hpp"
+#include "mesh.hpp"
 #include "dynlb.hpp"
 #include "solfec.hpp"
 #include "compute.hpp"
@@ -285,7 +287,20 @@ void compute_main_loop()
 
       for (auto& [bodnum, map] : maps)
       {
-         /* wrie nodes */
+	struct part &part = parts[bodnum];
+
+        /* wrie nodes */
+
+	REAL center[3] = {0., 0., 0.};
+	REAL linear[3] = {0., 0., 0.};
+	REAL angular[3] = {0., 0., 0.};
+        auto vi = solfec::velocities.find(bodnum);
+	if (vi != solfec::velocities.end())
+	{
+	  COPY ((*vi).second.linear_values, linear);
+	  COPY ((*vi).second.angular_values, angular);
+	  mesh_char (bodnum, part.material, part.eptr, part.eind, NULL, center, NULL, NULL);
+	}
 
 	for (auto r = map.nrank.begin(); r != map.nrank.end(); )
 	{
@@ -304,9 +319,16 @@ void compute_main_loop()
 	    REAL x = mesh.nodes[i][0],
 	         y = mesh.nodes[i][1],
 	         z = mesh.nodes[i][2];
-	    noddata[nd_vx*nodsize + nodidx] = 0.;
-	    noddata[nd_vy*nodsize + nodidx] = 0.;
-	    noddata[nd_vz*nodsize + nodidx] = 0.;
+	    REAL a[3] = {x - center[0],
+	                 y - center[1],
+			 z - center[2]};
+	    REAL v[3] = {linear[0],
+	                 linear[2],
+			 linear[2]};
+	    PRODUCTADD (v, a, angular);
+	    noddata[nd_vx*nodsize + nodidx] = v[0];
+	    noddata[nd_vy*nodsize + nodidx] = v[1];
+	    noddata[nd_vz*nodsize + nodidx] = v[2];
 	    noddata[nd_x*nodsize + nodidx] = x;
 	    noddata[nd_y*nodsize + nodidx] = y;
 	    noddata[nd_z*nodsize + nodidx] = z;
@@ -330,8 +352,6 @@ void compute_main_loop()
 	}
 
 	/* write elements */
-
-	struct part &part = parts[bodnum];
 
         for (auto r = map.erank.begin(); r != map.erank.end(); )
 	{
@@ -505,18 +525,31 @@ void compute_main_loop()
       {
 	struct ellip &ellip = solfec::ellips[bodnum];
 
-	elldata[ll_vF0*ellsize + ellidx] = 0.;
-	elldata[ll_vF1*ellsize + ellidx] = 0.;
-	elldata[ll_vF2*ellsize + ellidx] = 0.;
-	elldata[ll_vF3*ellsize + ellidx] = 0.;
-	elldata[ll_vF4*ellsize + ellidx] = 0.;
-	elldata[ll_vF5*ellsize + ellidx] = 0.;
-	elldata[ll_vF6*ellsize + ellidx] = 0.;
-	elldata[ll_vF7*ellsize + ellidx] = 0.;
-	elldata[ll_vF8*ellsize + ellidx] = 0.;
-	elldata[ll_vx*ellsize + ellidx] = 0.;
-	elldata[ll_vy*ellsize + ellidx] = 0.;
-	elldata[ll_vz*ellsize + ellidx] = 0.;
+	REAL linear[3] = {0., 0., 0.};
+	REAL angular[3] = {0., 0., 0.};
+        auto vi = solfec::velocities.find(bodnum);
+	if (vi != solfec::velocities.end())
+	{
+	  COPY ((*vi).second.linear_values, linear);
+	  COPY ((*vi).second.angular_values, angular);
+	}
+	REAL L[9], F[9], vF[9];
+	VECSKEW(angular, L);
+	IDENTITY(F);
+	NNMUL (L, F, vF);
+
+	elldata[ll_vF0*ellsize + ellidx] = vF[0];
+	elldata[ll_vF1*ellsize + ellidx] = vF[1];
+	elldata[ll_vF2*ellsize + ellidx] = vF[2];
+	elldata[ll_vF3*ellsize + ellidx] = vF[3];
+	elldata[ll_vF4*ellsize + ellidx] = vF[4];
+	elldata[ll_vF5*ellsize + ellidx] = vF[5];
+	elldata[ll_vF6*ellsize + ellidx] = vF[6];
+	elldata[ll_vF7*ellsize + ellidx] = vF[7];
+	elldata[ll_vF8*ellsize + ellidx] = vF[8];
+	elldata[ll_vx*ellsize + ellidx] = linear[0];
+	elldata[ll_vy*ellsize + ellidx] = linear[1];
+	elldata[ll_vz*ellsize + ellidx] = linear[2];
 
 	elldata[ll_F0*ellsize + ellidx] = 1.;
 	elldata[ll_F1*ellsize + ellidx] = 0.;
@@ -588,15 +621,6 @@ void compute_main_loop()
       GA_ALL_CREATE (rank, size);
     }
 
-    /* sync arrays */
-
-    ga_materials->fence();
-    ga_nodes->fence();
-    ga_elements->fence();
-    ga_faces->fence();
-    ga_elldata->fence();
-    ga_ellips->fence();
-
     partitioned = true; /* initially partitioned */
   }
   else
@@ -653,10 +677,14 @@ void compute_main_loop()
       if (!inserted_meshes.empty())
       {
        /* TODO */
+
+       /* TODO: apply solfec::velocities */
       }
       if (!inserted_ellips.empty())
       {
 	/* TODO */
+
+       /* TODO: apply solfec::velocities */
       }
       if (!inserted_restrains.empty())
       {
@@ -667,19 +695,17 @@ void compute_main_loop()
 	/* TODO */
       }
     }
-
-    /* sync arrays */
-
-    ga_counters->fence();
-    ga_materials->fence();
-    ga_nodes->fence();
-    ga_elements->fence();
-    ga_faces->fence();
-    ga_elldata->fence();
-    ga_ellips->fence();
   }
 
-  /* TODO: apply solfec::velocities */
+  /* sync all RMA ops on arrays */
+
+  ga_counters->fence();
+  ga_materials->fence();
+  ga_nodes->fence();
+  ga_elements->fence();
+  ga_faces->fence();
+  ga_elldata->fence();
+  ga_ellips->fence();
 
   /* TODO: compute loop */
   /* { */

@@ -1563,12 +1563,13 @@ static PyObject* VELOCITY (PyObject *self, PyObject *args, PyObject *kwds)
   KEYWORDS ("bodnum", "linear", "angular");
   PyObject *linear, *angular;
   struct velocity velocity; 
+  uint64_t bodnum;
 
   linear = angular = NULL;
 
-  PARSEKEYS ("K|OO", &velocity.bodnum, &linear, &angular);
+  PARSEKEYS ("K|OO", &bodnum, &linear, &angular);
 
-  TYPETEST (is_bodnum (velocity.bodnum) &&
+  TYPETEST (is_bodnum (bodnum) &&
             is_tuple (linear, kwl[1], 3) && is_tuple (angular, kwl[2], 3));
 
   if (linear)
@@ -1597,7 +1598,7 @@ static PyObject* VELOCITY (PyObject *self, PyObject *args, PyObject *kwds)
     velocity.angular_values[2] = 0.0;
   }
 
-  solfec::velocities.push_back (velocity);
+  solfec::velocities[bodnum] = velocity;
 
   Py_RETURN_NONE;
 }
@@ -1607,15 +1608,17 @@ static PyObject* print_VELOCITIES (PyObject *self, PyObject *args, PyObject *kwd
 {
   if (solfec::notrun)
   {
-    for (auto it = solfec::velocities.begin(); it != solfec::velocities.end(); it++)
-    {
-      uint64_t velnum = it - solfec::velocities.begin();
+    uint64_t velnum = 0;
 
-      std::cout << "VELOCITY_" << velnum << "_bodnum = " << (*it).bodnum << std::endl;
-      std::cout << "VELOCITY_" << velnum << "_linear = (" << (*it).linear_values[0] << ","
-		<< (*it).linear_values[1] << "," << (*it).linear_values[2] << ")" << std::endl;
-      std::cout << "VELOCITY_" << velnum << "_angular = (" << (*it).angular_values[0] << ","
-		<< (*it).angular_values[1] << "," << (*it).angular_values[2] << ")" << std::endl;
+    for (auto& [bodnum, it] : solfec::velocities)
+    {
+      std::cout << "VELOCITY_" << velnum << "_bodnum = " << bodnum << std::endl;
+      std::cout << "VELOCITY_" << velnum << "_linear = (" << it.linear_values[0] << ","
+		<< it.linear_values[1] << "," << it.linear_values[2] << ")" << std::endl;
+      std::cout << "VELOCITY_" << velnum << "_angular = (" << it.angular_values[0] << ","
+		<< it.angular_values[1] << "," << it.angular_values[2] << ")" << std::endl;
+
+      velnum ++;
     }
   }
 

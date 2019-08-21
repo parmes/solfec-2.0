@@ -29,6 +29,10 @@ SOFTWARE.
  * from elements definitions, a global color, and colors of selected faces;
  * returns [number of faces, face pointers, face indices, face colors] */
 void mesh_create_metis_faces (const std::vector<uint64_t> &elements, uint64_t gcolor, const std::vector<uint64_t> &colors, /* input */
-                              idx_t &nf, std::vector<idx_t> &fptr, std::vector<idx_t> &find, std::vector<uint64_t> &color); /* output */
+                              int64_t &nf, std::vector<int64_t> &fptr, std::vector<int64_t> &find, std::vector<uint64_t> &color); /* output */
+
+/* calculate mass characteristics: scalar mass, mass center, euler tensor and inertia tensor */
+void mesh_char (uint64_t bodnum, std::vector<uint64_t> &material, std::vector<int64_t> eptr, std::vector<int64_t> eind,
+                REAL *mass, REAL *center, REAL *euler, REAL *inertia);
 
 #endif
