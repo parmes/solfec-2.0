@@ -50,6 +50,9 @@ std::set<uint64_t> inserted_restrains;
 std::set<uint64_t> deleted_restrains;
 std::set<uint64_t> inserted_prescribes;
 std::set<uint64_t> deleted_prescribes;
+
+std::map<uint64_t, mapping>  mesh_mapping;
+std::map<int, std::vector<std::pair<uint64_t, uint64_t>>>  deleted_nodes; /* rank mapping of deleted node ranges */
 /* --- rank 0 */
 
 /* all ranks --- */
@@ -198,7 +201,7 @@ void compute_main_loop()
 
   if (!partitioned)
   {
-    ga_counters = new GA(MPI_COMM_WORLD, cn_last, size, MPI_UINT64_T);
+    ga_counters = new GA(MPI_COMM_WORLD, cn_last, 1, MPI_UINT64_T);
 
     ERRMEM (ga_counters);
 
@@ -210,14 +213,14 @@ void compute_main_loop()
 
       uint64_t counts[cn_last];
 
-      ga_counters->get(0, cn_last, rank, rank+1, counts);
+      ga_counters->get(rank, 0, cn_last, 0, 1, counts);
 
-      ga_materials = new GA(MPI_COMM_WORLD, counts[sz_materials], mt_last*size, MPI_REAL);
-      ga_nodes = new GA(MPI_COMM_WORLD, counts[sz_nodes], nd_last*size, MPI_REAL);
-      ga_elements = new GA(MPI_COMM_WORLD, counts[sz_elements], el_last*size, MPI_UINT64_T);
-      ga_faces = new GA(MPI_COMM_WORLD, counts[sz_faces], fa_last*size, MPI_UINT64_T);
-      ga_elldata = new GA(MPI_COMM_WORLD, counts[sz_ellips], ll_last0*size, MPI_REAL);
-      ga_ellips = new GA(MPI_COMM_WORLD, counts[sz_ellips], ll_last1*size, MPI_UINT64_T);
+      ga_materials = new GA(MPI_COMM_WORLD, counts[sz_materials], mt_last, MPI_REAL);
+      ga_nodes = new GA(MPI_COMM_WORLD, counts[sz_nodes], nd_last, MPI_REAL);
+      ga_elements = new GA(MPI_COMM_WORLD, counts[sz_elements], el_last, MPI_UINT64_T);
+      ga_faces = new GA(MPI_COMM_WORLD, counts[sz_faces], fa_last, MPI_UINT64_T);
+      ga_elldata = new GA(MPI_COMM_WORLD, counts[sz_ellips], ll_last0, MPI_REAL);
+      ga_ellips = new GA(MPI_COMM_WORLD, counts[sz_ellips], ll_last1, MPI_UINT64_T);
 
       ERRMEM (ga_materials);
       ERRMEM (ga_nodes);
@@ -248,7 +251,7 @@ void compute_main_loop()
 			     0,
 			     inserted_ellips.size() * 2};
 
-	ga_counters->put (0, cn_last, r, r+1, counts);
+	ga_counters->put (r, 0, cn_last, 0, 1, counts);
       }
 
       GA_ALL_CREATE (rank, size); /* create global arrays */
@@ -272,8 +275,8 @@ void compute_main_loop()
 
       for (int r = 0; r < size; r ++)
       {
-	ga_materials->put(0, matidx, r*mt_last, (r+1)*mt_last, matdata);
-	ga_counters->acc(cn_materials, cn_materials+1, r, r+1, &matidx);
+	ga_materials->put(r, 0, matidx, 0, mt_last, matdata);
+	ga_counters->acc(r, cn_materials, cn_materials+1, 0, 1, &matidx);
       }
 
       delete[] matdata;
@@ -314,9 +317,12 @@ void compute_main_loop()
 	  }
 
 	  uint64_t count;
-	  ga_counters->get(cn_nodes, cn_nodes+1, *r, (*r)+1, &count);
-	  ga_nodes->put(count, count+nodidx, (*r)*nd_last, ((*r)+1)*nd_last, noddata);
-	  ga_counters->acc(cn_nodes, cn_nodes+1, *r, (*r)+1, &nodidx);
+	  ga_counters->get(*r, cn_nodes, cn_nodes+1, 0, 1, &count);
+	  ga_nodes->put(*r, count, count+nodidx, 0, nd_last, noddata);
+	  ga_counters->acc(*r, cn_nodes, cn_nodes+1, 0, 1, &nodidx);
+
+	  std::array<uint64_t,3> rng = {(unsigned)*r, count, count+nodidx};
+	  map.ga_nranges.push_back(rng); /* handy in deletion code */
 
 	  delete[] noddata;
 
@@ -380,9 +386,12 @@ void compute_main_loop()
 	  }
 
 	  uint64_t count;
-	  ga_counters->get(cn_elements, cn_elements+1, *r, (*r)+1, &count);
-	  ga_nodes->put(count, count+eleidx, (*r)*el_last, ((*r)+1)*el_last, eledata);
-	  ga_counters->acc(cn_elements, cn_elements+1, *r, (*r)+1, &eleidx);
+	  ga_counters->get(*r, cn_elements, cn_elements+1, 0, 1, &count);
+	  ga_elements->put(*r, count, count+eleidx, 0, el_last, eledata);
+	  ga_counters->acc(*r, cn_elements, cn_elements+1, 0, 1, &eleidx);
+
+	  std::array<uint64_t,3> rng = {(unsigned)*r, count, count+eleidx};
+	  map.ga_eranges.push_back(rng); /* handy in deletion code */
 
 	  delete[] eledata;
 
@@ -427,15 +436,24 @@ void compute_main_loop()
 	  }
 
 	  uint64_t count;
-	  ga_counters->get(cn_faces, cn_faces+1, *r, (*r)+1, &count);
-	  ga_nodes->put(count, count+facidx, (*r)*fa_last, ((*r)+1)*fa_last, facdata);
-	  ga_counters->acc(cn_faces, cn_faces+1, *r, (*r)+1, &facidx);
+	  ga_counters->get(*r, cn_faces, cn_faces+1, 0, 1, &count);
+	  ga_faces->put(*r, count, count+facidx, 0, fa_last, facdata);
+	  ga_counters->acc(*r, cn_faces, cn_faces+1, 0, 1, &facidx);
+
+	  std::array<uint64_t,3> rng = {(unsigned)*r, count, count+facidx};
+	  map.ga_franges.push_back(rng); /* handy in deletion code */
 
 	  delete[] facdata;
 
 	  r = eqr.second;
 	}
       }
+
+      /* update global mesh mapping */
+
+      mesh_mapping.clear(); /* clear previous content */
+
+      mesh_mapping.merge (maps); /* move temporary mappings into the global container */
 
       /* write ellipsoids */
 
@@ -553,18 +571,24 @@ void compute_main_loop()
 
       for (int r = 0; r < size; r ++)
       {
-	ga_elldata->put(0, ellidx, r*ll_last0, (r+1)*ll_last0, elldata);
-	ga_ellips->put(0, ellidx, r*ll_last1, (r+1)*ll_last1, ellips);
-	ga_counters->acc(cn_ellips, cn_ellips+1, r, r+1, &ellidx);
+	ga_elldata->put(r, 0, ellidx, 0, ll_last0, elldata);
+	ga_ellips->put(r, 0, ellidx, 0, ll_last1, ellips);
+	ga_counters->acc(r, cn_ellips, cn_ellips+1, 0, 1, &ellidx);
       }
 
       delete[] elldata;
       delete[] ellips;
+
+      /* TODO: inserted_restrains */
+
+      /* TODO: insered_prescribes */
     }
     else /* create global arrays */
     {
       GA_ALL_CREATE (rank, size);
     }
+
+    /* sync arrays */
 
     ga_materials->fence();
     ga_nodes->fence();
@@ -572,7 +596,8 @@ void compute_main_loop()
     ga_faces->fence();
     ga_elldata->fence();
     ga_ellips->fence();
-    partitioned = true;
+
+    partitioned = true; /* initially partitioned */
   }
   else
   {
@@ -580,7 +605,33 @@ void compute_main_loop()
     {
       if (!deleted_meshes.empty())
       {
-       /* TODO */
+        std::map<uint64_t, mapping>  deleted_mesh_mapping;
+	std::map<int, std::vector<std::pair<uint64_t,uint64_t>>> deleted_elements;
+	std::map<int, std::vector<std::pair<uint64_t,uint64_t>>> deleted_faces;
+
+	for (auto& bodnum : deleted_meshes)
+	{
+	  auto nh = mesh_mapping.extract(bodnum);
+	  deleted_mesh_mapping.insert(std::move(nh));
+	  mapping &map = deleted_mesh_mapping[bodnum];
+
+	  for (auto& r : map.ga_nranges)
+	  {
+	    deleted_nodes[r[0]].push_back(std::make_pair(r[1],r[2]));
+	  }
+
+	  for (auto& r : map.ga_eranges)
+	  {
+	    deleted_elements[r[0]].push_back(std::make_pair(r[1],r[2]));
+	  }
+
+	  for (auto& r : map.ga_franges)
+	  {
+	    deleted_faces[r[0]].push_back(std::make_pair(r[1],r[2]));
+	  }
+	}
+
+	/* TODO: for each affected rank resize element and face arrays */
       }
       if (!deleted_ellips.empty())
       {
@@ -616,7 +667,28 @@ void compute_main_loop()
 	/* TODO */
       }
     }
+
+    /* sync arrays */
+
+    ga_counters->fence();
+    ga_materials->fence();
+    ga_nodes->fence();
+    ga_elements->fence();
+    ga_faces->fence();
+    ga_elldata->fence();
+    ga_ellips->fence();
   }
 
-  /* TODO: compute */
+  /* TODO: apply solfec::velocities */
+
+  /* TODO: compute loop */
+  /* { */
+
+    /* TODO: compute step */
+
+    /* TODO: output solfec::histories at solfec::interval */
+
+    /* TODO: output solfec::outputs at solfec::interval */
+
+  /* } */
 }

@@ -43,14 +43,14 @@ struct GA
   /* datatype and size */
   MPI_Datatype dtype;
   int dtype_size;
-  /* sizes of the global array */
-  uint64_t dim1, dim2, chunk2;
+  /* local sizes of the global array */
+  uint64_t dim1, dim2;
   GA(MPI_Comm comm, uint64_t dim1, uint64_t dim2, MPI_Datatype dtype);
   ~GA();
   /* 0-based indexing [ilo, ihigh), [jlo, jhigh) */
-  int acc(uint64_t ilo, uint64_t ihigh, uint64_t jlo, uint64_t jhigh, void *buf);
-  int get(uint64_t ilo, uint64_t ihigh, uint64_t jlo, uint64_t jhigh, void *buf);
-  int put(uint64_t ilo, uint64_t ihigh, uint64_t jlo, uint64_t jhigh, void *buf);
+  void acc(int rank, uint64_t ilo, uint64_t ihigh, uint64_t jlo, uint64_t jhigh, void *buf);
+  void get(int rank, uint64_t ilo, uint64_t ihigh, uint64_t jlo, uint64_t jhigh, void *buf);
+  void put(int rank, uint64_t ilo, uint64_t ihigh, uint64_t jlo, uint64_t jhigh, void *buf);
   /* fence synchronization on all ranks */
   void fence();
 };

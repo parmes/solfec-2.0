@@ -46,6 +46,9 @@ struct mapping
   std::vector<uint64_t> nindex; /* node index within MPI rank */
   std::vector<int> erank; /* element MPI rank mapping */
   std::vector<int> frank; /* face MPI rank mapping */
+  std::vector<std::array<uint64_t,3>> ga_nranges; /* externally populated global array ranges of same rank nodes */
+  std::vector<std::array<uint64_t,3>> ga_eranges; /* externally populated global array ranges of same rank elements */
+  std::vector<std::array<uint64_t,3>> ga_franges; /* externally populated global array ranges of same rank faces */
 };
 
 /* partition input meshes and turn parts data */
