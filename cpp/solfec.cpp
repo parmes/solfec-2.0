@@ -38,6 +38,7 @@ namespace solfec
 int argc = 0;
 char **argv = NULL;
 std::string outname;
+REAL simulation_time = 0.0;
 std::map<uint64_t,spline> splines;
 uint64_t splines_count = 0;
 std::map<uint64_t, material> materials;
@@ -79,7 +80,8 @@ int main (int argc, char *argv[])
   MPI_Comm_rank (MPI_COMM_WORLD, &rank);
 
   if (rank == 0) input_python (argv[1]);
-  else compute_main_loop();
+
+  compute_main_loop(0., 0.);
  
   MPI_Finalize ();
 

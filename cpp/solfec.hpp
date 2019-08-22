@@ -176,6 +176,7 @@ namespace solfec
 extern int argc;
 extern char **argv;
 extern std::string outname;
+extern REAL simulation_time;
 extern std::map<uint64_t,spline> splines;
 extern uint64_t splines_count;
 extern std::map<uint64_t,material> materials;

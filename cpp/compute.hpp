@@ -53,6 +53,6 @@ void compute_insert_prescribe(uint64_t prenum);
 void compute_delete_prescribe(uint64_t prenum);
 
 /* join compute main loop */
-void compute_main_loop();
+void compute_main_loop(REAL duration, REAL step);
 
 #endif
