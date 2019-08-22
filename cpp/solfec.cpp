@@ -51,7 +51,7 @@ uint64_t restrains_count = 0;
 std::map<uint64_t,std::set<uint64_t>> body_prescribes;
 std::map<uint64_t,prescribe> prescribes;
 uint64_t prescribes_count = 0;
-std::map<uint64_t, velocity> velocities;
+std::map<uint64_t, std::vector<velocity>> velocities;
 std::set<friction,friction_compare> frictions;
 struct gravity gravity;
 std::vector<history> histories;

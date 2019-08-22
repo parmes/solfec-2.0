@@ -189,7 +189,7 @@ extern uint64_t restrains_count;
 extern std::map<uint64_t,std::set<uint64_t>> body_prescribes;
 extern std::map<uint64_t,prescribe> prescribes;
 extern uint64_t prescribes_count;
-extern std::map<uint64_t,velocity> velocities;
+extern std::map<uint64_t,std::vector<velocity>> velocities;
 extern std::set<friction,friction_compare> frictions;
 extern struct gravity gravity;
 extern std::vector<history> histories;

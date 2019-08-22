@@ -297,9 +297,13 @@ void compute_main_loop()
         auto vi = solfec::velocities.find(bodnum);
 	if (vi != solfec::velocities.end())
 	{
-	  COPY ((*vi).second.linear_values, linear);
-	  COPY ((*vi).second.angular_values, angular);
 	  mesh_char (bodnum, part.material, part.eptr, part.eind, NULL, center, NULL, NULL);
+
+	  for (auto& it : (*vi).second)
+	  {
+	    ACC (it.linear_values, linear);
+	    ACC (it.angular_values, angular);
+	  }
 	}
 
 	for (auto r = map.nrank.begin(); r != map.nrank.end(); )
@@ -530,8 +534,11 @@ void compute_main_loop()
         auto vi = solfec::velocities.find(bodnum);
 	if (vi != solfec::velocities.end())
 	{
-	  COPY ((*vi).second.linear_values, linear);
-	  COPY ((*vi).second.angular_values, angular);
+	  for (auto& it : (*vi).second)
+	  {
+	    ACC (it.linear_values, linear);
+	    ACC (it.angular_values, angular);
+	  }
 	}
 	REAL L[9], F[9], vF[9];
 	VECSKEW(angular, L);

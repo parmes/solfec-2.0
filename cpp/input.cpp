@@ -1139,13 +1139,13 @@ static PyObject* ELLIP (PyObject *self, PyObject *args, PyObject *kwds)
 
   ellip.matnum = matnum;
 
-  ellip.center[0] = (REAL)PyFloat_AsDouble (PyList_GetItem (center, 0));
-  ellip.center[1] = (REAL)PyFloat_AsDouble (PyList_GetItem (center, 1));
-  ellip.center[2] = (REAL)PyFloat_AsDouble (PyList_GetItem (center, 2));
+  ellip.center[0] = (REAL)PyFloat_AsDouble (PyTuple_GetItem (center, 0));
+  ellip.center[1] = (REAL)PyFloat_AsDouble (PyTuple_GetItem (center, 1));
+  ellip.center[2] = (REAL)PyFloat_AsDouble (PyTuple_GetItem (center, 2));
 
-  ellip.radius[0] = (REAL)PyFloat_AsDouble (PyList_GetItem (radius, 0));
-  ellip.radius[1] = (REAL)PyFloat_AsDouble (PyList_GetItem (radius, 1));
-  ellip.radius[2] = (REAL)PyFloat_AsDouble (PyList_GetItem (radius, 2));
+  ellip.radius[0] = (REAL)PyFloat_AsDouble (PyTuple_GetItem (radius, 0));
+  ellip.radius[1] = (REAL)PyFloat_AsDouble (PyTuple_GetItem (radius, 1));
+  ellip.radius[2] = (REAL)PyFloat_AsDouble (PyTuple_GetItem (radius, 2));
 
   ellip.gcolor= color;
 
@@ -1598,7 +1598,7 @@ static PyObject* VELOCITY (PyObject *self, PyObject *args, PyObject *kwds)
     velocity.angular_values[2] = 0.0;
   }
 
-  solfec::velocities[bodnum] = velocity;
+  solfec::velocities[bodnum].push_back(velocity);
 
   Py_RETURN_NONE;
 }
@@ -1610,15 +1610,18 @@ static PyObject* print_VELOCITIES (PyObject *self, PyObject *args, PyObject *kwd
   {
     uint64_t velnum = 0;
 
-    for (auto& [bodnum, it] : solfec::velocities)
+    for (auto& [bodnum, vec] : solfec::velocities)
     {
-      std::cout << "VELOCITY_" << velnum << "_bodnum = " << bodnum << std::endl;
-      std::cout << "VELOCITY_" << velnum << "_linear = (" << it.linear_values[0] << ","
-		<< it.linear_values[1] << "," << it.linear_values[2] << ")" << std::endl;
-      std::cout << "VELOCITY_" << velnum << "_angular = (" << it.angular_values[0] << ","
-		<< it.angular_values[1] << "," << it.angular_values[2] << ")" << std::endl;
+      for (auto& it : vec)
+      {
+	std::cout << "VELOCITY_" << velnum << "_bodnum = " << bodnum << std::endl;
+	std::cout << "VELOCITY_" << velnum << "_linear = (" << it.linear_values[0] << ","
+		  << it.linear_values[1] << "," << it.linear_values[2] << ")" << std::endl;
+	std::cout << "VELOCITY_" << velnum << "_angular = (" << it.angular_values[0] << ","
+		  << it.angular_values[1] << "," << it.angular_values[2] << ")" << std::endl;
 
-      velnum ++;
+	velnum ++;
+      }
     }
   }
 
