@@ -74,11 +74,11 @@ GA *ga_counters; /* global array of MPI_UINT64_T counters; per rank:
 		     size of elements,
 		     count of faces,
 		     size of faces] */
-enum {cn_materials, sz_materials,
-      cn_nodes, sz_nodes,
-      cn_elements, sz_elements,
-      cn_faces, sz_faces,
-      cn_ellips, sz_ellips,
+enum {cn_materials, sz_materials, sz_materials_new,
+      cn_nodes, sz_nodes, sz_nodes_new,
+      cn_elements, sz_elements, sz_elements_new,
+      cn_faces, sz_faces, sz_faces_new,
+      cn_ellips, sz_ellips, sz_ellips_new,
       cn_last};
 
 GA *ga_materials; /* global array of materials */
@@ -221,6 +221,34 @@ void compute_main_loop(REAL duration, REAL step)
     MPI_Comm_rank (MPI_COMM_WORLD, &rank);
     MPI_Comm_size (MPI_COMM_WORLD, &size);
 
+    auto GA_INSERT_MATERIALS = [](auto size)
+    {
+      uint64_t matsize = inserted_materials.size();
+      REAL *matdata = new REAL [matsize * mt_last];
+      uint64_t matidx = 0;
+      ERRMEM (matdata);
+
+      for (auto& matnum : inserted_materials)
+      {
+	struct material &material = solfec::materials[matnum];
+	matdata[mt_density*matsize + matidx] = material.density;
+	matdata[mt_young*matsize + matidx] = material.young;
+	matdata[mt_poisson*matsize + matidx] = material.poisson;
+	matdata[mt_viscosity*matsize + matidx] = material.viscosity;
+	matidx ++;
+      }
+
+      for (int r = 0; r < size; r ++)
+      {
+	uint64_t count;
+	ga_counters->get(r, cn_materials, cn_materials+1, 0, 1, &count);
+	ga_materials->put(r, count, count+matidx, 0, mt_last, matdata);
+	ga_counters->acc(r, cn_materials, cn_materials+1, 0, 1, &matidx);
+      }
+
+      delete[] matdata;
+    };
+
     if (!partitioned)
     {
       ga_counters = new GA(MPI_COMM_WORLD, cn_last, 1, MPI_UINT64_T);
@@ -262,16 +290,11 @@ void compute_main_loop(REAL duration, REAL step)
 
 	for (int r = 0; r < size; r ++) /* initialize counters */
 	{
-	  uint64_t counts[] = {0,
-			       inserted_materials.size() * 2,
-			       0,
-			       maxnodes * 2,
-			       0,
-			       maxeles * 2,
-			       0,
-			       maxfaces * 2,
-			       0,
-			       inserted_ellips.size() * 2};
+	  uint64_t counts[] = {0, inserted_materials.size() * 2, 0,
+			       0, maxnodes * 2, 0,
+			       0, maxeles * 2, 0,
+			       0, maxfaces * 2, 0,
+			       0, inserted_ellips.size() * 2, 0};
 
 	  ga_counters->put (r, 0, cn_last, 0, 1, counts);
 	}
@@ -280,28 +303,7 @@ void compute_main_loop(REAL duration, REAL step)
 
 	/* write materials */
 
-	uint64_t matsize = inserted_materials.size();
-	REAL *matdata = new REAL [matsize * mt_last];
-	uint64_t matidx = 0;
-	ERRMEM (matdata);
-
-	for (auto& matnum : inserted_materials)
-	{
-	  struct material &material = solfec::materials[matnum];
-	  matdata[mt_density*matsize + matidx] = material.density;
-	  matdata[mt_young*matsize + matidx] = material.young;
-	  matdata[mt_poisson*matsize + matidx] = material.poisson;
-	  matdata[mt_viscosity*matsize + matidx] = material.viscosity;
-	  matidx ++;
-	}
-
-	for (int r = 0; r < size; r ++)
-	{
-	  ga_materials->put(r, 0, matidx, 0, mt_last, matdata);
-	  ga_counters->acc(r, cn_materials, cn_materials+1, 0, 1, &matidx);
-	}
-
-	delete[] matdata;
+	GA_INSERT_MATERIALS (size);
 
 	/* write mesh data */
 
@@ -497,8 +499,6 @@ void compute_main_loop(REAL duration, REAL step)
 
 	/* update global mesh mapping */
 
-	mesh_mapping.clear(); /* clear previous content */
-
 	mesh_mapping.merge (maps); /* move temporary mappings into the global container */
 
 	/* write ellipsoids */
@@ -652,20 +652,105 @@ void compute_main_loop(REAL duration, REAL step)
 
       partitioned = true; /* initially partitioned */
     }
-    else
+    else /* already initially partitioned */
     {
+      auto GA_RESIZE_UP = [](auto rank)
+      {
+	ga_counters->fence();
+
+	uint64_t counts[cn_last];
+
+	ga_counters->get(rank, 0, cn_last, 0, 1, counts);
+
+	if (counts[sz_materials_new] > counts[sz_materials])
+	{
+	  GA *ga = new GA(MPI_COMM_WORLD, counts[sz_materials_new], mt_last, MPI_REAL);
+	  REAL *data = new REAL [counts[cn_materials] * mt_last];
+	  ERRMEM (data);
+	  ga_materials->get(rank, 0, counts[cn_materials], 0, mt_last, data);
+	  ga->put(rank, 0, counts[cn_materials], 0, mt_last, data);
+	  GA *tmp = ga_materials;
+	  ga_materials = ga;
+	  delete tmp;
+	}
+
+        if (counts[sz_nodes_new] > counts[sz_nodes])
+	{
+	  GA *ga = new GA(MPI_COMM_WORLD, counts[sz_nodes_new], nd_last, MPI_REAL);
+	  REAL *data = new REAL [counts[cn_nodes] * nd_last];
+	  ERRMEM (data);
+	  ga_nodes->get(rank, 0, counts[cn_nodes], 0, nd_last, data);
+	  ga->put(rank, 0, counts[cn_nodes], 0, nd_last, data);
+	  GA *tmp = ga_nodes;
+	  ga_nodes = ga;
+	  delete tmp;
+	}
+
+	if (counts[sz_elements_new] > counts[sz_elements])
+	{
+	  GA *ga = new GA(MPI_COMM_WORLD, counts[sz_elements_new], el_last, MPI_UINT64_T);
+	  uint64_t *data = new uint64_t [counts[cn_elements] * el_last];
+	  ERRMEM (data);
+	  ga_elements->get(rank, 0, counts[cn_elements], 0, el_last, data);
+	  ga->put(rank, 0, counts[cn_elements], 0, el_last, data);
+	  GA *tmp = ga_elements;
+	  ga_elements = ga;
+	  delete tmp;
+	}
+
+	if (counts[sz_faces_new] > counts[sz_faces])
+	{
+	  GA *ga = new GA(MPI_COMM_WORLD, counts[sz_faces_new], fa_last, MPI_UINT64_T);
+	  uint64_t *data = new uint64_t [counts[cn_faces] * fa_last];
+	  ERRMEM (data);
+	  ga_faces->get(rank, 0, counts[cn_faces], 0, fa_last, data);
+	  ga->put(rank, 0, counts[cn_faces], 0, fa_last, data);
+	  GA *tmp = ga_faces;
+	  ga_faces = ga;
+	  delete tmp;
+	}
+
+	if (counts[sz_ellips_new] > counts[sz_ellips])
+	{
+	  GA *ga0 = new GA(MPI_COMM_WORLD, counts[sz_ellips_new], ll_last0, MPI_REAL);
+	  GA *ga1 = new GA(MPI_COMM_WORLD, counts[sz_ellips_new], ll_last1, MPI_UINT64_T);
+	  REAL *data0 = new REAL [counts[cn_ellips] * ll_last0];
+	  uint64_t *data1 = new uint64_t [counts[cn_ellips] * ll_last1];
+	  ERRMEM (data0);
+	  ERRMEM (data1);
+	  ga_elldata->get(rank, 0, counts[cn_ellips], 0, ll_last0, data0);
+	  ga_ellips->get(rank, 0, counts[cn_ellips], 0, ll_last1, data1);
+	  ga0->put(rank, 0, counts[cn_ellips], 0, ll_last0, data0);
+	  ga1->put(rank, 0, counts[cn_ellips], 0, ll_last1, data1);
+	  GA *tmp = ga_elldata;
+	  ga_elldata = ga0;
+	  delete tmp;
+	  tmp = ga_ellips;
+	  ga_ellips = ga1;
+	  delete tmp;
+	}
+
+	counts[sz_materials] = counts[sz_materials_new];
+	counts[sz_nodes] = counts[sz_nodes_new];
+	counts[sz_elements] = counts[sz_elements_new];
+	counts[sz_faces] = counts[sz_faces_new];
+	counts[sz_ellips] = counts[sz_ellips_new];
+
+	ga_counters->put(rank, 0, cn_last, 0, 1, counts);
+      };
+	
       if (rank == 0)
       {
-	auto GA_RESIZE = [](auto cn_name, auto ga_name, auto xx_last,
+	auto GA_RESIZE_DOWN = [](auto cn_name, auto ga_name, auto xx_last,
 	  auto xx_flags, auto xx_flags_deleted, auto rank_deleted_ranges)
 	{
-	  for (auto& [rank, vec] : rank_deleted_ranges)
+	  for (auto& [r, vec] : rank_deleted_ranges)
 	  {
 	    uint64_t count0, count1;
-	    ga_counters->get(rank, cn_name, cn_name+1, 0, 1, &count0);
+	    ga_counters->get(r, cn_name, cn_name+1, 0, 1, &count0);
 
 	    uint64_t *data = new uint64_t [count0 * xx_last];
-	    ga_name->get(rank, 0, count0, 0, xx_last, data);
+	    ga_name->get(r, 0, count0, 0, xx_last, data);
 
 	    count1 = count0;
 	    for (auto& rng : vec)
@@ -690,8 +775,8 @@ void compute_main_loop(REAL duration, REAL step)
 	      j ++;
 	    }
 
-	    ga_name->put(rank, 0, count1, 0, xx_last, data);
-	    ga_counters->put(rank, cn_name, cn_name+1, 0, 1, &count1);
+	    ga_name->put(r, 0, count1, 0, xx_last, data);
+	    ga_counters->put(r, cn_name, cn_name+1, 0, 1, &count1);
 
 	    delete [] data;
 	  }
@@ -726,8 +811,8 @@ void compute_main_loop(REAL duration, REAL step)
 	  }
 
 	  /* resize element and face arrays */
-	  GA_RESIZE (cn_elements, ga_elements, el_last, el_flags, el_flags_deleted, deleted_elements);
-	  GA_RESIZE (cn_faces, ga_faces, fa_last, fa_flags, fa_flags_deleted, deleted_faces);
+	  GA_RESIZE_DOWN (cn_elements, ga_elements, el_last, el_flags, el_flags_deleted, deleted_elements);
+	  GA_RESIZE_DOWN (cn_faces, ga_faces, fa_last, fa_flags, fa_flags_deleted, deleted_faces);
 	}
 	if (!deleted_ellips.empty())
 	{
@@ -742,21 +827,79 @@ void compute_main_loop(REAL duration, REAL step)
 	  /* TODO */
 	}
 
+        /* partition new meshes */
+
+	std::map<uint64_t, part> parts = partition_meshes(inserted_meshes, ELEMENTS_BUNCH, FACES_BUNCH);
+
+	std::map<uint64_t, mapping> maps = map_parts (parts);
+
+	auto [maxnodes, maxeles, maxfaces] = max_per_rank (maps);
+
+	/* first resize arrays if needed */
+
+	uint64_t counts0[cn_last];
+
+	ga_counters->get (0, 0, cn_last, 0, 1, counts0);
+
+	counts0[sz_materials_new] = counts0[sz_materials];
+	counts0[sz_nodes_new] = counts0[sz_nodes];
+	counts0[sz_elements_new] = counts0[sz_elements];
+	counts0[sz_faces_new] = counts0[sz_faces];
+	counts0[sz_ellips_new] = counts0[sz_ellips];
+
+	for (int r = 0; r < size; r ++) /* update counters */
+	{
+	  uint64_t counts[cn_last];
+
+	  ga_counters->get (r, 0, cn_last, 0, 1, counts);
+
+	  counts[sz_materials_new] = counts[cn_materials] + inserted_materials.size();
+	  counts[sz_nodes_new] = counts[cn_nodes] + maxnodes;
+	  counts[sz_elements_new] = counts[cn_elements] + maxeles;
+	  counts[sz_faces_new] = counts[cn_faces] + maxfaces,
+	  counts[sz_ellips_new] = counts[cn_ellips] + inserted_ellips.size()/size + 1;
+
+	  if (counts[sz_materials_new] > counts0[sz_materials_new]) counts0[sz_materials_new] = counts[sz_materials_new] * 2;
+	  if (counts[sz_nodes_new] > counts0[sz_nodes_new]) counts0[sz_nodes_new] = counts[sz_nodes_new] * 2;
+	  if (counts[sz_elements_new] > counts0[sz_elements_new]) counts0[sz_elements_new] = counts[sz_elements_new] * 2;
+	  if (counts[sz_faces_new] > counts0[sz_faces_new]) counts0[sz_faces_new] = counts[sz_faces_new] * 2;
+	  if (counts[sz_ellips_new] > counts0[sz_ellips_new]) counts0[sz_ellips_new] = counts[sz_ellips_new] * 2;
+	}
+
+	for (int r = 0; r < size; r ++) /* update counters */
+	{
+	  uint64_t counts[cn_last];
+
+	  ga_counters->get (r, 0, cn_last, 0, 1, counts);
+
+	  counts[sz_materials_new] = counts0[sz_materials_new];
+	  counts[sz_nodes_new] = counts0[sz_nodes_new];
+	  counts[sz_elements_new] = counts0[sz_elements_new];
+	  counts[sz_faces_new] = counts0[sz_faces_new];
+	  counts[sz_ellips_new] = counts0[sz_ellips_new];
+
+	  ga_counters->put (r, 0, cn_last, 0, 1, counts);
+	}
+
+	GA_RESIZE_UP(rank);
+
+	/* insert new itmes into arrays */
+
 	if (!inserted_materials.empty())
 	{
-	 /* TODO */
+	  GA_INSERT_MATERIALS (size);
 	}
 	if (!inserted_meshes.empty())
 	{
-	 /* TODO */
+	  /* TODO */
 
-	 /* TODO: apply solfec::velocities */
+	  /* TODO: apply solfec::velocities */
 	}
 	if (!inserted_ellips.empty())
 	{
 	  /* TODO */
 
-	 /* TODO: apply solfec::velocities */
+	  /* TODO: apply solfec::velocities */
 	}
 	if (!inserted_restrains.empty())
 	{
@@ -766,6 +909,10 @@ void compute_main_loop(REAL duration, REAL step)
 	{
 	  /* TODO */
 	}
+      }
+      else /* resize on ranks > 0 */
+      {
+	GA_RESIZE_UP(rank);
       }
     }
 
