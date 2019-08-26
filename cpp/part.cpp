@@ -54,7 +54,7 @@ std::map<uint64_t, part> partition_meshes(const std::set<uint64_t> &bodnum_subse
     std::vector<int64_t> temp;
     int64_t ncommon, objval;
 
-    part.nn = mesh.nodes.size();
+    part.nn = mesh.nodes[0].size();
     part.ne = mesh.nhex+mesh.nwed+mesh.npyr+mesh.ntet;
     part.eptr.push_back(0);
     for(auto e = mesh.elements.begin(); e != mesh.elements.end();)
@@ -64,8 +64,8 @@ std::map<uint64_t, part> partition_meshes(const std::set<uint64_t> &bodnum_subse
       {
 	part.eind.push_back(*i);
       }
+      part.eptr.push_back(part.eind.size());
       e += e[0]+2;
-      part.eptr.push_back(e-mesh.elements.begin());
     }
 
     /* partition elements into <= elements_perpart sized sets */
@@ -73,20 +73,35 @@ std::map<uint64_t, part> partition_meshes(const std::set<uint64_t> &bodnum_subse
     part.npart.resize(part.nn);
     ncommon = 3;
     part.neparts = 1+part.ne/elements_perpart;
-    METIS_PartMeshDual(&part.ne, &part.nn, &part.eptr[0], &part.eind[0], NULL, NULL, &ncommon,
-                       &part.neparts, NULL, NULL, &objval, &part.epart[0], &part.npart[0]);
+    if (part.neparts > 1)
+    {
+      METIS_PartMeshDual(&part.ne, &part.nn, &part.eptr[0], &part.eind[0], NULL, NULL, &ncommon,
+			 &part.neparts, NULL, NULL, &objval, &part.epart[0], &part.npart[0]);
+    }
+    else
+    {
+      std::fill(part.epart.begin(), part.epart.end(), 0);
+      std::fill(part.npart.begin(), part.npart.end(), 0);
+    }
 
     /* using mesh.elements, mesh.gcolor and mesh.colors create surface faces and colors */
     mesh_create_metis_faces (mesh.elements, mesh.gcolor, mesh.colors,
                              part.nf, part.fptr, part.find, part.color);
 
     /* partition faces into <= faces_perpart sized sets */
-    part.fpart.resize(part.ne);
+    part.fpart.resize(part.nf);
     temp.resize(part.nn);
     ncommon = 2;
     part.nfparts = 1+part.nf/faces_perpart;
-    METIS_PartMeshDual(&part.nf, &part.nn, &part.fptr[0], &part.find[0], NULL, NULL, &ncommon,
-                       &part.nfparts, NULL, NULL, &objval, &part.fpart[0], &temp[0]);
+    if (part.nfparts > 1)
+    {
+      METIS_PartMeshDual(&part.nf, &part.nn, &part.fptr[0], &part.find[0], NULL, NULL, &ncommon,
+			 &part.nfparts, NULL, NULL, &objval, &part.fpart[0], &temp[0]);
+    }
+    else
+    {
+      std::fill(part.fpart.begin(), part.fpart.end(), 0);
+    }
   });
 
   executor.run(taskflow).get();
@@ -149,58 +164,33 @@ std::map<uint64_t, mapping> map_parts(const std::map<uint64_t, part> &parts)
 /* return [maxnodes, maxeles, maxfaces] */
 std::tuple<uint64_t, uint64_t, uint64_t> max_per_rank (const std::map<uint64_t, mapping> &maps)
 {
-  int size;
+  std::map<int,uint64_t> nrank, erank, frank;
 
-  MPI_Comm_size (MPI_COMM_WORLD, &size);
-
-  tf::Executor executor;
-  tf::Taskflow taskflow;
-
-  typedef std::tuple<uint64_t, uint64_t, uint64_t> x_type;
-
-  x_type x(0, 0, 0);
-
-  taskflow.transform_reduce(maps.begin(), maps.end(), x,
-    [] (x_type l, x_type r)
-    { 
-      return x_type(std::max(std::get<0>(l), std::get<0>(r)),
-                    std::max(std::get<1>(l), std::get<1>(r)),
-                    std::max(std::get<2>(l), std::get<2>(r)));
-    },
-    [] (const std::pair<uint64_t, mapping> &it)
+  for (auto& [bodnum, mapping]: maps)
+  {
+    for (auto& r : mapping.nrank)
     {
-      const struct mapping &mapping = it.second;
-
-      std::map<int,uint64_t> nrank, erank, frank;
-
-      for (auto& r : mapping.nrank)
-      {
-        nrank[r] ++;
-      }
-
-      for (auto& r : mapping.erank)
-      {
-        erank[r] ++;
-      }
-
-      for (auto& r : mapping.frank)
-      {
-        frank[r] ++;
-      }
-
-      using pair_type = decltype(nrank)::value_type;
-
-      auto pair_cmp = [] (const pair_type &a, const pair_type &b) { return a.second < b.second; };
-
-      auto n = std::max_element (std::begin(nrank), std::end(nrank), pair_cmp);
-      auto e = std::max_element (std::begin(erank), std::end(erank), pair_cmp);
-      auto f = std::max_element (std::begin(frank), std::end(frank), pair_cmp);
-
-      return x_type(n->second, e->second, f->second);
+      nrank[r] ++;
     }
-  );
 
-  executor.run(taskflow).get();
+    for (auto& r : mapping.erank)
+    {
+      erank[r] ++;
+    }
 
-  return x;
+    for (auto& r : mapping.frank)
+    {
+      frank[r] ++;
+    }
+  }
+
+  using pair_type = decltype(nrank)::value_type;
+
+  auto pair_cmp = [] (const pair_type &a, const pair_type &b) { return a.second < b.second; };
+
+  auto n = std::max_element (std::begin(nrank), std::end(nrank), pair_cmp);
+  auto e = std::max_element (std::begin(erank), std::end(erank), pair_cmp);
+  auto f = std::max_element (std::begin(frank), std::end(frank), pair_cmp);
+
+  return {n->second, e->second, f->second};
 }

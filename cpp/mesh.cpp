@@ -66,7 +66,7 @@ void mesh_create_metis_faces (const std::vector<uint64_t> &elements, uint64_t gc
   std::array<int(*)[4],9> ef = {NULL, NULL, NULL, NULL, tet, pyr, wed, NULL, hex};
   std::map<std::array<uint64_t,4>,int64_t> colored_faces;
   std::map<std::array<uint64_t,4>,int64_t> all_faces;
-  int nef[] = {0, 0, 0, 0, 4, 5, 6, 0, 8};
+  int nef[] = {0, 0, 0, 0, 4, 5, 5, 0, 6};
 
   for(auto e = elements.begin(); e != elements.end(); e += e[0] + 2)
   {
@@ -85,17 +85,19 @@ void mesh_create_metis_faces (const std::vector<uint64_t> &elements, uint64_t gc
     colored_faces[f] = e[e[0]+1];
   }
 
-  find.push_back(0);
+  nf = 0;
+  fptr.push_back(0);
   for (auto& [f, count] : all_faces)
   {
     if (count == 1) /* surface face */
     {
-      if (f[0]) fptr.push_back(f[0]-1); /* if a quad */
-      fptr.push_back(f[1]-1); /* 0-based indexing */
-      fptr.push_back(f[2]-1);
-      fptr.push_back(f[3]-1);
-      find.push_back(fptr.size());
+      if (f[0]) find.push_back(f[0]-1); /* if a quad */
+      find.push_back(f[1]-1); /* 0-based indexing */
+      find.push_back(f[2]-1);
+      find.push_back(f[3]-1);
+      fptr.push_back(find.size());
       color.push_back(colored_faces.count(f) ? colored_faces[f]: gcolor);
+      nf ++;
     }
   }
 }

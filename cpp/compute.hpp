@@ -55,4 +55,7 @@ void compute_delete_prescribe(uint64_t prenum);
 /* join compute main loop */
 void compute_main_loop(REAL duration, REAL step);
 
+/* finalize compute memory */
+void compute_finalize();
+
 #endif

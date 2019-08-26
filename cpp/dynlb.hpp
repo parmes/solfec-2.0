@@ -23,6 +23,7 @@ SOFTWARE.
 */
 
 #include "part_ispc.h"
+#include "ga.hpp"
 
 #ifndef __dynlb__
 #define __dynlb__

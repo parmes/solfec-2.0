@@ -34,7 +34,7 @@ SOFTWARE.
 #include <climits>
 #include "ga.hpp"
 
-GA::GA(MPI_Comm comm, uint64_t dim1, uint64_t dim2, MPI_Datatype dtype): dim1(dim1), dim2(dim2)
+GA::GA(MPI_Comm comm, uint64_t dim1, uint64_t dim2, MPI_Datatype dtype): dim1(dim1), dim2(dim2), dtype(dtype)
 {
   MPI_Aint local_size;
   void *ga_win_ptr;
@@ -60,14 +60,7 @@ GA::GA(MPI_Comm comm, uint64_t dim1, uint64_t dim2, MPI_Datatype dtype): dim1(di
 
 GA::~GA()
 {
-  void *ga_win_ptr;
-  int flag;
-
-  MPI_Win_get_attr(ga_win, MPI_WIN_BASE, &ga_win_ptr, &flag);
-
   MPI_Win_free(&ga_win);
-
-  if (flag && ga_win_ptr) MPI_Free_mem(ga_win_ptr);
 
   mutex.free(&lock_win);
 }

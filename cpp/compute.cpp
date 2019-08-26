@@ -138,10 +138,20 @@ enum {ll_flags_deleted = 0x0001};
 GA *ga_ellips; /* global array of ellipsoids */
 enum {ll_bodnum,
       ll_matnum,
-      ll_flags,
       ll_color,
       ll_rnk, ll_idx, /* ellipsoid data rank and index */
       ll_last1};
+
+GA *ga_contact; /* global array of contact REAL entities */
+enum {co_rank, /* origin rank */
+      co_index, /* origin rankn index */ /* XXX: uint64_t to REAL */
+      co_type, /* 1.0 --> ellipsoid, 3.0 --> triangle, 4.0 --> quad */
+      co_en0, co_en1, co_en2, /* (ll_x, ll_y, ll_z) or face node (x0, y0, z0) */
+      co_en3, co_en4, co_en5, /* (ll_a, ll_b, ll_c) or face node (x1, y1, z1) */
+      co_en6, co_en7, co_en8, /* (ll_r0, ll_r1, ll_r2) or face node (x2, y2, z2) */
+      co_en9, co_en10, co_en11, /* (ll_r3, ll_r4, ll_r5) or unused */
+      co_en12, co_en13, co_en14, /* (ll_r6, ll_r7, ll_r8) or unused */
+      co_last};
 
 /* --- all ranks */
 };
@@ -253,6 +263,8 @@ void compute_main_loop(REAL duration, REAL step)
       }
 
       delete[] matdata;
+
+      inserted_materials.clear();
     };
 
     auto GA_INSERT_MESHES = [](auto parts, auto maps)
@@ -320,14 +332,14 @@ void compute_main_loop(REAL duration, REAL step)
 	    }
 
 	    struct mesh &mesh = solfec::meshes[bodnum];
-	    REAL x = mesh.nodes[i][0],
-		 y = mesh.nodes[i][1],
-		 z = mesh.nodes[i][2];
+	    REAL x = mesh.nodes[0][i],
+		 y = mesh.nodes[1][i],
+		 z = mesh.nodes[2][i];
 	    REAL a[3] = {x - center[0],
 			 y - center[1],
 			 z - center[2]};
 	    REAL v[3] = {linear[0],
-			 linear[2],
+			 linear[1],
 			 linear[2]};
 	    PRODUCTADD (v, a, angular);
 	    noddata[nd_vx*nodsize + nodidx] = v[0];
@@ -478,6 +490,8 @@ void compute_main_loop(REAL duration, REAL step)
       /* update global mesh mapping */
 
       mesh_mapping.merge (maps); /* move temporary mappings into the global container */
+
+      inserted_meshes.clear();
     };
 
     auto GA_INSERT_ELLIPS = [](auto size)
@@ -604,7 +618,6 @@ void compute_main_loop(REAL duration, REAL step)
 
 	ellips[ll_bodnum*ellsize + ellidx] = bodnum;
 	ellips[ll_matnum*ellsize + ellidx] = ellip.matnum;
-	ellips[ll_flags*ellsize + ellidx] = 0;
 	ellips[ll_color*ellsize + ellidx] = ellip.gcolor;
 	ellips[ll_rnk*ellsize + ellidx] = ellip_rank[ellidx];
 	ellips[ll_idx*ellsize + ellidx] = ellip_index[ellidx];
@@ -621,6 +634,8 @@ void compute_main_loop(REAL duration, REAL step)
 
       delete[] elldata;
       delete[] ellips;
+
+      inserted_ellips.clear();
     };
 
     if (!partitioned)
@@ -1047,5 +1062,18 @@ void compute_main_loop(REAL duration, REAL step)
     {
       /* TODO: exectue compute task graph */
     }
+
+    if (rank == 0) break; /* exit and rejoin upon next RUN(), while others wait at MPI_Bcast */
   }
+}
+
+/* finalize compute memory */
+void compute_finalize()
+{
+  using namespace compute;
+  delete ga_counters;
+  delete ga_nodes;
+  delete ga_elements;
+  delete ga_faces;
+  delete ga_ellips;
 }
