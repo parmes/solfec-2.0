@@ -24,6 +24,7 @@ SOFTWARE.
 
 /* Contributors: Tomasz Koziara */
 
+#include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <mpi.h>
@@ -63,10 +64,20 @@ struct interval interval;
 
 int main (int argc, char *argv[])
 {
+  for (int i = 0; i < argc; i++)
+  {
+    if (strcmp(argv[i], "--debug_print") == 0)
+    {
+      compute::debug_print = true;
+      for (int j = i; j+1 < argc; j ++) argv[j] = argv[j+1];
+      argc --;
+    }
+  }
+
   if (argc == 1)
   {
     printf ("VERSION: 2.%s (%s)\n", VERSION_HASH, VERSION_DATE);
-    printf ("SYNOPSIS: [mpirun -np N] solfec%d path/to/input/file.py\n", REALSIZE);
+    printf ("SYNOPSIS: [mpirun -np N] solfec%d [--debug_print] path/to/input/file.py\n", REALSIZE);
     return 0;
   }
 

@@ -3,7 +3,7 @@ import sys
 sys.path.append('../python')
 from mesh_hex import MESH_HEX
 
-n = 4
+n = 1
 m = 8
 
 matnum = MATERIAL (1E3, 1E9, 0.25, 0.0)
@@ -11,8 +11,8 @@ matnum = MATERIAL (1E3, 1E9, 0.25, 0.0)
 bodnum_list = []
 
 for i in range(0,n):
-  for j in range(0,1):
-    for k in range(0,1):
+  for j in range(0,n):
+    for k in range(0,n):
 
       nodes = [(0+i, 0+j, 0+k),
 	       (1+i, 0+j, 0+j),
