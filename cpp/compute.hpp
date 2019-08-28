@@ -27,6 +27,13 @@ SOFTWARE.
 #ifndef __compute__
 #define __compute__
 
+struct mapping /* global array per rank entity ranges mapping */
+{
+  std::vector<std::array<uint64_t,3>> ga_nranges; /* externally populated global array ranges of same rank nodes */
+  std::vector<std::array<uint64_t,3>> ga_eranges; /* externally populated global array ranges of same rank elements */
+  std::vector<std::array<uint64_t,3>> ga_franges; /* externally populated global array ranges of same rank faces */
+};
+
 namespace compute
 {
 /* all ranks --- */

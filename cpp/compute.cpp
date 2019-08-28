@@ -199,7 +199,11 @@ void compute_main_loop(REAL duration, REAL step)
     {
       for (auto& [bodnum, map] : maps)
       {
+        std::vector<uint64_t> nindex(map.nrank.size(), 0); /* node index within MPI rank */
+
 	struct part &part = parts[bodnum];
+
+	struct mapping &mapping = mesh_mapping[bodnum]; /* create mesh range mapping */
 
 	/* wrie nodes */
 
@@ -218,45 +222,48 @@ void compute_main_loop(REAL duration, REAL step)
 	  }
 	}
 
-	for (auto r = map.nrank.begin(); r != map.nrank.end(); )
-	{
-	  auto eqr = std::equal_range(r, map.nrank.end(), *r);
+	std::map<int,std::vector<uint64_t>> nonrank; /* nodes on rank mapping */
 
-	  uint64_t nodsize = eqr.second - eqr.first;
+	for (auto r = map.nrank.begin(); r != map.nrank.end(); r++)
+	{
+	  nonrank[*r].push_back (r - map.nrank.begin());
+	}
+
+	for (auto& [r, vec] : nonrank)
+	{
+	  uint64_t nodsize = vec.size();
 	  REAL *noddata = new REAL [nodsize * nd_last];
 	  uint64_t nodidx = 0;
 	  ERRMEM (noddata);
 
-	  for (auto k = eqr.first; k != eqr.second; k++)
+	  for (auto& i  : vec)
 	  {
-	    auto i = k - map.nrank.begin();
-
-	    if (deleted_nodes_count[*r] > 0)
+	    if (deleted_nodes_count[r] > 0)
 	    {
-	      auto &stack = deleted_nodes[*r];
+	      auto &stack = deleted_nodes[r];
 	      auto &back = stack.back();
 
-	      if (deleted_node_index[*r] == std::numeric_limits<uint64_t>::max())
+	      if (deleted_node_index[r] == std::numeric_limits<uint64_t>::max())
 	      {
-		deleted_node_index[*r] = back.first;
+		deleted_node_index[r] = back.first;
 	      }
-	      else if (deleted_node_index[*r]+1 < back.second)
+	      else if (deleted_node_index[r]+1 < back.second)
 	      {
-		deleted_node_index[*r] ++;
+		deleted_node_index[r] ++;
 	      }
 	      else
 	      {
 		stack.pop_back();
-		deleted_node_index[*r] = stack.back().first;
+		deleted_node_index[r] = stack.back().first;
 	      }
 
-	      map.nindex[i] = deleted_node_index[*r];
-	      deleted_nodes_count[*r] --;
+	      nindex[i] = deleted_node_index[r];
+	      deleted_nodes_count[r] --;
 	    }
 	    else
 	    {
-	      map.nindex[i] = free_node_index[*r];
-	      free_node_index[*r] ++;
+	      nindex[i] = free_node_index[r];
+	      free_node_index[r] ++;
 	    }
 
 	    struct mesh &mesh = solfec::meshes[bodnum];
@@ -269,7 +276,7 @@ void compute_main_loop(REAL duration, REAL step)
 	    REAL v[3] = {linear[0],
 			 linear[1],
 			 linear[2]};
-	    PRODUCTADD (v, a, angular);
+	    PRODUCTADD (angular, a, v);
 	    noddata[nd_vx*nodsize + nodidx] = v[0];
 	    noddata[nd_vy*nodsize + nodidx] = v[1];
 	    noddata[nd_vz*nodsize + nodidx] = v[2];
@@ -283,32 +290,34 @@ void compute_main_loop(REAL duration, REAL step)
 	  }
 
 	  uint64_t count;
-	  ga_counters->get(*r, cn_nodes, cn_nodes+1, 0, 1, &count);
-	  ga_nodes->put(*r, count, count+nodidx, 0, nd_last, noddata);
-	  ga_counters->acc(*r, cn_nodes, cn_nodes+1, 0, 1, &nodidx);
+	  ga_counters->get(r, cn_nodes, cn_nodes+1, 0, 1, &count);
+	  ga_nodes->put(r, count, count+nodidx, 0, nd_last, noddata);
+	  ga_counters->acc(r, cn_nodes, cn_nodes+1, 0, 1, &nodidx);
 
-	  std::array<uint64_t,3> rng = {(unsigned)*r, count, count+nodidx};
-	  map.ga_nranges.push_back(rng); /* handy in deletion code */
+	  std::array<uint64_t,3> rng = {(unsigned)r, count, count+nodidx};
+	  mapping.ga_nranges.push_back(rng); /* handy in deletion code */
 
 	  delete[] noddata;
-
-	  r = eqr.second;
 	}
 
 	/* write elements */
 
-	for (auto r = map.erank.begin(); r != map.erank.end(); )
-	{
-	  auto eqr = std::equal_range(r, map.erank.end(), *r);
+	std::map<int,std::vector<uint64_t>> eonrank; /* elements on rank mapping */
 
-	  uint64_t elesize = eqr.second - eqr.first;
+	for (auto r = map.erank.begin(); r != map.erank.end(); r++)
+	{
+	  eonrank[*r].push_back (r - map.erank.begin());
+	}
+
+        for (auto& [r, vec] : eonrank)
+	{
+	  uint64_t elesize = vec.size();
 	  uint64_t *eledata = new uint64_t [elesize * el_last];
 	  uint64_t eleidx = 0;
 	  ERRMEM (eledata);
 
-	  for (auto k = eqr.first; k != eqr.second; k++)
+	  for (auto& i : vec)
 	  {
-	    auto i = k - map.erank.begin();
 	    auto j = part.eptr[i];
 	    auto eltype = part.eptr[i+1]-j;
 
@@ -318,29 +327,29 @@ void compute_main_loop(REAL duration, REAL step)
 	    eledata[el_type*elesize + eleidx] = eltype;
 
 	    eledata[el_nd0_rnk*elesize + eleidx] = map.nrank[part.eind[j]];
-	    eledata[el_nd0_idx*elesize + eleidx] = map.nindex[part.eind[j]];
+	    eledata[el_nd0_idx*elesize + eleidx] = nindex[part.eind[j]];
 	    eledata[el_nd1_rnk*elesize + eleidx] = map.nrank[part.eind[j+1]];
-	    eledata[el_nd1_idx*elesize + eleidx] = map.nindex[part.eind[j+1]];
+	    eledata[el_nd1_idx*elesize + eleidx] = nindex[part.eind[j+1]];
 	    eledata[el_nd2_rnk*elesize + eleidx] = map.nrank[part.eind[j+2]];
-	    eledata[el_nd2_idx*elesize + eleidx] = map.nindex[part.eind[j+2]];
+	    eledata[el_nd2_idx*elesize + eleidx] = nindex[part.eind[j+2]];
 	    eledata[el_nd3_rnk*elesize + eleidx] = map.nrank[part.eind[j+3]];
-	    eledata[el_nd3_idx*elesize + eleidx] = map.nindex[part.eind[j+3]];
+	    eledata[el_nd3_idx*elesize + eleidx] = nindex[part.eind[j+3]];
 	    if (eltype > 4)
 	    { eledata[el_nd4_rnk*elesize + eleidx] = map.nrank[part.eind[j+4]];
-	      eledata[el_nd4_idx*elesize + eleidx] = map.nindex[part.eind[j+4]]; }
+	      eledata[el_nd4_idx*elesize + eleidx] = nindex[part.eind[j+4]]; }
 	    else
 	    { eledata[el_nd4_rnk*elesize + eleidx] = 0;
 	      eledata[el_nd4_idx*elesize + eleidx] = 0; }
 	    if (eltype > 5)
 	    { eledata[el_nd5_rnk*elesize + eleidx] = map.nrank[part.eind[j+5]];
-	      eledata[el_nd5_idx*elesize + eleidx] = map.nindex[part.eind[j+5]]; }
+	      eledata[el_nd5_idx*elesize + eleidx] = nindex[part.eind[j+5]]; }
 	    { eledata[el_nd5_rnk*elesize + eleidx] = 0;
 	      eledata[el_nd5_idx*elesize + eleidx] = 0; }
 	    if (eltype > 7)
 	    { eledata[el_nd6_rnk*elesize + eleidx] = map.nrank[part.eind[j+6]];
-	      eledata[el_nd6_idx*elesize + eleidx] = map.nindex[part.eind[j+6]];
+	      eledata[el_nd6_idx*elesize + eleidx] = nindex[part.eind[j+6]];
 	      eledata[el_nd7_rnk*elesize + eleidx] = map.nrank[part.eind[j+7]];
-	      eledata[el_nd7_idx*elesize + eleidx] = map.nindex[part.eind[j+7]]; }
+	      eledata[el_nd7_idx*elesize + eleidx] = nindex[part.eind[j+7]]; }
 	    else
 	    { eledata[el_nd6_rnk*elesize + eleidx] = 0;
 	      eledata[el_nd6_idx*elesize + eleidx] = 0;
@@ -351,32 +360,34 @@ void compute_main_loop(REAL duration, REAL step)
 	  }
 
 	  uint64_t count;
-	  ga_counters->get(*r, cn_elements, cn_elements+1, 0, 1, &count);
-	  ga_elements->put(*r, count, count+eleidx, 0, el_last, eledata);
-	  ga_counters->acc(*r, cn_elements, cn_elements+1, 0, 1, &eleidx);
+	  ga_counters->get(r, cn_elements, cn_elements+1, 0, 1, &count);
+	  ga_elements->put(r, count, count+eleidx, 0, el_last, eledata);
+	  ga_counters->acc(r, cn_elements, cn_elements+1, 0, 1, &eleidx);
 
-	  std::array<uint64_t,3> rng = {(unsigned)*r, count, count+eleidx};
-	  map.ga_eranges.push_back(rng); /* handy in deletion code */
+	  std::array<uint64_t,3> rng = {(unsigned)r, count, count+eleidx};
+	  mapping.ga_eranges.push_back(rng); /* handy in deletion code */
 
 	  delete[] eledata;
-
-	  r = eqr.second;
 	}
 
 	/* write faces */
 
-	for (auto r = map.frank.begin(); r != map.frank.end(); )
-	{
-	  auto eqr = std::equal_range(r, map.frank.end(), *r);
+	std::map<int,std::vector<uint64_t>> fonrank; /* faces on rank mapping */
 
-	  uint64_t facsize = eqr.second - eqr.first;
+	for (auto r = map.frank.begin(); r != map.frank.end(); r++)
+	{
+	  fonrank[*r].push_back (r - map.frank.begin());
+	}
+
+        for (auto& [r, vec] : fonrank)
+	{
+	  uint64_t facsize = vec.size();
 	  uint64_t *facdata = new uint64_t [facsize * fa_last];
 	  uint64_t facidx = 0;
 	  ERRMEM (facdata);
 
-	  for (auto k = eqr.first; k != eqr.second; k++)
+	  for (auto& i : vec)
 	  {
-	    auto i = k - map.frank.begin();
 	    auto j = part.fptr[i];
 	    auto factype = part.fptr[i+1]-j;
 
@@ -386,14 +397,14 @@ void compute_main_loop(REAL duration, REAL step)
 	    facdata[fa_type*facsize + facidx] = factype;
 
 	    facdata[fa_nd0_rnk*facsize + facidx] = map.nrank[j];
-	    facdata[fa_nd0_idx*facsize + facidx] = map.nindex[j];
+	    facdata[fa_nd0_idx*facsize + facidx] = nindex[j];
 	    facdata[fa_nd1_rnk*facsize + facidx] = map.nrank[j+1];
-	    facdata[fa_nd1_idx*facsize + facidx] = map.nindex[j+1];
+	    facdata[fa_nd1_idx*facsize + facidx] = nindex[j+1];
 	    facdata[fa_nd2_rnk*facsize + facidx] = map.nrank[j+2];
-	    facdata[fa_nd2_idx*facsize + facidx] = map.nindex[j+2];
+	    facdata[fa_nd2_idx*facsize + facidx] = nindex[j+2];
 	    if (factype > 3)
 	    { facdata[fa_nd3_rnk*facsize + facidx] = map.nrank[j+3];
-	      facdata[fa_nd3_idx*facsize + facidx] = map.nindex[j+3]; }
+	      facdata[fa_nd3_idx*facsize + facidx] = nindex[j+3]; }
 	    else
 	    { facdata[fa_nd3_rnk*facsize + facidx] = 0;
 	      facdata[fa_nd3_idx*facsize + facidx] = 0; }
@@ -402,22 +413,16 @@ void compute_main_loop(REAL duration, REAL step)
 	  }
 
 	  uint64_t count;
-	  ga_counters->get(*r, cn_faces, cn_faces+1, 0, 1, &count);
-	  ga_faces->put(*r, count, count+facidx, 0, fa_last, facdata);
-	  ga_counters->acc(*r, cn_faces, cn_faces+1, 0, 1, &facidx);
+	  ga_counters->get(r, cn_faces, cn_faces+1, 0, 1, &count);
+	  ga_faces->put(r, count, count+facidx, 0, fa_last, facdata);
+	  ga_counters->acc(r, cn_faces, cn_faces+1, 0, 1, &facidx);
 
-	  std::array<uint64_t,3> rng = {(unsigned)*r, count, count+facidx};
-	  map.ga_franges.push_back(rng); /* handy in deletion code */
+	  std::array<uint64_t,3> rng = {(unsigned)r, count, count+facidx};
+	  mapping.ga_franges.push_back(rng); /* handy in deletion code */
 
 	  delete[] facdata;
-
-	  r = eqr.second;
 	}
       }
-
-      /* update global mesh mapping */
-
-      mesh_mapping.merge (maps); /* move temporary mappings into the global container */
 
       inserted_meshes.clear();
     };
@@ -609,7 +614,7 @@ void compute_main_loop(REAL duration, REAL step)
       {
 	std::map<uint64_t, part> parts = partition_meshes(inserted_meshes, ELEMENTS_BUNCH, FACES_BUNCH);
 
-	std::map<uint64_t, mapping> maps = map_parts (parts);
+	std::map<uint64_t, rankmap> maps = map_parts (parts);
 
 	auto [maxnodes, maxeles, maxfaces] = max_per_rank (maps);
 
@@ -885,7 +890,7 @@ void compute_main_loop(REAL duration, REAL step)
 
 	std::map<uint64_t, part> parts = partition_meshes(inserted_meshes, ELEMENTS_BUNCH, FACES_BUNCH);
 
-	std::map<uint64_t, mapping> maps = map_parts (parts);
+	std::map<uint64_t, rankmap> maps = map_parts (parts);
 
 	auto [maxnodes, maxeles, maxfaces] = max_per_rank (maps);
 

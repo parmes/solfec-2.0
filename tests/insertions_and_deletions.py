@@ -3,8 +3,8 @@ import sys
 sys.path.append('../python')
 from mesh_hex import MESH_HEX
 
-n = 1
-m = 8
+n = 4
+m = 4
 
 matnum = MATERIAL (1E3, 1E9, 0.25, 0.0)
 

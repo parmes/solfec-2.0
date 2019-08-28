@@ -63,6 +63,7 @@ dirs:
 
 del:
 	find ./ -iname "*.dump" -exec rm '{}' ';'
+	find ./ -iname "debug_*.txt" -exec rm '{}' ';'
 
 clean: del
 	/bin/rm -rf objs* *~ $(EXE)4 $(EXE)8 *.dSYM

@@ -31,6 +31,7 @@ SOFTWARE.
 #include "real.h"
 #include "mesh.hpp"
 #include "solfec.hpp"
+#include "compute.hpp"
 
 /* Contributors: Tomasz Koziara */
 
@@ -110,7 +111,7 @@ std::map<uint64_t, part> partition_meshes(const std::set<uint64_t> &bodnum_subse
 }
 
 /* map mesh partitioning to MPI ranks */
-std::map<uint64_t, mapping> map_parts(const std::map<uint64_t, part> &parts)
+std::map<uint64_t, rankmap> map_parts(const std::map<uint64_t, part> &parts)
 {
   int size;
 
@@ -125,33 +126,30 @@ std::map<uint64_t, mapping> map_parts(const std::map<uint64_t, part> &parts)
     ftot += part.nfparts; /* total number of face partitions */
   }
 
-  uint64_t esplit = etot / size, fsplit = ftot / size;
+  uint64_t esplit = 1 + etot / size, fsplit = 1 + ftot / size;
 
   uint64_t esum = 0, fsum = 0;
 
-  std::vector<uint64_t> nindex(size);
-
-  std::map<uint64_t, mapping> output;
+  std::map<uint64_t, rankmap> output;
 
   for (auto& [bodnum, part] : parts)
   {
-    struct mapping &mapping =  output[bodnum];
+    struct rankmap &rankmap =  output[bodnum];
 
     for (auto& e : part.epart)
     {
-      mapping.erank.push_back ((esum + e)/esplit);
+      rankmap.erank.push_back ((esum + e)/esplit);
     }
 
     for (auto& f : part.fpart)
     {
-      mapping.frank.push_back ((fsum + f)/fsplit);
+      rankmap.frank.push_back ((fsum + f)/fsplit);
     }
 
     for (auto& n : part.npart)
     {
       int nrank = (esum + n)/esplit; /* |element partitions| = |node partitions| */
-      mapping.nrank.push_back (nrank);
-      mapping.nindex.push_back(nindex[nrank]++);
+      rankmap.nrank.push_back (nrank);
     }
 
     esum += part.neparts;
@@ -162,25 +160,43 @@ std::map<uint64_t, mapping> map_parts(const std::map<uint64_t, part> &parts)
 }
 
 /* return [maxnodes, maxeles, maxfaces] */
-std::tuple<uint64_t, uint64_t, uint64_t> max_per_rank (const std::map<uint64_t, mapping> &maps)
+std::tuple<uint64_t, uint64_t, uint64_t> max_per_rank (const std::map<uint64_t, rankmap> &maps)
 {
   std::map<int,uint64_t> nrank, erank, frank;
 
-  for (auto& [bodnum, mapping]: maps)
+  for (auto& [bodnum, rankmap]: maps)
   {
-    for (auto& r : mapping.nrank)
+    for (auto& r : rankmap.nrank)
     {
       nrank[r] ++;
     }
 
-    for (auto& r : mapping.erank)
+    for (auto& r : rankmap.erank)
     {
       erank[r] ++;
     }
 
-    for (auto& r : mapping.frank)
+    for (auto& r : rankmap.frank)
     {
       frank[r] ++;
+    }
+  }
+
+  if (compute::debug_print)
+  {
+    std::cout << "DBG: In mesh partitioning:" << std::endl;
+
+    for (auto& [r, n] : nrank)
+    {
+      std::cout << "DBG:   nodes on rank " << r << " = " << n << std::endl;
+    }
+    for (auto& [r, n] : erank)
+    {
+      std::cout << "DBG:   elements on rank " << r << " = " << n << std::endl;
+    }
+    for (auto& [r, n] : frank)
+    {
+      std::cout << "DBG:   faces on rank " << r << " = " << n << std::endl;
     }
   }
 

@@ -40,24 +40,20 @@ struct part
 };
 
 /* mesh mapping */
-struct mapping
+struct rankmap
 {
   std::vector<int> nrank; /* node MPI rank mapping */
-  std::vector<uint64_t> nindex; /* node index within MPI rank */
   std::vector<int> erank; /* element MPI rank mapping */
   std::vector<int> frank; /* face MPI rank mapping */
-  std::vector<std::array<uint64_t,3>> ga_nranges; /* externally populated global array ranges of same rank nodes */
-  std::vector<std::array<uint64_t,3>> ga_eranges; /* externally populated global array ranges of same rank elements */
-  std::vector<std::array<uint64_t,3>> ga_franges; /* externally populated global array ranges of same rank faces */
 };
 
 /* partition input meshes and turn parts data */
 std::map<uint64_t, part> partition_meshes(const std::set<uint64_t> &bodnum_subset, int elements_perpart, int faces_perpart);
 
 /* map mesh partitioning to MPI ranks */
-std::map<uint64_t, mapping> map_parts(const std::map<uint64_t, part> &parts);
+std::map<uint64_t, rankmap> map_parts(const std::map<uint64_t, part> &parts);
 
 /* return [maxnodes, maxeles, maxfaces] */
-std::tuple<uint64_t, uint64_t, uint64_t> max_per_rank (const std::map<uint64_t, mapping> &maps);
+std::tuple<uint64_t, uint64_t, uint64_t> max_per_rank (const std::map<uint64_t, rankmap> &maps);
 
 #endif
