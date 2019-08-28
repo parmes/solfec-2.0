@@ -15,3 +15,4 @@ objs8/*
 *.med
 *.lyx#
 *.dSYM
+debug_*.txt
