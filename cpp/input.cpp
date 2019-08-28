@@ -2109,7 +2109,10 @@ static PyObject* RUN (PyObject *self, PyObject *args, PyObject *kwds)
   if (solfec::outputs.empty()) /* no output defined */
   {
     PyRun_SimpleString ("OUTPUT()"); /* add default output */
-    fprintf (stderr, "INFO: added default OUTPUT since none was defined!\n");
+    if (compute::debug_print)
+    {
+      std::cout << "DBG: Added default OUTPUT() call since none was defined" << std::endl;
+    }
   }
 
   if (duration == 0) output_initial_model(); /* output initial model state */
