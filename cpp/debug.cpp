@@ -94,9 +94,9 @@ void debug_print_compute_data()
 
     for (uint64_t i = 0; i < count; i ++)
     {
-      out << "XYZ " << data[0*count+i] << " "
-                    << data[1*count+i] << " "
-		    << data[2*count+i] << std::endl;
+      out << data[0*count+i] << " "
+          << data[1*count+i] << " "
+	  << data[2*count+i] << std::endl;
     }
 
     delete [] data;

@@ -25,7 +25,7 @@ def insert_meshes(n, m):
         bodnum_list.append(bodnum)
 
 if len(ARGV()) == 0:
-  print('INFO: neither INS or DEL arguments passed')
+  print('INFO: neither INS nor DEL arguments passed')
 else:
   for arg in ARGV():
     if arg == 'INS':
