@@ -143,7 +143,7 @@ class test(unittest.TestCase, CompareMeshesAssertions):
 
     np = random.randint(2,12)
     cmd = 'mpirun -np %d --oversubscribe ../solfec4 --debug_print insertions_and_deletions.py' % np
-    solfec = os.popen(cmd + ' INS')
+    solfec = os.popen(cmd + ' INSMESH')
     output = solfec.read()
     solfec.close()
 

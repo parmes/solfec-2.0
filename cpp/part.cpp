@@ -162,6 +162,8 @@ std::map<uint64_t, rankmap> map_parts(const std::map<uint64_t, part> &parts)
 /* return [maxnodes, maxeles, maxfaces] */
 std::tuple<uint64_t, uint64_t, uint64_t> max_per_rank (const std::map<uint64_t, rankmap> &maps)
 {
+  if (maps.empty()) return {0, 0, 0};
+
   std::map<int,uint64_t> nrank, erank, frank;
 
   for (auto& [bodnum, rankmap]: maps)
