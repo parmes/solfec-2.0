@@ -343,6 +343,7 @@ void compute_main_loop(REAL duration, REAL step)
 	    if (eltype > 5)
 	    { eledata[el_nd5_rnk*elesize + eleidx] = map.nrank[part.eind[j+5]];
 	      eledata[el_nd5_idx*elesize + eleidx] = nindex[part.eind[j+5]]; }
+	    else
 	    { eledata[el_nd5_rnk*elesize + eleidx] = 0;
 	      eledata[el_nd5_idx*elesize + eleidx] = 0; }
 	    if (eltype > 7)

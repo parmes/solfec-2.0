@@ -1,5 +1,13 @@
 # Solfec-2.0 unit test: MESH input command
-import unittest, os, random, glob, ast, itertools
+import unittest, os, random, glob, ast, itertools, bisect
+
+# https://stackoverflow.com/questions/38346013/binary-search-in-a-python-list
+def search(alist, item):
+    'Locate the leftmost value exactly equal to item'
+    i = bisect.bisect_left(alist, item)
+    if i != len(alist) and alist[i] == item:
+        return i
+    raise ValueError
 
 def read_stdout_meshes(output):
   stdout_meshes = dict()
@@ -14,9 +22,8 @@ def read_stdout_meshes(output):
     k = output.find('[', jn)
     l = output.find(']', jn)
     nlist = ast.literal_eval(output[k:l+1])
-    nlist = [tuple(nlist[i:i+3]) for i in range(0, len(nlist), 3)]
-    no = sorted(range(len(nlist)), key=lambda k: nlist[k])
-    nlist = sorted(nlist)
+    nlist0 = [tuple(nlist[i:i+3]) for i in range(0, len(nlist), 3)]
+    nlist = sorted(nlist0)
     je = output.find('_elements', je)
     k = output.find('[', je)
     l = output.find(']', je)
@@ -26,7 +33,7 @@ def read_stdout_meshes(output):
     k = 0
     while k < el:
       l = elist[k]+1
-      elist[k+1:k+l] = [no[i] for i in elist[k+1:k+l]]
+      elist[k+1:k+l] = [search(nlist,nlist0[i]) for i in elist[k+1:k+l]]
       k += l+1
       ed.append(k)
     elist = [tuple(elist[ed[i]:ed[i+1]]) for i in range(0, len(ed)-1)]
@@ -63,9 +70,10 @@ def read_debug_meshes(np):
       eledef = [etype]
       i += 3
       for k in range(0,etype):
-        rng = int(lines[i].split()[1])
-        idx = int(lines[i+1].split()[1])
-        i += 2
+        tmp = lines[i].split()
+        rng = int(tmp[0])
+        idx = int(tmp[1])
+        i += 1
         eledef.append((rng, idx))
       eledef.append(matnum) # (type, (r0,i0), ... (rtype-1,itype-1), matnum)
       body_elems.setdefault(bodnum, []).append(eledef)
@@ -81,13 +89,13 @@ def read_debug_meshes(np):
     nlist = [0]*i # final node list
     for nd in nmap:
       nlist[nmap[nd]] = rank_nodes[nd[0]][nd[1]]
-    no = sorted(range(len(nlist)), key=lambda k: nlist[k])
     nlist = sorted(nlist)
     elist = [] # final element list
     for ele in body_elems[bodnum]:
       eledef = [ele[0]]
       for nd in ele[1:1+ele[0]]:
-        eledef.append(no[nmap[nd]])
+        pt = rank_nodes[nd[0]][nd[1]]
+        eledef.append(search(nlist, pt))
       eledef.append(ele[-1])
       elist.append(tuple(eledef))
     elist = sorted(elist)
@@ -111,7 +119,24 @@ class CompareMeshesAssertions:
       nodes0 = stdout[bodnum][0]
       nodes1 = debug[bodnum][0]
       if len(nodes0) != len(nodes1):
-        raise AssertionError('For bodnum %d node counts differ: %d != %d' % (bodnum, len(nodes0), len(nodes1)))
+        raise AssertionError('For bodnum %d node counts differ: %d (stdout) != %d (debug)' % (bodnum, len(nodes0), len(nodes1)))
+
+      for i in range(0, len(nodes0)):
+        n0 = nodes0[i]
+        n1 = nodes1[i]
+        if n0 != n1:
+          raise AssertionError('For bodnum %d node %d differs: %s (stdout) != %s (debug)' % (bodnum, i, n0, n1))
+
+      eles0 = stdout[bodnum][1]
+      eles1 = debug[bodnum][1]
+      if len(eles0) != len(eles1):
+        raise AssertionError('For bodnum %d element counts differ: %d (stdout) != %d (debug)' % (bodnum, len(eles0), len(eles1)))
+
+      for i in range(0, len(eles0)):
+        e0 = eles0[i]
+        e1 = eles1[i]
+        if e0 != e1:
+          raise AssertionError('For bodnum %d node %d differs: %s (stdout) != %s (debug)' % (bodnum, i, e0, e1))
 
 class test(unittest.TestCase, CompareMeshesAssertions):
   def test(self):

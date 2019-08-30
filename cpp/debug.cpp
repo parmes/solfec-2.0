@@ -122,25 +122,17 @@ void debug_print_compute_data()
       out << "BODNUM " << data[el_bodnum*count+i] << std::endl;
       out << "MATNUM " << data[el_matnum*count+i] << std::endl;
       out << "TYPE " << type << std::endl;
-      out << "N0_RNK " << data[el_nd0_rnk*count+i] << std::endl;
-      out << "N0_IDX " << data[el_nd0_idx*count+i] << std::endl;
-      out << "N1_RNK " << data[el_nd1_rnk*count+i] << std::endl;
-      out << "N1_IDX " << data[el_nd1_idx*count+i] << std::endl;
-      out << "N2_RNK " << data[el_nd2_rnk*count+i] << std::endl;
-      out << "N2_IDX " << data[el_nd2_idx*count+i] << std::endl;
-      out << "N3_RNK " << data[el_nd3_rnk*count+i] << std::endl;
-      out << "N3_IDX " << data[el_nd3_idx*count+i] << std::endl;
+      out << data[el_nd0_rnk*count+i] << " " << data[el_nd0_idx*count+i] << std::endl;
+      out << data[el_nd1_rnk*count+i] << " " << data[el_nd1_idx*count+i] << std::endl;
+      out << data[el_nd2_rnk*count+i] << " " << data[el_nd2_idx*count+i] << std::endl;
+      out << data[el_nd3_rnk*count+i] << " " << data[el_nd3_idx*count+i] << std::endl;
       if (type >= 5) {
-	out << "N4_RNK " << data[el_nd4_rnk*count+i] << std::endl;
-	out << "N4_IDX " << data[el_nd4_idx*count+i] << std::endl; }
+	out << data[el_nd4_rnk*count+i] << " " << data[el_nd4_idx*count+i] << std::endl; }
       if (type >= 6) {
-	out << "N5_RNK " << data[el_nd5_rnk*count+i] << std::endl;
-	out << "N5_IDX " << data[el_nd5_idx*count+i] << std::endl; }
+	out << data[el_nd5_rnk*count+i] << " " << data[el_nd5_idx*count+i] << std::endl; }
       if (type >= 8) {
-	out << "N6_RNK " << data[el_nd6_rnk*count+i] << std::endl;
-	out << "N6_IDX " << data[el_nd6_idx*count+i] << std::endl;
-	out << "N7_RNK " << data[el_nd7_rnk*count+i] << std::endl;
-	out << "N7_IDX " << data[el_nd7_idx*count+i] << std::endl; }
+	out << data[el_nd6_rnk*count+i] << " " << data[el_nd6_idx*count+i] << std::endl;
+	out << data[el_nd7_rnk*count+i] << " " << data[el_nd7_idx*count+i] << std::endl; }
     }
 
     delete [] data;
