@@ -58,7 +58,6 @@ std::set<friction,friction_compare> frictions;
 struct gravity gravity;
 std::vector<history> histories;
 std::vector<output> outputs;
-bool notrun = true;
 struct interval interval;
 };
 

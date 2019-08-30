@@ -2027,17 +2027,7 @@ print_OUTPUTS()
 \begin_layout Standard
 \noindent
 These commands print, to standard output, formatted definitions of the correspon
-ding input data, prior to a first invocation of the 
-\begin_inset CommandInset ref
-LatexCommand nameref
-reference "subsec:RUN"
-plural "false"
-caps "false"
-noprefix "false"
-
-\end_inset
-
- command, following which they are ignored.
+ding input data.
 \end_layout
 
 \begin_layout Chapter

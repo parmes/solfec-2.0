@@ -195,7 +195,6 @@ extern std::set<friction,friction_compare> frictions;
 extern struct gravity gravity;
 extern std::vector<history> histories;
 extern std::vector<output> outputs;
-extern bool notrun;
 extern struct interval interval;
 };
 

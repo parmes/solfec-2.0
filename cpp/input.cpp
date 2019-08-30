@@ -671,7 +671,6 @@ static PyObject* RESET (PyObject *self, PyObject *args, PyObject *kwds)
   solfec::gravity.clear();
   solfec::histories.clear();
   solfec::outputs.clear();
-  solfec::notrun = true;
 
   Py_RETURN_NONE;
 }
@@ -766,26 +765,23 @@ static PyObject* print_SPLINE (PyObject *self, PyObject *args, PyObject *kwds)
   KEYWORDS ("splnum");
   uint64_t splnum;
 
-  if (solfec::notrun)
+  PARSEKEYS ("K", &splnum);
+
+  TYPETEST (is_in_map (splnum, "SPLINE", solfec::splines));
+
+  struct spline &spline = solfec::splines[splnum];
+
+  std::cout << "SPLINE_" << splnum << "_points = ";
+  auto it = spline.points.begin();
+  if (it == spline.points.end()) std::cout << std::endl; else std::cout << "[";
+  for (; it != spline.points.end(); it ++)
   {
-    PARSEKEYS ("K", &splnum);
-
-    TYPETEST (is_in_map (splnum, "SPLINE", solfec::splines));
-
-    struct spline &spline = solfec::splines[splnum];
-
-    std::cout << "SPLINE_" << splnum << "_points = ";
-    auto it = spline.points.begin();
-    if (it == spline.points.end()) std::cout << std::endl; else std::cout << "[";
-    for (; it != spline.points.end(); it ++)
-    {
-      std::cout << "(" << (*it)[0] << "," << (*it)[1];
-      if (it+1 != spline.points.end()) std::cout << "),";
-      else std::cout << ")]" << std::endl;
-    }
-    std::cout << "SPLINE_" << splnum << "_cache = " << spline.cache << std::endl;
-    std::cout << "SPLINE_" << splnum << "_path = " << spline.path << std::endl;
+    std::cout << "(" << (*it)[0] << "," << (*it)[1];
+    if (it+1 != spline.points.end()) std::cout << "),";
+    else std::cout << ")]" << std::endl;
   }
+  std::cout << "SPLINE_" << splnum << "_cache = " << spline.cache << std::endl;
+  std::cout << "SPLINE_" << splnum << "_path = " << spline.path << std::endl;
 
   Py_RETURN_NONE;
 }
@@ -819,19 +815,16 @@ static PyObject* print_MATERIAL (PyObject *self, PyObject *args, PyObject *kwds)
   KEYWORDS ("matnum");
   uint64_t matnum;
 
-  if (solfec::notrun)
-  {
-    PARSEKEYS ("K", &matnum);
+  PARSEKEYS ("K", &matnum);
 
-    TYPETEST (is_in_map (matnum, "MATERIAL", solfec::materials));
+  TYPETEST (is_in_map (matnum, "MATERIAL", solfec::materials));
 
-    struct material &material = solfec::materials[matnum];
+  struct material &material = solfec::materials[matnum];
 
-    std::cout << "MATERIAL_" << matnum << "_density = " << material.density<< std::endl;
-    std::cout << "MATERIAL_" << matnum << "_young = " << material.young << std::endl;
-    std::cout << "MATERIAL_" << matnum << "_poisson = " << material.poisson << std::endl;
-    std::cout << "MATERIAL_" << matnum << "_viscosity = " << material.viscosity << std::endl;
-  }
+  std::cout << "MATERIAL_" << matnum << "_density = " << material.density<< std::endl;
+  std::cout << "MATERIAL_" << matnum << "_young = " << material.young << std::endl;
+  std::cout << "MATERIAL_" << matnum << "_poisson = " << material.poisson << std::endl;
+  std::cout << "MATERIAL_" << matnum << "_viscosity = " << material.viscosity << std::endl;
 
   Py_RETURN_NONE;
 }
@@ -1045,75 +1038,72 @@ static PyObject* print_MESH (PyObject *self, PyObject *args, PyObject *kwds)
   KEYWORDS ("bodnum");
   uint64_t bodnum;
 
-  if (solfec::notrun)
+  PARSEKEYS ("K", &bodnum);
+
+  TYPETEST (is_in_map (bodnum, "MESH", solfec::meshes));
+
+  struct mesh &mesh = solfec::meshes[bodnum];
+
   {
-    PARSEKEYS ("K", &bodnum);
-
-    TYPETEST (is_in_map (bodnum, "MESH", solfec::meshes));
-
-    struct mesh &mesh = solfec::meshes[bodnum];
-
+    std::cout << "MESH_" << bodnum << "_material = " << mesh.matnum << std::endl;
+    std::cout << "MESH_" << bodnum << "_nodes = [";
+    auto it0 = mesh.nodes[0].begin();
+    auto it1 = mesh.nodes[1].begin();
+    auto it2 = mesh.nodes[2].begin();
+    for (; it0 != mesh.nodes[0].end()-1; it0 ++, it1++, it2++)
     {
-      std::cout << "MESH_" << bodnum << "_material = " << mesh.matnum << std::endl;
-      std::cout << "MESH_" << bodnum << "_nodes = [";
-      auto it0 = mesh.nodes[0].begin();
-      auto it1 = mesh.nodes[1].begin();
-      auto it2 = mesh.nodes[2].begin();
-      for (; it0 != mesh.nodes[0].end()-1; it0 ++, it1++, it2++)
-      {
-	 std::cout << (*it0) << "," << (*it1) << "," << (*it2) << "," << std::endl;
-      }
-      std::cout << (*it0) << "," << (*it1) << "," << (*it2) << "]" << std::endl;
+       std::cout << (*it0) << "," << (*it1) << "," << (*it2) << "," << std::endl;
     }
+    std::cout << (*it0) << "," << (*it1) << "," << (*it2) << "]" << std::endl;
+  }
+  {
+    std::cout << "MESH_" << bodnum << "_elements = [";
+    uint64_t ne = mesh.elements.size();
+    auto it = mesh.elements.begin();
+    for (; it != mesh.elements.end(); )
     {
-      std::cout << "MESH_" << bodnum << "_elements = [";
-      uint64_t ne = mesh.elements.size();
-      auto it = mesh.elements.begin();
-      for (; it != mesh.elements.end(); )
+      switch (*it)
       {
-	switch (*it)
-	{
-	 case 8: std::cout << it[0] << "," << it[1] << "," << it[2] << "," << it[3] << "," << it[4] <<
-	                   "," << it[5] << "," << it[6] << "," << it[7] << "," << it[8] << "," << it[9];
-	 it += 10;
-	 break;
-	 case 6: std::cout << it[0] << "," << it[1] << "," << it[2] << "," << it[3] << "," << it[4] <<
-	                   "," << it[5] << "," << it[6] << "," << it[7];
-	 it += 8;
-	 break;
-	 case 5: std::cout << it[0] << "," << it[1] << "," << it[2] << "," << it[3] << "," << it[4] <<
-	                   "," << it[5] << "," << it[6];
-	 it += 7;
-	 break;
-	 case 4: std::cout << it[0] << "," << it[1] << "," << it[2] << "," << it[3] << "," << it[4] <<
-	                   "," << it[5];
-	 it += 6;
-	 break;
-	}
-
-	if (it != mesh.elements.end()) std::cout << "," << std::endl;
-	else std::cout << "]" << std::endl;
+       case 8: std::cout << it[0] << "," << it[1] << "," << it[2] << "," << it[3] << "," << it[4] <<
+                         "," << it[5] << "," << it[6] << "," << it[7] << "," << it[8] << "," << it[9];
+       it += 10;
+       break;
+       case 6: std::cout << it[0] << "," << it[1] << "," << it[2] << "," << it[3] << "," << it[4] <<
+                         "," << it[5] << "," << it[6] << "," << it[7];
+       it += 8;
+       break;
+       case 5: std::cout << it[0] << "," << it[1] << "," << it[2] << "," << it[3] << "," << it[4] <<
+                         "," << it[5] << "," << it[6];
+       it += 7;
+       break;
+       case 4: std::cout << it[0] << "," << it[1] << "," << it[2] << "," << it[3] << "," << it[4] <<
+                         "," << it[5];
+       it += 6;
+       break;
       }
+
+      if (it != mesh.elements.end()) std::cout << "," << std::endl;
+      else std::cout << "]" << std::endl;
     }
+  }
+  {
+    std::cout << "MESH_" << bodnum << "_colors = [" << mesh.gcolor << ",";
+    auto it = mesh.colors.begin();
+    for (; it != mesh.colors.end(); )
     {
-      std::cout << "MESH_" << bodnum << "_colors = [" << mesh.gcolor << ",";
-      auto it = mesh.colors.begin();
-      for (; it != mesh.colors.end(); )
+      switch (*it)
       {
-	switch (*it)
-	{
-	 case 4: std::cout << it[0] << "," << it[1] << "," << it[2] << "," << it[3] << "," << it[4] <<
-	                   "," << it[5];
-	 it += 6;
-	 break;
-	 case 3: std::cout << it[0] << "," << it[1] << "," << it[2] << "," << it[3] << "," << it[4];
-	 it += 5;
-	 break;
-	}
-
-	if (it != mesh.colors.end()) std::cout << "," << std::endl;
-	else std::cout << "]" << std::endl;
+       case 4: std::cout << it[0] << "," << it[1] << "," << it[2] << "," << it[3] << "," << it[4] <<
+                         "," << it[5];
+       it += 6;
+       break;
+       case 3: std::cout << it[0] << "," << it[1] << "," << it[2] << "," << it[3] << "," << it[4];
+       it += 5;
+       break;
       }
+
+      if (it != mesh.colors.end()) std::cout << "," << std::endl;
+      else std::cout << "]" << std::endl;
     }
   }
 
@@ -1185,34 +1175,31 @@ static PyObject* print_ELLIP (PyObject *self, PyObject *args, PyObject *kwds)
   KEYWORDS ("bodnum");
   uint64_t bodnum;
 
-  if (solfec::notrun)
+  PARSEKEYS ("K", &bodnum);
+
+  TYPETEST (is_in_map (bodnum, "ELLIP", solfec::ellips));
+
+  struct ellip &ellip = solfec::ellips[bodnum];
+
+  std::cout << "ELLIP_" << bodnum << "_material = " << ellip.matnum << std::endl;
+
+  std::cout << "ELLIP_" << bodnum << "_center = (" << ellip.center[0] << ","
+            << ellip.center[1] << "," << ellip.center[2] << ")" << std::endl;
+
+  std::cout << "ELLIP_" << bodnum << "_radius = (" << ellip.radius[0] << ","
+            << ellip.radius[1] << "," << ellip.radius[2] << ")" << std::endl;
+
+  if (!(ellip.rotation[0] == 1. && ellip.rotation[1] == 0. && ellip.rotation[2] == 0. && ellip.rotation[3] == 0. &&
+        ellip.rotation[4] == 1. && ellip.rotation[5] == 0. && ellip.rotation[6] == 0. && ellip.rotation[7] == 0. &&
+        ellip.rotation[8] == 1.))
   {
-    PARSEKEYS ("K", &bodnum);
-
-    TYPETEST (is_in_map (bodnum, "ELLIP", solfec::ellips));
-
-    struct ellip &ellip = solfec::ellips[bodnum];
-
-    std::cout << "ELLIP_" << bodnum << "_material = " << ellip.matnum << std::endl;
-
-    std::cout << "ELLIP_" << bodnum << "_center = (" << ellip.center[0] << ","
-	      << ellip.center[1] << "," << ellip.center[2] << ")" << std::endl;
-
-    std::cout << "ELLIP_" << bodnum << "_radius = (" << ellip.radius[0] << ","
-	      << ellip.radius[1] << "," << ellip.radius[2] << ")" << std::endl;
-
-    if (!(ellip.rotation[0] == 1. && ellip.rotation[1] == 0. && ellip.rotation[2] == 0. && ellip.rotation[3] == 0. &&
-          ellip.rotation[4] == 1. && ellip.rotation[5] == 0. && ellip.rotation[6] == 0. && ellip.rotation[7] == 0. &&
-	  ellip.rotation[8] == 1.))
-    {
-      std::cout << "ELLIP_" << bodnum << "_center = ("
-                << ellip.rotation[0] << "," << ellip.rotation[1] << "," << ellip.rotation[2] << ","
-		<< ellip.rotation[3] << "," << ellip.rotation[4] << "," << ellip.rotation[5] << ","
-		<< ellip.rotation[6] << "," << ellip.rotation[7] << "," << ellip.rotation[8] << ")" << std::endl;
-    }
-
-    std::cout << "ELLIP_" << bodnum << "_color = " << ellip.gcolor << std::endl;
+    std::cout << "ELLIP_" << bodnum << "_center = ("
+              << ellip.rotation[0] << "," << ellip.rotation[1] << "," << ellip.rotation[2] << ","
+              << ellip.rotation[3] << "," << ellip.rotation[4] << "," << ellip.rotation[5] << ","
+              << ellip.rotation[6] << "," << ellip.rotation[7] << "," << ellip.rotation[8] << ")" << std::endl;
   }
+
+  std::cout << "ELLIP_" << bodnum << "_color = " << ellip.gcolor << std::endl;
 
   Py_RETURN_NONE;
 }
@@ -1280,35 +1267,32 @@ static PyObject* print_RESTRAIN (PyObject *self, PyObject *args, PyObject *kwds)
   KEYWORDS ("resnum");
   uint64_t resnum;
 
-  if (solfec::notrun)
+  PARSEKEYS ("K", &resnum);
+
+  TYPETEST (is_in_map (resnum, "RESTRAIN", solfec::restrains));
+
+  struct restrain &restrain = solfec::restrains[resnum];
+
+  std::cout << "RESTRAIN_" << resnum << "_bodnum = " << restrain.bodnum << std::endl;
+  if (restrain.points.size() > 0)
   {
-    PARSEKEYS ("K", &resnum);
-
-    TYPETEST (is_in_map (resnum, "RESTRAIN", solfec::restrains));
-
-    struct restrain &restrain = solfec::restrains[resnum];
-
-    std::cout << "RESTRAIN_" << resnum << "_bodnum = " << restrain.bodnum << std::endl;
-    if (restrain.points.size() > 0)
+    std::cout << "RESTRAIN_" << resnum << "_points = [";
+    auto it = restrain.points.begin();
+    for (; it != restrain.points.end(); it ++)
     {
-      std::cout << "RESTRAIN_" << resnum << "_points = [";
-      auto it = restrain.points.begin();
-      for (; it != restrain.points.end(); it ++)
-      {
-	std::cout << "(" << (*it)[0] << "," << (*it)[1] <<  "," << (*it)[2];
-	if (it+1 != restrain.points.end()) std::cout << "),";
-	else std::cout << ")]" << std::endl;
-      }
+      std::cout << "(" << (*it)[0] << "," << (*it)[1] <<  "," << (*it)[2];
+      if (it+1 != restrain.points.end()) std::cout << "),";
+      else std::cout << ")]" << std::endl;
     }
-    if (restrain.color > 0)
-    {
-      std::cout << "RESTRAIN_" << resnum << "_color = " << restrain.color << std::endl;
-    }
-    if (DOT(restrain.direction,restrain.direction)>0.)
-    {
-      std::cout << "RESTRAIN_" << resnum << "_direction = (" << restrain.direction[0] <<
-        "," << restrain.direction[1] << "," << restrain.direction[2] << ")" << std::endl;
-    }
+  }
+  if (restrain.color > 0)
+  {
+    std::cout << "RESTRAIN_" << resnum << "_color = " << restrain.color << std::endl;
+  }
+  if (DOT(restrain.direction,restrain.direction)>0.)
+  {
+    std::cout << "RESTRAIN_" << resnum << "_direction = (" << restrain.direction[0] <<
+      "," << restrain.direction[1] << "," << restrain.direction[2] << ")" << std::endl;
   }
 
   Py_RETURN_NONE;
@@ -1499,59 +1483,56 @@ static PyObject* print_PRESCRIBE (PyObject *self, PyObject *args, PyObject *kwds
   KEYWORDS ("prenum");
   uint64_t prenum;
 
-  if (solfec::notrun)
+  PARSEKEYS ("K", &prenum);
+
+  TYPETEST (is_in_map (prenum, "PRESCRIBE", solfec::prescribes));
+
+  struct prescribe &prescribe = solfec::prescribes[prenum];
+
+  std::cout << "PRESCRIBE_" << prenum << "_bodnum = " << prescribe.bodnum << std::endl;
+  std::cout << "PRESCRIBE_" << prenum << "_points = ";
+  auto it = prescribe.points.begin();
+  if (it == prescribe.points.end()) std::cout << std::endl; else std::cout << "[";
+  for (; it != prescribe.points.end(); it ++)
   {
-    PARSEKEYS ("K", &prenum);
-
-    TYPETEST (is_in_map (prenum, "PRESCRIBE", solfec::prescribes));
-
-    struct prescribe &prescribe = solfec::prescribes[prenum];
-
-    std::cout << "PRESCRIBE_" << prenum << "_bodnum = " << prescribe.bodnum << std::endl;
-    std::cout << "PRESCRIBE_" << prenum << "_points = ";
-    auto it = prescribe.points.begin();
-    if (it == prescribe.points.end()) std::cout << std::endl; else std::cout << "[";
-    for (; it != prescribe.points.end(); it ++)
+    std::cout << "(" << (*it)[0] << "," << (*it)[1] <<  "," << (*it)[2];
+    if (it+1 != prescribe.points.end()) std::cout << "),";
+    else std::cout << ")]" << std::endl;
+  }
+  if (prescribe.color > 0)
+  {
+    std::cout << "PRESCRIBE_" << prenum << "_color = " << prescribe.color << std::endl;
+  }
+  if (prescribe.linear_applied)
+  {
+    std::cout << "PRESCRIBE_" << prenum << "_linear = ";
+    if (prescribe.linear_callback) std::cout << "callback" << std::endl;
+    else
     {
-      std::cout << "(" << (*it)[0] << "," << (*it)[1] <<  "," << (*it)[2];
-      if (it+1 != prescribe.points.end()) std::cout << "),";
-      else std::cout << ")]" << std::endl;
-    }
-    if (prescribe.color > 0)
-    {
-      std::cout << "PRESCRIBE_" << prenum << "_color = " << prescribe.color << std::endl;
-    }
-    if (prescribe.linear_applied)
-    {
-      std::cout << "PRESCRIBE_" << prenum << "_linear = ";
-      if (prescribe.linear_callback) std::cout << "callback" << std::endl;
-      else
+      std::cout << "(";
+      for (int i = 0; i < 3; i ++)
       {
-	std::cout << "(";
-	for (int i = 0; i < 3; i ++)
-	{
-	  if (prescribe.linear_splines[i] >= 0) std::cout << prescribe.linear_splines[i];
-	  else std::cout << FMT("%e") << prescribe.linear_values[i];
-	  if (i == 0 || i == 1) std::cout << ",";
-	}
-	std::cout << ")" << std::endl;
+        if (prescribe.linear_splines[i] >= 0) std::cout << prescribe.linear_splines[i];
+        else std::cout << FMT("%e") << prescribe.linear_values[i];
+        if (i == 0 || i == 1) std::cout << ",";
       }
+      std::cout << ")" << std::endl;
     }
-    if (prescribe.angular_applied)
+  }
+  if (prescribe.angular_applied)
+  {
+    std::cout << "PRESCRIBE_" << prenum << "_angular = ";
+    if (prescribe.angular_callback) std::cout << "callback" << std::endl;
+    else
     {
-      std::cout << "PRESCRIBE_" << prenum << "_angular = ";
-      if (prescribe.angular_callback) std::cout << "callback" << std::endl;
-      else
+      std::cout << "(";
+      for (int i = 0; i < 3; i ++)
       {
-	std::cout << "(";
-	for (int i = 0; i < 3; i ++)
-	{
-	  if (prescribe.angular_splines[i] >= 0) std::cout << prescribe.angular_splines[i];
-	  else std::cout << FMT("%e") << prescribe.angular_values[i];
-	  if (i == 0 || i == 1) std::cout << ",";
-	}
-	std::cout << ")" << std::endl;
+        if (prescribe.angular_splines[i] >= 0) std::cout << prescribe.angular_splines[i];
+        else std::cout << FMT("%e") << prescribe.angular_values[i];
+        if (i == 0 || i == 1) std::cout << ",";
       }
+      std::cout << ")" << std::endl;
     }
   }
 
@@ -1607,22 +1588,19 @@ static PyObject* VELOCITY (PyObject *self, PyObject *args, PyObject *kwds)
 /* print velocities */
 static PyObject* print_VELOCITIES (PyObject *self, PyObject *args, PyObject *kwds)
 {
-  if (solfec::notrun)
+  uint64_t velnum = 0;
+
+  for (auto& [bodnum, vec] : solfec::velocities)
   {
-    uint64_t velnum = 0;
-
-    for (auto& [bodnum, vec] : solfec::velocities)
+    for (auto& it : vec)
     {
-      for (auto& it : vec)
-      {
-	std::cout << "VELOCITY_" << velnum << "_bodnum = " << bodnum << std::endl;
-	std::cout << "VELOCITY_" << velnum << "_linear = (" << it.linear_values[0] << ","
-		  << it.linear_values[1] << "," << it.linear_values[2] << ")" << std::endl;
-	std::cout << "VELOCITY_" << velnum << "_angular = (" << it.angular_values[0] << ","
-		  << it.angular_values[1] << "," << it.angular_values[2] << ")" << std::endl;
+      std::cout << "VELOCITY_" << velnum << "_bodnum = " << bodnum << std::endl;
+      std::cout << "VELOCITY_" << velnum << "_linear = (" << it.linear_values[0] << ","
+                << it.linear_values[1] << "," << it.linear_values[2] << ")" << std::endl;
+      std::cout << "VELOCITY_" << velnum << "_angular = (" << it.angular_values[0] << ","
+                << it.angular_values[1] << "," << it.angular_values[2] << ")" << std::endl;
 
-	velnum ++;
-      }
+      velnum ++;
     }
   }
 
@@ -1660,15 +1638,12 @@ static PyObject* print_FRICTIONS (PyObject *self, PyObject *args, PyObject *kwds
 {
   uint64_t frinum = 0;
 
-  if (solfec::notrun)
+  for (auto it = solfec::frictions.begin(); it != solfec::frictions.end(); it++, frinum ++)
   {
-    for (auto it = solfec::frictions.begin(); it != solfec::frictions.end(); it++, frinum ++)
-    {
-      std::cout << "FRICTION_" << frinum << "_color1 = " << (*it).color1 << std::endl;
-      std::cout << "FRICTION_" << frinum << "_color2 = " << (*it).color2 << std::endl;
-      std::cout << "FRICTION_" << frinum << "_static = " << (*it).static_friction << std::endl;
-      std::cout << "FRICTION_" << frinum << "_dynamic = " << (*it).dynamic_friction << std::endl;
-    }
+    std::cout << "FRICTION_" << frinum << "_color1 = " << (*it).color1 << std::endl;
+    std::cout << "FRICTION_" << frinum << "_color2 = " << (*it).color2 << std::endl;
+    std::cout << "FRICTION_" << frinum << "_static = " << (*it).static_friction << std::endl;
+    std::cout << "FRICTION_" << frinum << "_dynamic = " << (*it).dynamic_friction << std::endl;
   }
 
   Py_RETURN_NONE;
@@ -1713,22 +1688,19 @@ static PyObject* print_GRAVITY (PyObject *self, PyObject *args, PyObject *kwds)
 {
   KEYWORDS ("gx", "gy", "gz");
 
-  if (solfec::notrun)
+  for (int i = 0; i < 3; i ++)
   {
-    for (int i = 0; i < 3; i ++)
+    if (solfec::gravity.gcallback[i])
     {
-      if (solfec::gravity.gcallback[i])
-      {
-	std::cout << "GRAVITY_" << kwl[i] << " = callback" << std::endl;
-      }
-      else if (solfec::gravity.gspline[i] >= 0)
-      {
-	std::cout << "GRAVITY_" << kwl[i] << " = " << solfec::gravity.gspline[i] << std::endl;
-      }
-      else
-      {
-	std::cout << "GRAVITY_" << kwl[i] << " = " << FMT("%e") << solfec::gravity.gvalue[i] << std::endl;
-      }
+      std::cout << "GRAVITY_" << kwl[i] << " = callback" << std::endl;
+    }
+    else if (solfec::gravity.gspline[i] >= 0)
+    {
+      std::cout << "GRAVITY_" << kwl[i] << " = " << solfec::gravity.gspline[i] << std::endl;
+    }
+    else
+    {
+      std::cout << "GRAVITY_" << kwl[i] << " = " << FMT("%e") << solfec::gravity.gvalue[i] << std::endl;
     }
   }
 
@@ -1802,28 +1774,25 @@ static PyObject* HISTORY (PyObject *self, PyObject *args, PyObject *kwds)
 /* print histories */
 static PyObject* print_HISTORIES (PyObject *self, PyObject *args, PyObject *kwds)
 {
-  if (solfec::notrun)
+  for (auto it = solfec::histories.begin(); it != solfec::histories.end(); it ++)
   {
-    for (auto it = solfec::histories.begin(); it != solfec::histories.end(); it ++)
+    uint64_t hisnum = it - solfec::histories.begin();
+
+    struct history &history = *it;
+
+    std::cout << "HISTORY_" << hisnum << "_entity = '" << history.entity << "'" << std::endl;
+    if (history.points.size())
     {
-      uint64_t hisnum = it - solfec::histories.begin();
-
-      struct history &history = *it;
-
-      std::cout << "HISTORY_" << hisnum << "_entity = '" << history.entity << "'" << std::endl;
-      if (history.points.size())
+      std::cout << "HISTORY_" << hisnum << "_bodnum = " << history.bodnum << std::endl;
+      std::cout << "HISTORY_" << hisnum << "_points = [";
+      for (auto it = history.points.begin(); it != history.points.end(); it ++)
       {
-	std::cout << "HISTORY_" << hisnum << "_bodnum = " << history.bodnum << std::endl;
-	std::cout << "HISTORY_" << hisnum << "_points = [";
-	for (auto it = history.points.begin(); it != history.points.end(); it ++)
-	{
-	  std::cout << "(" << (*it)[0] << "," << (*it)[1] <<  "," << (*it)[2];
-	  if (it+1 != history.points.end()) std::cout << "),";
-	  else std::cout << ")]" << std::endl;
-	}
+        std::cout << "(" << (*it)[0] << "," << (*it)[1] <<  "," << (*it)[2];
+        if (it+1 != history.points.end()) std::cout << "),";
+        else std::cout << ")]" << std::endl;
       }
-      if (history.filepath.length()) std::cout << "HISTORY_" << hisnum << "_filepath = " << history.filepath << std::endl;
     }
+    if (history.filepath.length()) std::cout << "HISTORY_" << hisnum << "_filepath = " << history.filepath << std::endl;
   }
 
   Py_RETURN_NONE;
@@ -1938,57 +1907,54 @@ static PyObject* OUTPUT (PyObject *self, PyObject *args, PyObject *kwds)
 /* print outputs */
 static PyObject* print_OUTPUTS (PyObject *self, PyObject *args, PyObject *kwds)
 {
-  if (solfec::notrun)
+  for (auto it = solfec::outputs.begin(); it != solfec::outputs.end(); it ++)
   {
-    for (auto it = solfec::outputs.begin(); it != solfec::outputs.end(); it ++)
+    uint64_t outnum = it - solfec::outputs.begin();
+
+    struct output &output = *it;
+
+    if (output.entities.size())
     {
-      uint64_t outnum = it - solfec::outputs.begin();
-
-      struct output &output = *it;
-
-      if (output.entities.size())
+      std::cout << "OUTPUT_" << outnum << "_entities = [";
+      for (auto it = output.entities.begin(); it != output.entities.end(); it ++)
       {
-	std::cout << "OUTPUT_" << outnum << "_entities = [";
-	for (auto it = output.entities.begin(); it != output.entities.end(); it ++)
-	{
-	  std::cout << "'" << (*it);
-          auto jt = it; jt ++;
-	  if (jt != output.entities.end()) std::cout << "',";
-	  else std::cout << "']" << std::endl;
-	}
+        std::cout << "'" << (*it);
+        auto jt = it; jt ++;
+        if (jt != output.entities.end()) std::cout << "',";
+        else std::cout << "']" << std::endl;
       }
-      if (output.subset.size())
+    }
+    if (output.subset.size())
+    {
+      std::cout << "OUTPUT_" << outnum << "_subset = [";
+      for (auto it = output.subset.begin(); it != output.subset.end(); it ++)
       {
-	std::cout << "OUTPUT_" << outnum << "_subset = [";
-	for (auto it = output.subset.begin(); it != output.subset.end(); it ++)
-	{
-	  std::cout << (*it);
-          auto jt = it; jt ++;
-	  if (jt != output.subset.end()) std::cout << ",";
-	  else std::cout << "]" << std::endl;
-	}
+        std::cout << (*it);
+        auto jt = it; jt ++;
+        if (jt != output.subset.end()) std::cout << ",";
+        else std::cout << "]" << std::endl;
       }
-      if (output.modes.size())
+    }
+    if (output.modes.size())
+    {
+      std::cout << "OUTPUT_" << outnum << "_modes = [";
+      for (auto it = output.modes.begin(); it != output.modes.end(); it ++)
       {
-	std::cout << "OUTPUT_" << outnum << "_modes = [";
-	for (auto it = output.modes.begin(); it != output.modes.end(); it ++)
-	{
-	  std::cout << "'" << (*it);
-          auto jt = it; jt ++;
-	  if (jt != output.modes.end()) std::cout << "',";
-	  else std::cout << "']" << std::endl;
-	}
+        std::cout << "'" << (*it);
+        auto jt = it; jt ++;
+        if (jt != output.modes.end()) std::cout << "',";
+        else std::cout << "']" << std::endl;
       }
-      if (output.formats.size())
+    }
+    if (output.formats.size())
+    {
+      std::cout << "OUTPUT_" << outnum << "_formats = [";
+      for (auto it = output.formats.begin(); it != output.formats.end(); it ++)
       {
-	std::cout << "OUTPUT_" << outnum << "_formats = [";
-	for (auto it = output.formats.begin(); it != output.formats.end(); it ++)
-	{
-	  std::cout << "'" << (*it);
-          auto jt = it; jt ++;
-	  if (jt != output.formats.end()) std::cout << "',";
-	  else std::cout << "']" << std::endl;
-	}
+        std::cout << "'" << (*it);
+        auto jt = it; jt ++;
+        if (jt != output.formats.end()) std::cout << "',";
+        else std::cout << "']" << std::endl;
       }
     }
   }
@@ -2103,8 +2069,6 @@ static PyObject* RUN (PyObject *self, PyObject *args, PyObject *kwds)
     i.dt_spline[0] = i.dt_spline[1] = -1;
     i.dt[0] = i.dt[1] = step;
   }
-
-  solfec::notrun = false;
 
   if (solfec::outputs.empty()) /* no output defined */
   {
