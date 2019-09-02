@@ -2,16 +2,20 @@
 import sys, random
 sys.path.append('../python')
 from mesh_hex import MESH_HEX
+from static_vars import static_vars
 
 matnum = MATERIAL (1E3, 1E9, 0.25, 0.0)
 bodnum_list = []
 
+@static_vars(shift=0)
 def insert_meshes():
   n = random.randint(2, 4)
   m = random.randint(2, 4)
-  for i in range(0,n):
-    for j in range(0,n):
-      for k in range(0,n):
+  s = insert_meshes.shift # coordinate uniqueness
+  insert_meshes.shift += 2*n+1 # separation between mesh blocks
+  for i in range(s,s+2*n,2): # individual meshes separated by 1.0
+    for j in range(s,s+2*n,2):
+      for k in range(s,s+2*n,2):
         nodes = [(0+i, 0+j, 0+k),
                  (1+i, 0+j, 0+j),
                  (1+i, 1+j, 0+k),
