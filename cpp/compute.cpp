@@ -323,7 +323,6 @@ void compute_main_loop(REAL duration, REAL step)
 
 	    eledata[el_bodnum*elesize + eleidx] = bodnum;
 	    eledata[el_matnum*elesize + eleidx] = part.material[i];
-	    eledata[el_flags*elesize + eleidx] = 0;
 	    eledata[el_type*elesize + eleidx] = eltype;
 
 	    eledata[el_nd0_rnk*elesize + eleidx] = map.nrank[part.eind[j]];
@@ -394,7 +393,6 @@ void compute_main_loop(REAL duration, REAL step)
 
 	    facdata[fa_bodnum*facsize + facidx] = bodnum;
 	    facdata[fa_color*facsize + facidx] = part.color[i];
-	    facdata[fa_flags*facsize + facidx] = 0;
 	    facdata[fa_type*facsize + facidx] = factype;
 
 	    facdata[fa_nd0_rnk*facsize + facidx] = map.nrank[j];
@@ -753,8 +751,7 @@ void compute_main_loop(REAL duration, REAL step)
 	
       if (rank == 0)
       {
-	auto GA_RESIZE_DOWN = [](auto cn_name, auto ga_name, auto xx_last,
-	  auto xx_flags, auto xx_flags_deleted, auto rank_deleted_ranges)
+	auto GA_RESIZE_DOWN = [](auto cn_name, auto ga_name, auto xx_last, auto rank_deleted_ranges)
 	{
 	  for (auto& [r, vec] : rank_deleted_ranges)
 	  {
@@ -764,27 +761,38 @@ void compute_main_loop(REAL duration, REAL step)
 	    uint64_t *data = new uint64_t [count0 * xx_last];
 	    ga_name->get(r, 0, count0, 0, xx_last, data);
 
+            std::set<std::pair<uint64_t,uint64_t>> deleted_ranges;
 	    count1 = count0;
 	    for (auto& rng : vec)
 	    {
-	      for (auto i = rng.first; i < rng.second; i ++)
-	      {
-		uint64_t *item = &data[i*xx_last];
-		item[xx_flags] |= xx_flags_deleted;
-		count1 --;
-	      }
+              count1 -= rng.second-rng.first;
+              deleted_ranges.insert(rng);
 	    }
 
-	    for (uint64_t i = 0, j = 0, *item = data; i < count0; i ++, item += xx_last)
+            std::set<std::pair<uint64_t,uint64_t>> left_ranges;
+            uint64_t j = 0;
+            for (auto& rng : deleted_ranges)
+            {
+              if (j < rng.first)
+              {
+                left_ranges.insert(std::pair<uint64_t,uint64_t>(j, rng.first));
+              }
+
+              j = rng.second;
+            }
+            if (j < count0)
+            {
+              left_ranges.insert(std::pair<uint64_t,uint64_t>(j, count0));
+            }
+
+            j = 0;
+	    for (uint64_t i = 0, *item = data; i < xx_last; i ++, item += count0)
 	    {
-	      if (item[xx_flags] & xx_flags_deleted) continue;
-
-	      if (j < i)
-	      {
-		std::memmove (&data[j*xx_last], item, sizeof(uint64_t [xx_last]));
-	      }
-
-	      j ++;
+              for (auto & rng : left_ranges)
+              {
+                std::memmove (&data[j], &item[rng.first], sizeof(uint64_t [rng.second-rng.first]));
+                j += rng.second-rng.first;
+              }
 	    }
 
 	    ga_name->put(r, 0, count1, 0, xx_last, data);
@@ -824,8 +832,8 @@ void compute_main_loop(REAL duration, REAL step)
 	  }
 
 	  /* resize element and face arrays */
-	  GA_RESIZE_DOWN (cn_elements, ga_elements, el_last, el_flags, el_flags_deleted, deleted_elements);
-	  GA_RESIZE_DOWN (cn_faces, ga_faces, fa_last, fa_flags, fa_flags_deleted, deleted_faces);
+	  GA_RESIZE_DOWN (cn_elements, ga_elements, el_last, deleted_elements);
+	  GA_RESIZE_DOWN (cn_faces, ga_faces, fa_last, deleted_faces);
 	}
 
 	if (!deleted_ellips.empty())

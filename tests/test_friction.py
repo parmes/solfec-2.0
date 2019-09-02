@@ -18,6 +18,7 @@ FRICTION_2_dynamic = 0.1
 
 class test(unittest.TestCase):
   def test(self):
+    print('\ntesting FRICTION command')
     solfec = os.popen('../solfec4 friction.py')
     output = solfec.read()
     solfec.close()

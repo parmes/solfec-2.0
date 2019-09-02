@@ -12,6 +12,7 @@ VELOCITY_1_angular = (1,0,0)
 
 class test(unittest.TestCase):
   def test(self):
+    print('\ntesting VELOCITY command')
     solfec = os.popen('../solfec4 velocity.py')
     output = solfec.read()
     solfec.close()

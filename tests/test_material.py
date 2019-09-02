@@ -10,6 +10,7 @@ MATERIAL_0_viscosity = 0
 
 class test(unittest.TestCase):
   def test(self):
+    print('\ntesting MATERIAL command')
     solfec = os.popen('../solfec4 material.py')
     output = solfec.read()
     solfec.close()

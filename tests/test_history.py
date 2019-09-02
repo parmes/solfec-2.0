@@ -14,6 +14,7 @@ HISTORY_2_filepath = history_mises.txt
 
 class test(unittest.TestCase):
   def test(self):
+    print('\ntesting HISTORY command')
     solfec = os.popen('../solfec4 history.py')
     output = solfec.read()
     solfec.close()

@@ -20,6 +20,7 @@ PRESCRIBE_3_angular = callback
 
 class test(unittest.TestCase):
   def test(self):
+    print('\ntesting PRESCRIBE command')
     solfec = os.popen('../solfec4 prescribe.py')
     output = solfec.read()
     solfec.close()

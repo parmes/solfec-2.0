@@ -7,6 +7,7 @@ output0 = \
 
 class test(unittest.TestCase):
   def test(self):
+    print('\ntesting ARGV command')
     solfec = os.popen('../solfec4 argv.py Non Solfec Args')
     output = solfec.read()
     solfec.close()

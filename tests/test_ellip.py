@@ -14,6 +14,7 @@ ELLIP_1_color = 2
 
 class test(unittest.TestCase):
   def test(self):
+    print('\ntesting ELLIP command')
     solfec = os.popen('../solfec4 ellip.py')
     output = solfec.read()
     solfec.close()

@@ -138,23 +138,41 @@ class CompareMeshesAssertions:
         if e0 != e1:
           raise AssertionError('For bodnum %d node %d differs: %s (stdout) != %s (debug)' % (bodnum, i, e0, e1))
 
-class test(unittest.TestCase, CompareMeshesAssertions):
-  def test(self):
+def run_test(arg_string):
+  np = random.randint(2,12)
+  cmd = 'mpirun -np %d --oversubscribe ../solfec4 --debug_print insertions_and_deletions.py ' % np
+  solfec = os.popen(cmd + arg_string)
+  output = solfec.read()
+  solfec.close()
 
-    np = random.randint(2,12)
-    cmd = 'mpirun -np %d --oversubscribe ../solfec4 --debug_print insertions_and_deletions.py' % np
-    solfec = os.popen(cmd + ' INSMESH')
-    output = solfec.read()
-    solfec.close()
+  stdout_meshes = read_stdout_meshes(output)
+  debug_meshes = read_debug_meshes(np)
 
-    stdout_meshes = read_stdout_meshes(output)
-    debug_meshes = read_debug_meshes(np)
+  filelist = glob.glob('debug_*.txt')
+  for filepath in filelist:
+    try:
+      os.remove(filepath)
+    except:
+      print("Error while deleting file : ", filepath)
 
-    filelist = glob.glob('debug_*.txt')
-    for filepath in filelist:
-      try:
-        os.remove(filepath)
-      except:
-        print("Error while deleting file : ", filepath)
+  return (stdout_meshes, debug_meshes)
 
+class test_MESH_i(unittest.TestCase, CompareMeshesAssertions):
+  def test_MESH_i(self):
+    print('\ntesting MESH insertions')
+    stdout_meshes, debug_meshes = run_test('INSMESH')
     self.assertSameMeshes(stdout_meshes, debug_meshes)
+
+class test_MESH_id(unittest.TestCase, CompareMeshesAssertions):
+  def test_MESH_id(self):
+    print('\ntesting MESH insertions-deletions')
+    stdout_meshes, debug_meshes = run_test('INSMESH DEL')
+    self.assertSameMeshes(stdout_meshes, debug_meshes)
+
+'''
+class test_MESH_idi(unittest.TestCase, CompareMeshesAssertions):
+  def test_MESH_idi(self):
+    print('\ntesting MESH insertions-deletions-insertions')
+    stdout_meshes, debug_meshes = run_test('INSMESH DEL INSMESH')
+    self.assertSameMeshes(stdout_meshes, debug_meshes)
+'''

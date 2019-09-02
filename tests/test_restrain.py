@@ -1,4 +1,4 @@
-# Solfec-2.0 unit test: RESTAIN input command
+# Solfec-2.0 unit test: RESTRAIN input command
 import unittest, os
 
 output0 = \
@@ -15,6 +15,7 @@ RESTRAIN_3_direction = (0,0,1)
 
 class test(unittest.TestCase):
   def test(self):
+    print('\ntesting RESTRAIN command')
     solfec = os.popen('../solfec4 restrain.py')
     output = solfec.read()
     solfec.close()

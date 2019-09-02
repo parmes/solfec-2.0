@@ -27,6 +27,7 @@ MESH_0_colors = [1,4,0,1,2,3,2,
 
 class test(unittest.TestCase):
   def test(self):
+    print('\ntesting MESH command')
     solfec = os.popen('../solfec4 mesh.py')
     output = solfec.read()
     solfec.close()

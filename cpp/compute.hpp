@@ -79,23 +79,17 @@ enum {nd_vx, nd_vy, nd_vz,   /* linear velocity */
       nd_X, nd_Y, nd_Z,      /* reference position */
       nd_last};
 
-enum {el_flags_deleted = 0x0001};
-
 extern GA *ga_elements; /* global array of element data */
 enum {el_bodnum,
       el_matnum,
-      el_flags,
       el_type, /* 4, 5, 6, 8 => tetrahedron, pyramid, wedge, hexahedron */
       el_nd0_rnk, el_nd0_idx, el_nd1_rnk, el_nd1_idx, el_nd2_rnk, el_nd2_idx, el_nd3_rnk, el_nd3_idx,
       el_nd4_rnk, el_nd4_idx, el_nd5_rnk, el_nd5_idx, el_nd6_rnk, el_nd6_idx, el_nd7_rnk, el_nd7_idx,
       el_last};
 
-enum {fa_flags_deleted = 0x0001};
-
 extern GA *ga_faces; /* global array of face data */
 enum {fa_bodnum,
       fa_color,
-      fa_flags,
       fa_type, /* 3, 4 => triangle, quadrilateral */
       fa_nd0_rnk, fa_nd0_idx, fa_nd1_rnk, fa_nd1_idx, fa_nd2_rnk, fa_nd2_idx, fa_nd3_rnk, fa_nd3_idx,
       fa_last};

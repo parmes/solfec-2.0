@@ -9,6 +9,7 @@ GRAVITY_gz = 0
 
 class test(unittest.TestCase):
   def test(self):
+    print('\ntesting GRAVITY command')
     solfec = os.popen('../solfec4 gravity.py')
     output = solfec.read()
     solfec.close()

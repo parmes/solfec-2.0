@@ -21,6 +21,7 @@ SPLINE_4_path =
 
 class test(unittest.TestCase):
   def test(self):
+    print('\ntesting SPLINE command')
     solfec = os.popen('../solfec4 spline.py')
     output = solfec.read()
     solfec.close()
