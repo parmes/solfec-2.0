@@ -888,6 +888,8 @@ void compute_main_loop(REAL duration, REAL step)
 	  /* resize element and face arrays */
 	  GA_RESIZE_DOWN (cn_elements, ga_elements, el_last, deleted_elements);
 	  GA_RESIZE_DOWN (cn_faces, ga_faces, fa_last, deleted_faces);
+
+          deleted_meshes.clear();
 	}
 
 	if (!deleted_ellips.empty())
@@ -937,6 +939,8 @@ void compute_main_loop(REAL duration, REAL step)
 	    delete [] data0;
 	    delete [] data1;
 	  }
+
+          deleted_ellips.clear();
 	}
 
 	if (!deleted_restrains.empty())
