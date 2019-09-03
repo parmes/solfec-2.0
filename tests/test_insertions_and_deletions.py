@@ -24,7 +24,7 @@ def read_stdout_meshes(output):
     nlist = ast.literal_eval(output[k:l+1])
     nlist0 = [tuple(nlist[i:i+3]) for i in range(0, len(nlist), 3)]
     nlist = sorted(nlist0)
-    je = output.find('_elements', je)
+    je = output.find('_elements', je+1)
     k = output.find('[', je)
     l = output.find(']', je)
     elist = ast.literal_eval(output[k:l+1])
@@ -169,10 +169,22 @@ class test_MESH_id(unittest.TestCase, CompareMeshesAssertions):
     stdout_meshes, debug_meshes = run_test('INSMESH DEL')
     self.assertSameMeshes(stdout_meshes, debug_meshes)
 
-'''
 class test_MESH_idi(unittest.TestCase, CompareMeshesAssertions):
   def test_MESH_idi(self):
     print('\ntesting MESH insertions-deletions-insertions')
     stdout_meshes, debug_meshes = run_test('INSMESH DEL INSMESH')
+    self.assertSameMeshes(stdout_meshes, debug_meshes)
+
+'''
+class test_MESH_idid(unittest.TestCase, CompareMeshesAssertions):
+  def test_MESH_idid(self):
+    print('\ntesting MESH insertions-deletions-insertions-deletions')
+    stdout_meshes, debug_meshes = run_test('INSMESH DEL INSMESH DEL')
+    self.assertSameMeshes(stdout_meshes, debug_meshes)
+
+class test_MESH_ididi(unittest.TestCase, CompareMeshesAssertions):
+  def test_MESH_ididi(self):
+    print('\ntesting MESH insertions-deletions-insertions-deletions-insertions')
+    stdout_meshes, debug_meshes = run_test('INSMESH DEL INSMESH DEL INSMESH')
     self.assertSameMeshes(stdout_meshes, debug_meshes)
 '''

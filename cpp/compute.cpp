@@ -59,8 +59,6 @@ std::set<uint64_t> deleted_prescribes;
 std::map<uint64_t, mapping> mesh_mapping; /* body number to mesh rank data mapping */
 std::map<int, std::vector<std::pair<uint64_t, uint64_t>>>  deleted_nodes; /* rank mapping of deleted node ranges */
 std::vector<uint64_t> deleted_nodes_count; /* deleted nodes counts per rank */
-std::vector<uint64_t> deleted_node_index; /* deleted node index per rank */
-std::vector<uint64_t> free_node_index; /* free node index per rank */
 std::unordered_map<uint64_t, int>  ellip_mapping; /* ellipsoid body number to rank mapping */
 /* --- rank 0 */
 
@@ -222,51 +220,112 @@ void compute_main_loop(REAL duration, REAL step)
 	  }
 	}
 
-	std::map<int,std::vector<uint64_t>> nonrank; /* nodes on rank mapping */
+	std::map<int,std::vector<std::pair<uint64_t, std::vector<uint64_t>>>> replace_nodes; /* replaced nodes on rank mapping;
+                                      vectors of pairs of (replaced node range start index, vector of inserted node indices) */
+	std::map<int,std::vector<uint64_t>> new_nodes; /* new nodes on rank mapping */
 
 	for (auto r = map.nrank.begin(); r != map.nrank.end(); r++)
 	{
-	  nonrank[*r].push_back (r - map.nrank.begin());
+          uint64_t i = r - map.nrank.begin();
+
+          bool deleted_nodes_on_r = deleted_nodes.find(*r) != deleted_nodes.end();
+
+          if (deleted_nodes_on_r && deleted_nodes[*r].size() > 0) /* use current range of deleted nodes */
+          {
+            auto &deleted_nodes_of_r = deleted_nodes[*r];
+
+            if (auto it{ replace_nodes.find(*r) }; it != std::end(replace_nodes)) /* if mapped */
+            {
+              auto& vec = it->second;
+              vec.back().second.push_back(i); /* add current node index */
+            }
+            else /* not yet mapped */
+            {
+              std::vector<uint64_t> vec(1, i);
+              replace_nodes[*r].push_back(std::make_pair(
+                 deleted_nodes_of_r.back().first, vec)); /* pair up initial resued node index
+                                                      with a vector of inserted node indices */
+            }
+
+            deleted_nodes_of_r.back().first ++;
+
+            if (deleted_nodes_of_r.back().first == deleted_nodes_of_r.back().second) /* no more space */
+            {
+              deleted_nodes_of_r.pop_back();
+
+              if (deleted_nodes_of_r.size() > 0)
+              {
+                std::vector<uint64_t> vec; /* empty */
+                replace_nodes[*r].push_back(std::make_pair(
+                   deleted_nodes_of_r.back().first, vec)); /* pair up initial resued node index with a an empty vector */
+              }
+            }
+          }
+          else
+          {
+	    new_nodes[*r].push_back (i);
+          }
 	}
 
-	for (auto& [r, vec] : nonrank)
+        for (auto& [r, vec0] : replace_nodes)
 	{
+          for (auto& [start, vec1] : vec0)
+          {
+            struct mesh &mesh = solfec::meshes[bodnum];
+            uint64_t nodsize = vec1.size();
+            REAL *noddata = new REAL [nodsize * nd_last];
+            uint64_t nodidx = 0;
+            ERRMEM (noddata);
+
+            for (auto& i  : vec1)
+            {
+              REAL x = mesh.nodes[0][i],
+                   y = mesh.nodes[1][i],
+                   z = mesh.nodes[2][i];
+              REAL a[3] = {x - center[0],
+                           y - center[1],
+                           z - center[2]};
+              REAL v[3] = {linear[0],
+                           linear[1],
+                           linear[2]};
+              PRODUCTADD (angular, a, v);
+              noddata[nd_vx*nodsize + nodidx] = v[0];
+              noddata[nd_vy*nodsize + nodidx] = v[1];
+              noddata[nd_vz*nodsize + nodidx] = v[2];
+              noddata[nd_x*nodsize + nodidx] = x;
+              noddata[nd_y*nodsize + nodidx] = y;
+              noddata[nd_z*nodsize + nodidx] = z;
+              noddata[nd_X*nodsize + nodidx] = x;
+              noddata[nd_Y*nodsize + nodidx] = y;
+              noddata[nd_Z*nodsize + nodidx] = z;
+              nindex[i] = start + nodidx;
+              nodidx ++;
+            }
+
+            ga_nodes->put(r, start, start+nodidx, 0, nd_last, noddata);
+
+            std::array<uint64_t,3> rng = {(unsigned)r, start, start+nodidx};
+            mapping.ga_nranges.push_back(rng); /* handy in deletion code */
+
+	    deleted_nodes_count[r] -= nodidx; /* this number of deleted nodes is now reused */
+
+            delete[] noddata;
+          }
+	}
+
+	for (auto& [r, vec] : new_nodes)
+	{
+	  struct mesh &mesh = solfec::meshes[bodnum];
 	  uint64_t nodsize = vec.size();
 	  REAL *noddata = new REAL [nodsize * nd_last];
 	  uint64_t nodidx = 0;
 	  ERRMEM (noddata);
 
+	  uint64_t count;
+	  ga_counters->get(r, cn_nodes, cn_nodes+1, 0, 1, &count);
+
 	  for (auto& i  : vec)
 	  {
-	    if (deleted_nodes_count[r] > 0)
-	    {
-	      auto &stack = deleted_nodes[r];
-	      auto &back = stack.back();
-
-	      if (deleted_node_index[r] == std::numeric_limits<uint64_t>::max())
-	      {
-		deleted_node_index[r] = back.first;
-	      }
-	      else if (deleted_node_index[r]+1 < back.second)
-	      {
-		deleted_node_index[r] ++;
-	      }
-	      else
-	      {
-		stack.pop_back();
-		deleted_node_index[r] = stack.back().first;
-	      }
-
-	      nindex[i] = deleted_node_index[r];
-	      deleted_nodes_count[r] --;
-	    }
-	    else
-	    {
-	      nindex[i] = free_node_index[r];
-	      free_node_index[r] ++;
-	    }
-
-	    struct mesh &mesh = solfec::meshes[bodnum];
 	    REAL x = mesh.nodes[0][i],
 		 y = mesh.nodes[1][i],
 		 z = mesh.nodes[2][i];
@@ -286,11 +345,10 @@ void compute_main_loop(REAL duration, REAL step)
 	    noddata[nd_X*nodsize + nodidx] = x;
 	    noddata[nd_Y*nodsize + nodidx] = y;
 	    noddata[nd_Z*nodsize + nodidx] = z;
+	    nindex[i] = count + nodidx;
 	    nodidx ++;
 	  }
 
-	  uint64_t count;
-	  ga_counters->get(r, cn_nodes, cn_nodes+1, 0, 1, &count);
 	  ga_nodes->put(r, count, count+nodidx, 0, nd_last, noddata);
 	  ga_counters->acc(r, cn_nodes, cn_nodes+1, 0, 1, &nodidx);
 
@@ -573,12 +631,8 @@ void compute_main_loop(REAL duration, REAL step)
     if (!partitioned)
     {
       deleted_nodes_count.resize(size);
-      deleted_node_index.resize(size);
-      free_node_index.resize(size);
 
       std::fill(deleted_nodes_count.begin(), deleted_nodes_count.end(), 0);
-      std::fill(deleted_node_index.begin(), deleted_node_index.end(), std::numeric_limits<uint64_t>::max());
-      std::fill(free_node_index.begin(), free_node_index.end(), 0);
 
       ga_counters = new GA(MPI_COMM_WORLD, cn_last, 1, MPI_UINT64_T);
 
@@ -947,8 +1001,6 @@ void compute_main_loop(REAL duration, REAL step)
 	  counts[sz_ellips_new] = counts0[sz_ellips_new];
 
 	  ga_counters->put (r, 0, cn_last, 0, 1, counts);
-
-	  free_node_index[r] = counts[cn_nodes];
 	}
 
 	GA_RESIZE_UP(rank);
