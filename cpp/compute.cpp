@@ -56,7 +56,7 @@ std::set<uint64_t> deleted_restrains;
 std::set<uint64_t> inserted_prescribes;
 std::set<uint64_t> deleted_prescribes;
 
-std::map<uint64_t, mapping> mesh_mapping; /* body number to mesh rank data mapping */
+std::map<uint64_t, mapping> mesh_mapping; /* body number to mesh rank data range mapping */
 std::map<int, std::vector<std::pair<uint64_t, uint64_t>>>  deleted_nodes; /* rank mapping of deleted node ranges */
 std::vector<uint64_t> deleted_nodes_count; /* deleted nodes counts per rank */
 std::unordered_map<uint64_t, int>  ellip_mapping; /* ellipsoid body number to rank mapping */
@@ -805,7 +805,7 @@ void compute_main_loop(REAL duration, REAL step)
 	
       if (rank == 0)
       {
-	auto GA_RESIZE_DOWN = [](auto cn_name, auto ga_name, auto xx_last, auto rank_deleted_ranges)
+	auto GA_RESIZE_DOWN = [](auto cn_name, auto ga_name, auto xx_last, auto rank_deleted_ranges, auto xx_bodnum)
 	{
 	  for (auto& [r, vec] : rank_deleted_ranges)
 	  {
@@ -852,6 +852,22 @@ void compute_main_loop(REAL duration, REAL step)
 	    ga_name->put(r, 0, count1, 0, xx_last, data);
 	    ga_counters->put(r, cn_name, cn_name+1, 0, 1, &count1);
 
+            for (uint64_t *start = &data[count1*xx_bodnum], *item = start,
+                 *jtem = item, *end = start+count1; item < end; item = jtem)
+            {
+              uint64_t bodnum = *jtem;
+              while (bodnum == *jtem && jtem < end) jtem ++;
+              auto& xx_ranges = (ga_name == ga_elements ? mesh_mapping[bodnum].ga_eranges : mesh_mapping[bodnum].ga_franges);
+              for(auto &xr : xx_ranges)
+              {
+                if (xr[0] == r) /* remap mapped range */
+                {
+                  xr[1] = item - start;
+                  xr[2] = jtem - start;
+                }
+              }
+            }
+
 	    delete [] data;
 	  }
 	};
@@ -886,8 +902,8 @@ void compute_main_loop(REAL duration, REAL step)
 	  }
 
 	  /* resize element and face arrays */
-	  GA_RESIZE_DOWN (cn_elements, ga_elements, el_last, deleted_elements);
-	  GA_RESIZE_DOWN (cn_faces, ga_faces, fa_last, deleted_faces);
+	  GA_RESIZE_DOWN (cn_elements, ga_elements, el_last, deleted_elements, el_bodnum);
+	  GA_RESIZE_DOWN (cn_faces, ga_faces, fa_last, deleted_faces, fa_bodnum);
 
           deleted_meshes.clear();
 	}

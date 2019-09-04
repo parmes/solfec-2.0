@@ -175,7 +175,6 @@ class test_MESH_idi(unittest.TestCase, CompareMeshesAssertions):
     stdout_meshes, debug_meshes = run_test('INSMESH DEL INSMESH')
     self.assertSameMeshes(stdout_meshes, debug_meshes)
 
-'''
 class test_MESH_idid(unittest.TestCase, CompareMeshesAssertions):
   def test_MESH_idid(self):
     print('\ntesting MESH insertions-deletions-insertions-deletions')
@@ -187,4 +186,3 @@ class test_MESH_ididi(unittest.TestCase, CompareMeshesAssertions):
     print('\ntesting MESH insertions-deletions-insertions-deletions-insertions')
     stdout_meshes, debug_meshes = run_test('INSMESH DEL INSMESH DEL INSMESH')
     self.assertSameMeshes(stdout_meshes, debug_meshes)
-'''
