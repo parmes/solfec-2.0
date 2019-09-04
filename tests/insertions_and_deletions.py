@@ -29,13 +29,15 @@ def insert_meshes():
         bodnum_list.append((bodnum, 'MESH'))
 
 def insert_ellips():
-  n = random.randint(2, 4)
-  m = random.randint(2, 4)
+  n = random.randint(4, 8)
   for i in range(0,n):
     for j in range(0,n):
       for k in range(0,n):
-        center = (i+0.5, j+0.5, k+0.5)
-        radius = (0.5, 0.5, 0.5)
+        dx = 0.4+random.uniform(0.0, 0.2)
+        dy = 0.4+random.uniform(0.0, 0.2)
+        dz = 0.4+random.uniform(0.0, 0.2)
+        center = (i+dx, j+dy, k+dz)
+        radius = (0.4, 0.4, 0.4)
         color = 1
         bodnum = ELLIP(center, radius, matnum, color)
         bodnum_list.append((bodnum, 'ELLIP'))

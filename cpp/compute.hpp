@@ -110,7 +110,6 @@ extern GA *ga_ellips; /* global array of ellipsoids */
 enum {ll_bodnum,
       ll_matnum,
       ll_color,
-      ll_rnk, ll_idx, /* ellipsoid data rank and index */
       ll_last1};
 
 extern GA *ga_contact; /* global array of contact REAL entities */

@@ -138,4 +138,36 @@ void debug_print_compute_data()
     delete [] data;
     out.close();
   }
+
+  /* ellipsoids  */
+  {
+    path = sformat ("debug_ellips%d.txt", rank);
+    out.open(path);
+    out << "TIME " << solfec::simulation_time << std::endl;
+
+    uint64_t count;
+    ga_counters->get(rank, cn_ellips, cn_ellips+1, 0, 1, &count);
+    out << "COUNT " << count << std::endl;
+
+    REAL *data0 = new REAL[count*ll_last0];
+    uint64_t *data1 = new uint64_t[count*ll_last1];
+    ga_elldata->get(rank, 0, count, 0, ll_last0, data0);
+    ga_ellips->get(rank, 0, count, 0, ll_last1, data1);
+
+    for (uint64_t i = 0; i < count; i ++)
+    {
+      out << "BODNUM " << data1[ll_bodnum*count+i] << std::endl;
+      out << "MATNUM " << data1[ll_matnum*count+i] << std::endl;
+      out << "COLOR " << data1[ll_color*count+i] << std::endl;
+      out << "CENTER " << data0[ll_x*count+i] << " " << data0[ll_y*count+i] << " " << data0[ll_z*count+i] << std::endl;
+      out << "RADIUS " << data0[ll_a*count+i] << " " << data0[ll_b*count+i] << " " << data0[ll_c*count+i] << std::endl;
+      out << "ROTATION " << data0[ll_r0*count+i] << " " << data0[ll_r1*count+i] << " " << data0[ll_r2*count+i] << " "
+                         << data0[ll_r3*count+i] << " " << data0[ll_r4*count+i] << " " << data0[ll_r5*count+i] << " "
+                         << data0[ll_r6*count+i] << " " << data0[ll_r7*count+i] << " " << data0[ll_r8*count+i] << std::endl;
+    }
+
+    delete [] data0;
+    delete [] data1;
+    out.close();
+  }
 }

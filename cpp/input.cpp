@@ -1189,15 +1189,10 @@ static PyObject* print_ELLIP (PyObject *self, PyObject *args, PyObject *kwds)
   std::cout << "ELLIP_" << bodnum << "_radius = (" << ellip.radius[0] << ","
             << ellip.radius[1] << "," << ellip.radius[2] << ")" << std::endl;
 
-  if (!(ellip.rotation[0] == 1. && ellip.rotation[1] == 0. && ellip.rotation[2] == 0. && ellip.rotation[3] == 0. &&
-        ellip.rotation[4] == 1. && ellip.rotation[5] == 0. && ellip.rotation[6] == 0. && ellip.rotation[7] == 0. &&
-        ellip.rotation[8] == 1.))
-  {
-    std::cout << "ELLIP_" << bodnum << "_center = ("
-              << ellip.rotation[0] << "," << ellip.rotation[1] << "," << ellip.rotation[2] << ","
-              << ellip.rotation[3] << "," << ellip.rotation[4] << "," << ellip.rotation[5] << ","
-              << ellip.rotation[6] << "," << ellip.rotation[7] << "," << ellip.rotation[8] << ")" << std::endl;
-  }
+  std::cout << "ELLIP_" << bodnum << "_rotate = ("
+            << ellip.rotation[0] << "," << ellip.rotation[1] << "," << ellip.rotation[2] << ","
+            << ellip.rotation[3] << "," << ellip.rotation[4] << "," << ellip.rotation[5] << ","
+            << ellip.rotation[6] << "," << ellip.rotation[7] << "," << ellip.rotation[8] << ")" << std::endl;
 
   std::cout << "ELLIP_" << bodnum << "_color = " << ellip.gcolor << std::endl;
 

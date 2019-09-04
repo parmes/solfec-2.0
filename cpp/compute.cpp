@@ -486,144 +486,137 @@ void compute_main_loop(REAL duration, REAL step)
 
     auto GA_INSERT_ELLIPS = [](auto size)
     {
-      uint64_t ellsize = inserted_ellips.size();
-      REAL *elldata = new REAL [ellsize * ll_last0];
-      uint64_t *ellips = new uint64_t [ellsize * ll_last1];
-      uint64_t ellidx = 0, i;
       using namespace ispc;
-      ERRMEM (elldata);
-      ERRMEM (ellips);
-      REAL *point[3] = {aligned_real_alloc(ellsize),
-			aligned_real_alloc(ellsize),
-			aligned_real_alloc(ellsize)};
+      uint64_t n = inserted_ellips.size();
+      REAL *point[3] = {aligned_real_alloc(n),
+			aligned_real_alloc(n),
+			aligned_real_alloc(n)};
       dynlb lb;
      
-      i = 0;
+      n = 0;
       for (auto& bodnum : inserted_ellips)
       {
 	struct ellip &ellip = solfec::ellips[bodnum];
-	point[0][i] = ellip.center[0];
-	point[1][i] = ellip.center[1];
-	point[2][i] = ellip.center[2];
-	i ++;
+	point[0][n] = ellip.center[0];
+	point[1][n] = ellip.center[1];
+	point[2][n] = ellip.center[2];
+	n ++;
       }
 
-      lb.local_create (ellidx, point); /* create local load balancer */
+      lb.local_create (n, point); /* create local load balancer */
       aligned_real_free(point[0]);
       aligned_real_free(point[1]);
       aligned_real_free(point[2]);
 
-      std::vector<int> ellip_rank(ellsize);
-      i = 0;
+      std::map<int,std::vector<uint64_t>> ellips_on_rank;
       for (auto& bodnum : inserted_ellips)
       {
 	struct ellip &ellip = solfec::ellips[bodnum];
-	ellip_rank[i] = lb.point_assign(ellip.center); /* assign ranks */
-	ellip_mapping[bodnum] = ellip_rank[i];
-	i ++;
+	int rank = lb.point_assign(ellip.center);
+	ellip_mapping[bodnum] = rank;
+        ellips_on_rank[rank].push_back(bodnum);
       }
 
-      std::vector<uint64_t> ellinrank(size, 0);
-      std::vector<uint64_t> ellip_index(ellsize);
-      for (i = 0; i < ellsize; i ++)
+      for (auto& [r, vec] : ellips_on_rank)
       {
-	ellip_index[i] = ellinrank[ellip_rank[i]];
-	ellinrank[ellip_rank[i]] ++;
-      }
+        uint64_t ellsize = vec.size();
+        REAL *elldata = new REAL [ellsize * ll_last0];
+        uint64_t *ellips = new uint64_t [ellsize * ll_last1];
+        uint64_t ellidx = 0;
+        ERRMEM (elldata);
+        ERRMEM (ellips);
 
-      for (auto& bodnum : inserted_ellips)
-      {
-	struct ellip &ellip = solfec::ellips[bodnum];
+        for (auto& bodnum : vec)
+        {
+          struct ellip &ellip = solfec::ellips[bodnum];
 
-	REAL linear[3] = {0., 0., 0.};
-	REAL angular[3] = {0., 0., 0.};
-	auto vi = solfec::velocities.find(bodnum);
-	if (vi != solfec::velocities.end())
-	{
-	  for (auto& it : (*vi).second)
-	  {
-	    ACC (it.linear_values, linear);
-	    ACC (it.angular_values, angular);
-	  }
-	}
-	REAL L[9], F[9], vF[9];
-	VECSKEW(angular, L);
-	IDENTITY(F);
-	NNMUL (L, F, vF);
+          REAL linear[3] = {0., 0., 0.};
+          REAL angular[3] = {0., 0., 0.};
+          auto vi = solfec::velocities.find(bodnum);
+          if (vi != solfec::velocities.end())
+          {
+            for (auto& it : (*vi).second)
+            {
+              ACC (it.linear_values, linear);
+              ACC (it.angular_values, angular);
+            }
+          }
+          REAL L[9], F[9], vF[9];
+          VECSKEW(angular, L);
+          IDENTITY(F);
+          NNMUL (L, F, vF);
 
-	elldata[ll_vF0*ellsize + ellidx] = vF[0];
-	elldata[ll_vF1*ellsize + ellidx] = vF[1];
-	elldata[ll_vF2*ellsize + ellidx] = vF[2];
-	elldata[ll_vF3*ellsize + ellidx] = vF[3];
-	elldata[ll_vF4*ellsize + ellidx] = vF[4];
-	elldata[ll_vF5*ellsize + ellidx] = vF[5];
-	elldata[ll_vF6*ellsize + ellidx] = vF[6];
-	elldata[ll_vF7*ellsize + ellidx] = vF[7];
-	elldata[ll_vF8*ellsize + ellidx] = vF[8];
-	elldata[ll_vx*ellsize + ellidx] = linear[0];
-	elldata[ll_vy*ellsize + ellidx] = linear[1];
-	elldata[ll_vz*ellsize + ellidx] = linear[2];
+          elldata[ll_vF0*ellsize + ellidx] = vF[0];
+          elldata[ll_vF1*ellsize + ellidx] = vF[1];
+          elldata[ll_vF2*ellsize + ellidx] = vF[2];
+          elldata[ll_vF3*ellsize + ellidx] = vF[3];
+          elldata[ll_vF4*ellsize + ellidx] = vF[4];
+          elldata[ll_vF5*ellsize + ellidx] = vF[5];
+          elldata[ll_vF6*ellsize + ellidx] = vF[6];
+          elldata[ll_vF7*ellsize + ellidx] = vF[7];
+          elldata[ll_vF8*ellsize + ellidx] = vF[8];
+          elldata[ll_vx*ellsize + ellidx] = linear[0];
+          elldata[ll_vy*ellsize + ellidx] = linear[1];
+          elldata[ll_vz*ellsize + ellidx] = linear[2];
 
-	elldata[ll_F0*ellsize + ellidx] = 1.;
-	elldata[ll_F1*ellsize + ellidx] = 0.;
-	elldata[ll_F2*ellsize + ellidx] = 0.;
-	elldata[ll_F3*ellsize + ellidx] = 0.;
-	elldata[ll_F4*ellsize + ellidx] = 1.;
-	elldata[ll_F5*ellsize + ellidx] = 0.;
-	elldata[ll_F6*ellsize + ellidx] = 0.;
-	elldata[ll_F7*ellsize + ellidx] = 0.;
-	elldata[ll_F8*ellsize + ellidx] = 1.;
+          elldata[ll_F0*ellsize + ellidx] = 1.;
+          elldata[ll_F1*ellsize + ellidx] = 0.;
+          elldata[ll_F2*ellsize + ellidx] = 0.;
+          elldata[ll_F3*ellsize + ellidx] = 0.;
+          elldata[ll_F4*ellsize + ellidx] = 1.;
+          elldata[ll_F5*ellsize + ellidx] = 0.;
+          elldata[ll_F6*ellsize + ellidx] = 0.;
+          elldata[ll_F7*ellsize + ellidx] = 0.;
+          elldata[ll_F8*ellsize + ellidx] = 1.;
 
-	elldata[ll_x*ellsize + ellidx] = ellip.center[0];
-	elldata[ll_y*ellsize + ellidx] = ellip.center[1];
-	elldata[ll_z*ellsize + ellidx] = ellip.center[2];
-	elldata[ll_a*ellsize + ellidx] = ellip.radius[0];
-	elldata[ll_b*ellsize + ellidx] = ellip.radius[1];
-	elldata[ll_c*ellsize + ellidx] = ellip.radius[2];
-	elldata[ll_r0*ellsize + ellidx] = ellip.rotation[0];
-	elldata[ll_r1*ellsize + ellidx] = ellip.rotation[1];
-	elldata[ll_r2*ellsize + ellidx] = ellip.rotation[2];
-	elldata[ll_r3*ellsize + ellidx] = ellip.rotation[3];
-	elldata[ll_r4*ellsize + ellidx] = ellip.rotation[4];
-	elldata[ll_r5*ellsize + ellidx] = ellip.rotation[5];
-	elldata[ll_r6*ellsize + ellidx] = ellip.rotation[6];
-	elldata[ll_r7*ellsize + ellidx] = ellip.rotation[7];
-	elldata[ll_r8*ellsize + ellidx] = ellip.rotation[8];
+          elldata[ll_x*ellsize + ellidx] = ellip.center[0];
+          elldata[ll_y*ellsize + ellidx] = ellip.center[1];
+          elldata[ll_z*ellsize + ellidx] = ellip.center[2];
+          elldata[ll_a*ellsize + ellidx] = ellip.radius[0];
+          elldata[ll_b*ellsize + ellidx] = ellip.radius[1];
+          elldata[ll_c*ellsize + ellidx] = ellip.radius[2];
+          elldata[ll_r0*ellsize + ellidx] = ellip.rotation[0];
+          elldata[ll_r1*ellsize + ellidx] = ellip.rotation[1];
+          elldata[ll_r2*ellsize + ellidx] = ellip.rotation[2];
+          elldata[ll_r3*ellsize + ellidx] = ellip.rotation[3];
+          elldata[ll_r4*ellsize + ellidx] = ellip.rotation[4];
+          elldata[ll_r5*ellsize + ellidx] = ellip.rotation[5];
+          elldata[ll_r6*ellsize + ellidx] = ellip.rotation[6];
+          elldata[ll_r7*ellsize + ellidx] = ellip.rotation[7];
+          elldata[ll_r8*ellsize + ellidx] = ellip.rotation[8];
 
-	elldata[ll_X*ellsize + ellidx] = ellip.center[0];
-	elldata[ll_Y*ellsize + ellidx] = ellip.center[1];
-	elldata[ll_Z*ellsize + ellidx] = ellip.center[2];
-	elldata[ll_A*ellsize + ellidx] = ellip.radius[0];
-	elldata[ll_B*ellsize + ellidx] = ellip.radius[1];
-	elldata[ll_C*ellsize + ellidx] = ellip.radius[2];
-	elldata[ll_R0*ellsize + ellidx] = ellip.rotation[0];
-	elldata[ll_R1*ellsize + ellidx] = ellip.rotation[1];
-	elldata[ll_R2*ellsize + ellidx] = ellip.rotation[2];
-	elldata[ll_R3*ellsize + ellidx] = ellip.rotation[3];
-	elldata[ll_R4*ellsize + ellidx] = ellip.rotation[4];
-	elldata[ll_R5*ellsize + ellidx] = ellip.rotation[5];
-	elldata[ll_R6*ellsize + ellidx] = ellip.rotation[6];
-	elldata[ll_R7*ellsize + ellidx] = ellip.rotation[7];
-	elldata[ll_R8*ellsize + ellidx] = ellip.rotation[8];
+          elldata[ll_X*ellsize + ellidx] = ellip.center[0];
+          elldata[ll_Y*ellsize + ellidx] = ellip.center[1];
+          elldata[ll_Z*ellsize + ellidx] = ellip.center[2];
+          elldata[ll_A*ellsize + ellidx] = ellip.radius[0];
+          elldata[ll_B*ellsize + ellidx] = ellip.radius[1];
+          elldata[ll_C*ellsize + ellidx] = ellip.radius[2];
+          elldata[ll_R0*ellsize + ellidx] = ellip.rotation[0];
+          elldata[ll_R1*ellsize + ellidx] = ellip.rotation[1];
+          elldata[ll_R2*ellsize + ellidx] = ellip.rotation[2];
+          elldata[ll_R3*ellsize + ellidx] = ellip.rotation[3];
+          elldata[ll_R4*ellsize + ellidx] = ellip.rotation[4];
+          elldata[ll_R5*ellsize + ellidx] = ellip.rotation[5];
+          elldata[ll_R6*ellsize + ellidx] = ellip.rotation[6];
+          elldata[ll_R7*ellsize + ellidx] = ellip.rotation[7];
+          elldata[ll_R8*ellsize + ellidx] = ellip.rotation[8];
 
-	ellips[ll_bodnum*ellsize + ellidx] = bodnum;
-	ellips[ll_matnum*ellsize + ellidx] = ellip.matnum;
-	ellips[ll_color*ellsize + ellidx] = ellip.gcolor;
-	ellips[ll_rnk*ellsize + ellidx] = ellip_rank[ellidx];
-	ellips[ll_idx*ellsize + ellidx] = ellip_index[ellidx];
+          ellips[ll_bodnum*ellsize + ellidx] = bodnum;
+          ellips[ll_matnum*ellsize + ellidx] = ellip.matnum;
+          ellips[ll_color*ellsize + ellidx] = ellip.gcolor;
 
-	ellidx ++;
-      }
+          ellidx ++;
+        }
 
-      for (int r = 0; r < size; r ++)
-      {
-	ga_elldata->put(r, 0, ellidx, 0, ll_last0, elldata);
-	ga_ellips->put(r, 0, ellidx, 0, ll_last1, ellips);
+        uint64_t count;
+        ga_counters->get(r, cn_ellips, cn_ellips+1, 0, 1, &count);
+	ga_elldata->put(r, count, count+ellidx, 0, ll_last0, elldata);
+	ga_ellips->put(r, count, count+ellidx, 0, ll_last1, ellips);
 	ga_counters->acc(r, cn_ellips, cn_ellips+1, 0, 1, &ellidx);
-      }
 
-      delete[] elldata;
-      delete[] ellips;
+        delete[] elldata;
+        delete[] ellips;
+      }
 
       inserted_ellips.clear();
     };
@@ -673,11 +666,11 @@ void compute_main_loop(REAL duration, REAL step)
 
 	for (int r = 0; r < size; r ++) /* initialize counters */
 	{
-	  uint64_t counts[] = {0, inserted_materials.size() * 2, 0,
-			       0, maxnodes * 2, 0,
-			       0, maxeles * 2, 0,
-			       0, maxfaces * 2, 0,
-			       0, inserted_ellips.size() * 2, 0};
+	  uint64_t counts[] = {0, 1+inserted_materials.size()*2, 0,
+			       0, 1+maxnodes*2, 0,
+			       0, 1+maxeles*2, 0,
+			       0, 1+maxfaces*2, 0,
+			       0, 1+inserted_ellips.size()*2/size, 0};
 
 	  ga_counters->put (r, 0, cn_last, 0, 1, counts);
 	}

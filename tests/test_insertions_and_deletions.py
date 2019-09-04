@@ -40,6 +40,29 @@ def read_stdout_meshes(output):
     elist = sorted(elist)
     stdout_meshes[bodnum] = (nlist, elist) # output sorted nodes and elements
   return stdout_meshes
+
+def read_stdout_ellips(output):
+  stdout_ellips = dict()
+  nell = output.count('_center')
+  jn = 0
+  for i in range(0,nell):
+    jn0 = jn
+    jn = output.find('_center', jn+1)
+    j0 = output.rfind('_',jn0, jn-1)
+    bodnum = int(output[j0+1:jn])
+    k = output.find('(', jn)
+    l = output.find(')', jn)
+    center = ast.literal_eval(output[k:l+1])
+    jn = output.find('_radius', jn+1)
+    k = output.find('(', jn)
+    l = output.find(')', jn)
+    radius = ast.literal_eval(output[k:l+1])
+    jn = output.find('_rotate', jn+1)
+    k = output.find('(', jn)
+    l = output.find(')', jn)
+    rotate = ast.literal_eval(output[k:l+1])
+    stdout_ellips[bodnum] = (center, radius, rotate) # output sorted nodes and elements
+  return stdout_ellips
   
 def read_debug_meshes(np):
   debug_meshes = dict()
@@ -102,7 +125,34 @@ def read_debug_meshes(np):
     debug_meshes[bodnum] = (nlist, elist) # output sorted nodes and elements
   return debug_meshes
 
-class CompareMeshesAssertions:
+def read_debug_ellips(np):
+  debug_ellips = dict()
+  for r in range(0,np):
+    with open('debug_ellips%d.txt'%r) as f:
+      lines = [line.rstrip('\n') for line in f]
+    assert 'COUNT' in lines[1]
+    nell = int(lines[1].split()[1])
+    i = 2
+    j = 0
+    while j < nell:
+      assert 'BODNUM' in lines[i]
+      bodnum = int(lines[i].split()[1])
+      assert 'MATNUM' in lines[i+1]
+      matnum = int(lines[i+1].split()[1])
+      assert 'COLOR' in lines[i+2]
+      color = int(lines[i+2].split()[1])
+      assert 'CENTER' in lines[i+3]
+      center = tuple(float(x) for x in lines[i+3].split()[1:4])
+      assert 'RADIUS' in lines[i+4]
+      radius = tuple(float(x) for x in lines[i+4].split()[1:4])
+      assert 'ROTATION' in lines[i+5]
+      rotation = tuple(float(x) for x in lines[i+5].split()[1:10])
+      debug_ellips[bodnum] = (center, radius, rotation)
+      i += 6
+      j += 1
+  return debug_ellips
+
+class CompareInputAssertions:
   def assertSameMeshes(self, stdout, debug):
     if len(stdout) != len(debug):
       raise AssertionError('Mesh counts differ: %d != %d' % (len(stdout), len(debug)))
@@ -138,6 +188,34 @@ class CompareMeshesAssertions:
         if e0 != e1:
           raise AssertionError('For bodnum %d node %d differs: %s (stdout) != %s (debug)' % (bodnum, i, e0, e1))
 
+  def assertSameEllips(self, stdout, debug):
+    if len(stdout) != len(debug):
+      raise AssertionError('Ellipsoids counts differ: %d != %d' % (len(stdout), len(debug)))
+
+    for bodnum in stdout:
+      if not bodnum in debug:
+        raise AssertionError('Ellipsoid bodnum %d missing in debug files' % bodnum)
+
+    for bodnum in debug:
+      if not bodnum in stdout:
+        raise AssertionError('Ellipsoid bodnum %d missing in stdout' % bodnum)
+
+    for bodnum in stdout:
+      center0 = stdout[bodnum][0]
+      center1 = debug[bodnum][0]
+      if center0 != center1:
+        raise AssertionError('For bodnum %d ellipsoid centers differ: %s (stdout) != %s (debug)' % (bodnum, center0, center1))
+
+      radius0 = stdout[bodnum][1]
+      radius1 = debug[bodnum][1]
+      if center0 != center1:
+        raise AssertionError('For bodnum %d ellipsoid radii differ: %s (stdout) != %s (debug)' % (bodnum, radius0, radius1))
+
+      rotation0 = stdout[bodnum][2]
+      rotation1 = debug[bodnum][2]
+      if center0 != center1:
+        raise AssertionError('For bodnum %d ellipsoid rotations differ: %s (stdout) != %s (debug)' % (bodnum, rotation0, rotation1))
+
 def run_test(arg_string):
   np = random.randint(2,12)
   cmd = 'mpirun -np %d --oversubscribe ../solfec4 --debug_print insertions_and_deletions.py ' % np
@@ -145,8 +223,12 @@ def run_test(arg_string):
   output = solfec.read()
   solfec.close()
 
-  stdout_meshes = read_stdout_meshes(output)
-  debug_meshes = read_debug_meshes(np)
+  if 'MESH' in arg_string:
+    stdout_meshes = read_stdout_meshes(output)
+    debug_meshes = read_debug_meshes(np)
+  if 'ELL' in arg_string:
+    stdout_ellips = read_stdout_ellips(output)
+    debug_ellips = read_debug_ellips(np)
 
   filelist = glob.glob('debug_*.txt')
   for filepath in filelist:
@@ -155,34 +237,43 @@ def run_test(arg_string):
     except:
       print("Error while deleting file : ", filepath)
 
-  return (stdout_meshes, debug_meshes)
+  if 'MESH' in arg_string and not 'ELL' in arg_string: return (stdout_meshes, debug_meshes)
+  if 'ELL' in arg_string and not 'MESH' in arg_string: return (stdout_ellips, debug_ellips)
+  if 'MESH' in arg_string and 'ELL' in arg_string: return (stdout_meshes, debug_meshes, stdout_ellips, debug_ellips)
+  else: raise AssertionError('Invalid test')
 
-class test_MESH_i(unittest.TestCase, CompareMeshesAssertions):
+class test_MESH_i(unittest.TestCase, CompareInputAssertions):
   def test_MESH_i(self):
     print('\ntesting MESH insertions')
     stdout_meshes, debug_meshes = run_test('INSMESH')
     self.assertSameMeshes(stdout_meshes, debug_meshes)
 
-class test_MESH_id(unittest.TestCase, CompareMeshesAssertions):
+class test_MESH_id(unittest.TestCase, CompareInputAssertions):
   def test_MESH_id(self):
     print('\ntesting MESH insertions-deletions')
     stdout_meshes, debug_meshes = run_test('INSMESH DEL')
     self.assertSameMeshes(stdout_meshes, debug_meshes)
 
-class test_MESH_idi(unittest.TestCase, CompareMeshesAssertions):
+class test_MESH_idi(unittest.TestCase, CompareInputAssertions):
   def test_MESH_idi(self):
     print('\ntesting MESH insertions-deletions-insertions')
     stdout_meshes, debug_meshes = run_test('INSMESH DEL INSMESH')
     self.assertSameMeshes(stdout_meshes, debug_meshes)
 
-class test_MESH_idid(unittest.TestCase, CompareMeshesAssertions):
+class test_MESH_idid(unittest.TestCase, CompareInputAssertions):
   def test_MESH_idid(self):
     print('\ntesting MESH insertions-deletions-insertions-deletions')
     stdout_meshes, debug_meshes = run_test('INSMESH DEL INSMESH DEL')
     self.assertSameMeshes(stdout_meshes, debug_meshes)
 
-class test_MESH_ididi(unittest.TestCase, CompareMeshesAssertions):
+class test_MESH_ididi(unittest.TestCase, CompareInputAssertions):
   def test_MESH_ididi(self):
     print('\ntesting MESH insertions-deletions-insertions-deletions-insertions')
     stdout_meshes, debug_meshes = run_test('INSMESH DEL INSMESH DEL INSMESH')
     self.assertSameMeshes(stdout_meshes, debug_meshes)
+
+class test_ELLIP_i(unittest.TestCase, CompareInputAssertions):
+  def test_ELLIP_i(self):
+    print('\ntesting ELLIP insertions')
+    stdout_ellips, debug_ellips = run_test('INSELL')
+    self.assertSameEllips(stdout_ellips, debug_ellips)
