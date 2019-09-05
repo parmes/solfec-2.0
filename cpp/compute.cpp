@@ -486,11 +486,10 @@ void compute_main_loop(REAL duration, REAL step)
 
     auto GA_INSERT_ELLIPS = [](auto size)
     {
-      uint64_t n = 0;
+      static uint64_t n = 0; /* static n spreads ellipsoids uniformly on ranks */
       std::map<int,std::vector<uint64_t>> ellips_on_rank;
       for (auto& bodnum : inserted_ellips)
       {
-	struct ellip &ellip = solfec::ellips[bodnum];
 	int rank = n % size;
 	ellip_mapping[bodnum] = rank;
         ellips_on_rank[rank].push_back(bodnum);
@@ -1057,6 +1056,22 @@ void compute_main_loop(REAL duration, REAL step)
     ga_faces->fence();
     ga_elldata->fence();
     ga_ellips->fence();
+
+#if DEBUG
+    if (rank == 0 && debug_print)
+    {
+      std::vector<int> nrank(size, 0);
+      for (auto &[bodym, r] : ellip_mapping) nrank[r]++;
+      std::cout << "=================================" << std::endl;
+      for (int i = 0; i < size; i ++)
+      {
+        uint64_t count;
+        ga_counters->get (i, cn_ellips, cn_ellips+1, 0, 1, &count);
+        std::cout << "Read on rank 0: there are " << count << " ellips on rank " << i << std::endl;
+        std::cout << "Counted on rank 0: there are " << nrank[i] << " ellips on rank " << i << std::endl;
+      }
+    }
+#endif
 
     if (debug_print)
     {

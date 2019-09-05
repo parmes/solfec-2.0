@@ -308,3 +308,14 @@ class test_ELLIP_ididi(unittest.TestCase, CompareInputAssertions):
     print('\ntesting ELLIP insertions-deletions-insertions-deletions-insertions')
     stdout_ellips, debug_ellips = run_test('INSELL DEL INSELL DEL INSELL')
     self.assertSameEllips(stdout_ellips, debug_ellips)
+
+'''
+# this test fails witn np >= 7 and n = 2 in insert_ellips()
+class test_ELLIP_imany(unittest.TestCase, CompareInputAssertions):
+  def test_ELLIP_imany(self):
+    print('\ntesting ELLIP  many-insertions')
+    args = ''
+    for i in range(0,8): args += ' INSELL'
+    stdout_ellips, debug_ellips = run_test(args)
+    self.assertSameEllips(stdout_ellips, debug_ellips)
+'''

@@ -52,7 +52,7 @@ def delete_bodies():
   global bodnum_list
   if len(bodnum_list) > 0:
     n = random.randint(1, len(bodnum_list))
-    idx = random.sample(range(0, len(bodnum_list)), 3)
+    idx = random.sample(range(0, len(bodnum_list)), n)
     todel = [bodnum_list[i] for i in idx]
     for item in todel: DELETE (item[0], item[1])
     bodnum_list = [bodnum_list[i] for i in range(len(bodnum_list)) if i not in idx]
