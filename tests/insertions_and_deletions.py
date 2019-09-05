@@ -28,16 +28,22 @@ def insert_meshes():
         bodnum = MESH_HEX (nodes, m, m, m, matnum, colors)
         bodnum_list.append((bodnum, 'MESH'))
 
+@static_vars(shift=0)
 def insert_ellips():
   n = random.randint(4, 8)
-  for i in range(0,n):
-    for j in range(0,n):
-      for k in range(0,n):
+  s = insert_ellips.shift # coordinate uniqueness
+  insert_ellips.shift += n # shift ellipsoids blocks
+  for i in range(s,s+n):
+    for j in range(s,s+n):
+      for k in range(s,s+n):
         dx = 0.4+random.uniform(0.0, 0.2)
         dy = 0.4+random.uniform(0.0, 0.2)
         dz = 0.4+random.uniform(0.0, 0.2)
         center = (i+dx, j+dy, k+dz)
-        radius = (0.4, 0.4, 0.4)
+        a = random.uniform(0.2, 0.4)
+        b = random.uniform(0.2, 0.4)
+        c = random.uniform(0.2, 0.4)
+        radius = (a, b, c)
         color = 1
         bodnum = ELLIP(center, radius, matnum, color)
         bodnum_list.append((bodnum, 'ELLIP'))

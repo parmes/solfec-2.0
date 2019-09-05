@@ -486,35 +486,15 @@ void compute_main_loop(REAL duration, REAL step)
 
     auto GA_INSERT_ELLIPS = [](auto size)
     {
-      using namespace ispc;
-      uint64_t n = inserted_ellips.size();
-      REAL *point[3] = {aligned_real_alloc(n),
-			aligned_real_alloc(n),
-			aligned_real_alloc(n)};
-      dynlb lb;
-     
-      n = 0;
-      for (auto& bodnum : inserted_ellips)
-      {
-	struct ellip &ellip = solfec::ellips[bodnum];
-	point[0][n] = ellip.center[0];
-	point[1][n] = ellip.center[1];
-	point[2][n] = ellip.center[2];
-	n ++;
-      }
-
-      lb.local_create (n, point); /* create local load balancer */
-      aligned_real_free(point[0]);
-      aligned_real_free(point[1]);
-      aligned_real_free(point[2]);
-
+      uint64_t n = 0;
       std::map<int,std::vector<uint64_t>> ellips_on_rank;
       for (auto& bodnum : inserted_ellips)
       {
 	struct ellip &ellip = solfec::ellips[bodnum];
-	int rank = lb.point_assign(ellip.center);
+	int rank = n % size;
 	ellip_mapping[bodnum] = rank;
         ellips_on_rank[rank].push_back(bodnum);
+        n ++;
       }
 
       for (auto& [r, vec] : ellips_on_rank)
@@ -729,6 +709,8 @@ void compute_main_loop(REAL duration, REAL step)
 	  GA *tmp = ga_materials;
 	  ga_materials = ga;
 	  delete tmp;
+
+          counts[sz_materials] = counts[sz_materials_new];
 	}
 
         if (counts[sz_nodes_new] > counts[sz_nodes])
@@ -741,6 +723,8 @@ void compute_main_loop(REAL duration, REAL step)
 	  GA *tmp = ga_nodes;
 	  ga_nodes = ga;
 	  delete tmp;
+
+          counts[sz_nodes] = counts[sz_nodes_new];
 	}
 
 	if (counts[sz_elements_new] > counts[sz_elements])
@@ -753,6 +737,8 @@ void compute_main_loop(REAL duration, REAL step)
 	  GA *tmp = ga_elements;
 	  ga_elements = ga;
 	  delete tmp;
+
+          counts[sz_elements] = counts[sz_elements_new];
 	}
 
 	if (counts[sz_faces_new] > counts[sz_faces])
@@ -765,6 +751,8 @@ void compute_main_loop(REAL duration, REAL step)
 	  GA *tmp = ga_faces;
 	  ga_faces = ga;
 	  delete tmp;
+
+	  counts[sz_faces] = counts[sz_faces_new];
 	}
 
 	if (counts[sz_ellips_new] > counts[sz_ellips])
@@ -785,13 +773,9 @@ void compute_main_loop(REAL duration, REAL step)
 	  tmp = ga_ellips;
 	  ga_ellips = ga1;
 	  delete tmp;
-	}
 
-	counts[sz_materials] = counts[sz_materials_new];
-	counts[sz_nodes] = counts[sz_nodes_new];
-	counts[sz_elements] = counts[sz_elements_new];
-	counts[sz_faces] = counts[sz_faces_new];
-	counts[sz_ellips] = counts[sz_ellips_new];
+	  counts[sz_ellips] = counts[sz_ellips_new];
+	}
 
 	ga_counters->put(rank, 0, cn_last, 0, 1, counts);
       };
@@ -920,25 +904,38 @@ void compute_main_loop(REAL duration, REAL step)
 	    ga_elldata->get(r, 0, count0, 0, ll_last0, data0);
 	    ga_ellips->get(r, 0, count0, 0, ll_last1, data1);
 
-	    count1 = count0;
-	    REAL *item = data0;
-	    uint64_t i = 0, j = 0, *jtem = data1;
+	    std::vector<uint64_t> left_indices;
 
-	    for (; i < count0; i ++, item += ll_last0, jtem += ll_last1)
+            for (uint64_t i = 0; i < count0; i ++)
+            {
+              uint64_t bodnum = data1[count0*ll_bodnum+i];
+
+              if (set.find(bodnum) == set.end())
+              {
+                left_indices.push_back(i);
+              }
+            }
+
+            count1 = left_indices.size();
+
+            uint64_t i = 0, j = 0;
+	    for (REAL *item = data0; i < ll_last0; i ++, item += count0)
 	    {
-	      if (set.find(jtem[ll_bodnum]) != set.end())
-	      {
-		ellip_mapping.erase(jtem[ll_bodnum]);
-		count1 --;
-	      }
+              for (auto & k : left_indices)
+              {
+                data0[j] = item[k];
+                j ++;
+              }
+	    }
 
-	      if (j < i)
-	      {
-		std::memmove (&data0[j*ll_last0], item, sizeof(REAL [ll_last0]));
-		std::memmove (&data1[j*ll_last1], jtem, sizeof(uint64_t [ll_last1]));
-	      }
-
-	      j ++;
+            i = 0, j = 0;
+	    for (uint64_t *item = data1; i < ll_last1; i ++, item += count0)
+	    {
+              for (auto & k : left_indices)
+              {
+                data1[j] = item[k];
+                j ++;
+              }
 	    }
 
 	    ga_elldata->put(r, 0, count1, 0, ll_last0, data0);

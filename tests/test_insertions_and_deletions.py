@@ -152,6 +152,14 @@ def read_debug_ellips(np):
       j += 1
   return debug_ellips
 
+def clean_debug_files():
+  filelist = glob.glob('debug_*.txt')
+  for filepath in filelist:
+    try:
+      os.remove(filepath)
+    except:
+      print("Error while deleting file : ", filepath)
+
 class CompareInputAssertions:
   def assertSameMeshes(self, stdout, debug):
     if len(stdout) != len(debug):
@@ -188,6 +196,8 @@ class CompareInputAssertions:
         if e0 != e1:
           raise AssertionError('For bodnum %d node %d differs: %s (stdout) != %s (debug)' % (bodnum, i, e0, e1))
 
+    clean_debug_files()
+
   def assertSameEllips(self, stdout, debug):
     if len(stdout) != len(debug):
       raise AssertionError('Ellipsoids counts differ: %d != %d' % (len(stdout), len(debug)))
@@ -216,6 +226,8 @@ class CompareInputAssertions:
       if center0 != center1:
         raise AssertionError('For bodnum %d ellipsoid rotations differ: %s (stdout) != %s (debug)' % (bodnum, rotation0, rotation1))
 
+    clean_debug_files()
+
 def run_test(arg_string):
   np = random.randint(2,12)
   cmd = 'mpirun -np %d --oversubscribe ../solfec4 --debug_print insertions_and_deletions.py ' % np
@@ -223,19 +235,14 @@ def run_test(arg_string):
   output = solfec.read()
   solfec.close()
 
+  with open('debug_stdout.txt', 'w') as f: f.write(output)
+
   if 'MESH' in arg_string:
     stdout_meshes = read_stdout_meshes(output)
     debug_meshes = read_debug_meshes(np)
   if 'ELL' in arg_string:
     stdout_ellips = read_stdout_ellips(output)
     debug_ellips = read_debug_ellips(np)
-
-  filelist = glob.glob('debug_*.txt')
-  for filepath in filelist:
-    try:
-      os.remove(filepath)
-    except:
-      print("Error while deleting file : ", filepath)
 
   if 'MESH' in arg_string and not 'ELL' in arg_string: return (stdout_meshes, debug_meshes)
   if 'ELL' in arg_string and not 'MESH' in arg_string: return (stdout_ellips, debug_ellips)
@@ -276,4 +283,28 @@ class test_ELLIP_i(unittest.TestCase, CompareInputAssertions):
   def test_ELLIP_i(self):
     print('\ntesting ELLIP insertions')
     stdout_ellips, debug_ellips = run_test('INSELL')
+    self.assertSameEllips(stdout_ellips, debug_ellips)
+
+class test_ELLIP_id(unittest.TestCase, CompareInputAssertions):
+  def test_ELLIP_id(self):
+    print('\ntesting ELLIP insertions-deletions')
+    stdout_ellips, debug_ellips = run_test('INSELL DEL')
+    self.assertSameEllips(stdout_ellips, debug_ellips)
+
+class test_ELLIP_idi(unittest.TestCase, CompareInputAssertions):
+  def test_ELLIP_idi(self):
+    print('\ntesting ELLIP insertions-deletions-insertions')
+    stdout_ellips, debug_ellips = run_test('INSELL DEL INSELL')
+    self.assertSameEllips(stdout_ellips, debug_ellips)
+
+class test_ELLIP_idid(unittest.TestCase, CompareInputAssertions):
+  def test_ELLIP_idid(self):
+    print('\ntesting ELLIP insertions-deletions-insertions-deletions')
+    stdout_ellips, debug_ellips = run_test('INSELL DEL INSELL DEL')
+    self.assertSameEllips(stdout_ellips, debug_ellips)
+
+class test_ELLIP_ididi(unittest.TestCase, CompareInputAssertions):
+  def test_ELLIP_ididi(self):
+    print('\ntesting ELLIP insertions-deletions-insertions-deletions-insertions')
+    stdout_ellips, debug_ellips = run_test('INSELL DEL INSELL DEL INSELL')
     self.assertSameEllips(stdout_ellips, debug_ellips)
