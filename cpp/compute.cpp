@@ -645,11 +645,11 @@ void compute_main_loop(REAL duration, REAL step)
 
 	for (int r = 0; r < size; r ++) /* initialize counters */
 	{
-	  uint64_t counts[] = {0, 1+inserted_materials.size()*2, 0,
-			       0, 1+maxnodes*2, 0,
-			       0, 1+maxeles*2, 0,
-			       0, 1+maxfaces*2, 0,
-			       0, 1+inserted_ellips.size()*2/size, 0};
+	  uint64_t counts[] = {0, inserted_materials.size()*2, 0,
+			       0, maxnodes*2, 0,
+			       0, maxeles*2, 0,
+			       0, maxfaces*2, 0,
+			       0, (inserted_ellips.size()/size+1)*2, 0};
 
 	  ga_counters->put (r, 0, cn_last, 0, 1, counts);
 	}
@@ -703,6 +703,7 @@ void compute_main_loop(REAL duration, REAL step)
 	  GA *ga = new GA(MPI_COMM_WORLD, counts[sz_materials_new], mt_last, MPI_REAL);
 	  REAL *data = new REAL [counts[cn_materials] * mt_last];
 	  ERRMEM (data);
+          ERRMEM (ga);
 	  ga_materials->get(rank, 0, counts[cn_materials], 0, mt_last, data);
 	  ga->put(rank, 0, counts[cn_materials], 0, mt_last, data);
 	  GA *tmp = ga_materials;
@@ -717,6 +718,7 @@ void compute_main_loop(REAL duration, REAL step)
 	  GA *ga = new GA(MPI_COMM_WORLD, counts[sz_nodes_new], nd_last, MPI_REAL);
 	  REAL *data = new REAL [counts[cn_nodes] * nd_last];
 	  ERRMEM (data);
+          ERRMEM (ga);
 	  ga_nodes->get(rank, 0, counts[cn_nodes], 0, nd_last, data);
 	  ga->put(rank, 0, counts[cn_nodes], 0, nd_last, data);
 	  GA *tmp = ga_nodes;
@@ -731,6 +733,7 @@ void compute_main_loop(REAL duration, REAL step)
 	  GA *ga = new GA(MPI_COMM_WORLD, counts[sz_elements_new], el_last, MPI_UINT64_T);
 	  uint64_t *data = new uint64_t [counts[cn_elements] * el_last];
 	  ERRMEM (data);
+          ERRMEM (ga);
 	  ga_elements->get(rank, 0, counts[cn_elements], 0, el_last, data);
 	  ga->put(rank, 0, counts[cn_elements], 0, el_last, data);
 	  GA *tmp = ga_elements;
@@ -745,6 +748,7 @@ void compute_main_loop(REAL duration, REAL step)
 	  GA *ga = new GA(MPI_COMM_WORLD, counts[sz_faces_new], fa_last, MPI_UINT64_T);
 	  uint64_t *data = new uint64_t [counts[cn_faces] * fa_last];
 	  ERRMEM (data);
+          ERRMEM (ga);
 	  ga_faces->get(rank, 0, counts[cn_faces], 0, fa_last, data);
 	  ga->put(rank, 0, counts[cn_faces], 0, fa_last, data);
 	  GA *tmp = ga_faces;
@@ -762,6 +766,8 @@ void compute_main_loop(REAL duration, REAL step)
 	  uint64_t *data1 = new uint64_t [counts[cn_ellips] * ll_last1];
 	  ERRMEM (data0);
 	  ERRMEM (data1);
+          ERRMEM (ga0);
+          ERRMEM (ga1);
 	  ga_elldata->get(rank, 0, counts[cn_ellips], 0, ll_last0, data0);
 	  ga_ellips->get(rank, 0, counts[cn_ellips], 0, ll_last1, data1);
 	  ga0->put(rank, 0, counts[cn_ellips], 0, ll_last0, data0);
@@ -777,6 +783,8 @@ void compute_main_loop(REAL duration, REAL step)
 	}
 
 	ga_counters->put(rank, 0, cn_last, 0, 1, counts);
+
+	ga_counters->fence();
       };
 	
       if (rank == 0)
@@ -988,7 +996,7 @@ void compute_main_loop(REAL duration, REAL step)
 	  counts[sz_nodes_new] = counts[cn_nodes] - deleted_nodes_count[r] + maxnodes;
 	  counts[sz_elements_new] = counts[cn_elements] + maxeles;
 	  counts[sz_faces_new] = counts[cn_faces] + maxfaces,
-	  counts[sz_ellips_new] = counts[cn_ellips] + inserted_ellips.size()/size + 1;
+	  counts[sz_ellips_new] = counts[cn_ellips] + (inserted_ellips.size()/size+1);
 
 	  if (counts[sz_materials_new] > counts0[sz_materials_new]) counts0[sz_materials_new] = counts[sz_materials_new] * 2;
 	  if (counts[sz_nodes_new] > counts0[sz_nodes_new]) counts0[sz_nodes_new] = counts[sz_nodes_new] * 2;
@@ -1057,22 +1065,6 @@ void compute_main_loop(REAL duration, REAL step)
     ga_elldata->fence();
     ga_ellips->fence();
 
-#if DEBUG
-    if (rank == 0 && debug_print)
-    {
-      std::vector<int> nrank(size, 0);
-      for (auto &[bodym, r] : ellip_mapping) nrank[r]++;
-      std::cout << "=================================" << std::endl;
-      for (int i = 0; i < size; i ++)
-      {
-        uint64_t count;
-        ga_counters->get (i, cn_ellips, cn_ellips+1, 0, 1, &count);
-        std::cout << "Read on rank 0: there are " << count << " ellips on rank " << i << std::endl;
-        std::cout << "Counted on rank 0: there are " << nrank[i] << " ellips on rank " << i << std::endl;
-      }
-    }
-#endif
-
     if (debug_print)
     {
       debug_print_compute_data();
@@ -1093,7 +1085,7 @@ void compute_main_loop(REAL duration, REAL step)
     for (REAL end = solfec::simulation_time + duration;
 	 solfec::simulation_time < end; solfec::simulation_time += step)
     {
-      /* TODO: exectue compute task graph */
+      /* TODO: execute compute task graph */
     }
 
     if (rank == 0) break; /* exit and rejoin upon next RUN(), while others wait at MPI_Bcast */

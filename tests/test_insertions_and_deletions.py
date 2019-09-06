@@ -279,6 +279,18 @@ class test_MESH_ididi(unittest.TestCase, CompareInputAssertions):
     stdout_meshes, debug_meshes = run_test('INSMESH DEL INSMESH DEL INSMESH')
     self.assertSameMeshes(stdout_meshes, debug_meshes)
 
+class test_MESH_idmany(unittest.TestCase, CompareInputAssertions):
+  def test_MESH_idmany(self):
+    args = ''
+    n = random.randint(8,16)
+    print('\ntesting MESH %d-insertions-deletions' % n)
+    for i in range(0,n):
+      d = random.randint(0, 1)
+      args += ' INSMESH'
+      if d: args += ' DEL'
+    stdout_meshes, debug_meshes = run_test(args)
+    self.assertSameMeshes(stdout_meshes, debug_meshes)
+
 class test_ELLIP_i(unittest.TestCase, CompareInputAssertions):
   def test_ELLIP_i(self):
     print('\ntesting ELLIP insertions')
@@ -309,13 +321,14 @@ class test_ELLIP_ididi(unittest.TestCase, CompareInputAssertions):
     stdout_ellips, debug_ellips = run_test('INSELL DEL INSELL DEL INSELL')
     self.assertSameEllips(stdout_ellips, debug_ellips)
 
-'''
-# this test fails witn np >= 7 and n = 2 in insert_ellips()
-class test_ELLIP_imany(unittest.TestCase, CompareInputAssertions):
-  def test_ELLIP_imany(self):
-    print('\ntesting ELLIP  many-insertions')
+class test_ELLIP_idmany(unittest.TestCase, CompareInputAssertions):
+  def test_ELLIP_idmany(self):
     args = ''
-    for i in range(0,8): args += ' INSELL'
+    n = random.randint(8,16)
+    print('\ntesting ELLIP  %d-insertions-deletions' % n)
+    for i in range(0,n):
+      d = random.randint(0, 1)
+      args += ' INSELL'
+      if d: args += ' DEL'
     stdout_ellips, debug_ellips = run_test(args)
     self.assertSameEllips(stdout_ellips, debug_ellips)
-'''
