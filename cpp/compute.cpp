@@ -29,6 +29,7 @@ SOFTWARE.
 #include <cstring>
 #include <limits>
 #include <mpi.h>
+#include <list>
 #include <map>
 #include <set>
 #include "real.h"
@@ -57,7 +58,7 @@ std::set<uint64_t> inserted_prescribes;
 std::set<uint64_t> deleted_prescribes;
 
 std::map<uint64_t, mapping> mesh_mapping; /* body number to mesh rank data range mapping */
-std::map<int, std::vector<std::pair<uint64_t, uint64_t>>>  deleted_nodes; /* rank mapping of deleted node ranges */
+std::map<int, std::list<std::pair<uint64_t, uint64_t>>>  deleted_nodes; /* rank mapping of deleted node ranges */
 std::vector<uint64_t> deleted_nodes_count; /* deleted nodes counts per rank */
 std::unordered_map<uint64_t, int>  ellip_mapping; /* ellipsoid body number to rank mapping */
 /* --- rank 0 */
@@ -230,7 +231,7 @@ void compute_main_loop(REAL duration, REAL step)
 
           bool deleted_nodes_on_r = deleted_nodes.find(*r) != deleted_nodes.end();
 
-          if (deleted_nodes_on_r && deleted_nodes[*r].size() > 0) /* use current range of deleted nodes */
+          if (deleted_nodes_on_r && !deleted_nodes[*r].empty() > 0) /* use current range of deleted nodes */
           {
             auto &deleted_nodes_of_r = deleted_nodes[*r];
 
@@ -243,21 +244,21 @@ void compute_main_loop(REAL duration, REAL step)
             {
               std::vector<uint64_t> vec(1, i);
               replace_nodes[*r].push_back(std::make_pair(
-                 deleted_nodes_of_r.back().first, vec)); /* pair up initial resued node index
+                 deleted_nodes_of_r.front().first, vec)); /* pair up initial resued node index
                                                       with a vector of inserted node indices */
             }
 
-            deleted_nodes_of_r.back().first ++;
+            deleted_nodes_of_r.front().first ++;
 
-            if (deleted_nodes_of_r.back().first == deleted_nodes_of_r.back().second) /* no more space */
+            if (deleted_nodes_of_r.front().first == deleted_nodes_of_r.front().second) /* no more space */
             {
-              deleted_nodes_of_r.pop_back();
+              deleted_nodes_of_r.pop_front();
 
-              if (deleted_nodes_of_r.size() > 0)
+              if (!deleted_nodes_of_r.empty())
               {
                 std::vector<uint64_t> vec; /* empty */
                 replace_nodes[*r].push_back(std::make_pair(
-                   deleted_nodes_of_r.back().first, vec)); /* pair up initial resued node index with a an empty vector */
+                   deleted_nodes_of_r.front().first, vec)); /* pair up initial resued node index with a an empty vector */
               }
             }
           }
@@ -271,6 +272,7 @@ void compute_main_loop(REAL duration, REAL step)
 	{
           for (auto& [start, vec1] : vec0)
           {
+            if (vec1.empty()) continue;
             struct mesh &mesh = solfec::meshes[bodnum];
             uint64_t nodsize = vec1.size();
             REAL *noddata = new REAL [nodsize * nd_last];
@@ -884,6 +886,11 @@ void compute_main_loop(REAL duration, REAL step)
 	      deleted_faces[r[0]].push_back(std::make_pair(r[1],r[2]));
 	    }
 	  }
+
+          for (auto& [r, list] : deleted_nodes)
+          {
+            list.sort(); /* sort deleted ranges list per rank */
+          }
 
 	  /* resize element and face arrays */
 	  GA_RESIZE_DOWN (cn_elements, ga_elements, el_last, deleted_elements, el_bodnum);

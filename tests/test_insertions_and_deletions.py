@@ -283,11 +283,12 @@ class test_MESH_idmany(unittest.TestCase, CompareInputAssertions):
   def test_MESH_idmany(self):
     args = ''
     n = random.randint(8,16)
-    print('\ntesting MESH %d-insertions-deletions' % n)
     for i in range(0,n):
       d = random.randint(0, 1)
       args += ' INSMESH'
       if d: args += ' DEL'
+    print('\ntesting MESH many-insertions-deletions:' +
+      args.replace('INSMESH','I').replace('DEL','D'))
     stdout_meshes, debug_meshes = run_test(args)
     self.assertSameMeshes(stdout_meshes, debug_meshes)
 
@@ -325,10 +326,11 @@ class test_ELLIP_idmany(unittest.TestCase, CompareInputAssertions):
   def test_ELLIP_idmany(self):
     args = ''
     n = random.randint(8,16)
-    print('\ntesting ELLIP  %d-insertions-deletions' % n)
     for i in range(0,n):
       d = random.randint(0, 1)
       args += ' INSELL'
       if d: args += ' DEL'
+    print('\ntesting ELLIP  many-insertions-deletions:' +
+      args.replace('INSELL','I').replace('DEL','D'))
     stdout_ellips, debug_ellips = run_test(args)
     self.assertSameEllips(stdout_ellips, debug_ellips)
