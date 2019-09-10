@@ -51,7 +51,8 @@ struct rankmap
 std::map<uint64_t, part> partition_meshes(const std::set<uint64_t> &bodnum_subset, int elements_perpart, int faces_perpart);
 
 /* map mesh partitioning to MPI ranks */
-std::map<uint64_t, rankmap> map_parts(const std::map<uint64_t, part> &parts);
+std::map<uint64_t, rankmap> map_parts(const std::map<uint64_t, part> &parts, const std::vector<uint64_t> &nodes_per_rank,
+                             const std::vector<uint64_t> &elements_per_rank, const std::vector<uint64_t> &faces_per_rank);
 
 /* return [maxnodes, maxeles, maxfaces] */
 std::tuple<uint64_t, uint64_t, uint64_t> max_per_rank (const std::map<uint64_t, rankmap> &maps);

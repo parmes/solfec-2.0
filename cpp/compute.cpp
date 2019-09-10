@@ -57,10 +57,14 @@ std::set<uint64_t> deleted_restrains;
 std::set<uint64_t> inserted_prescribes;
 std::set<uint64_t> deleted_prescribes;
 
+std::vector<uint64_t> nodes_per_rank; /* nodes per rank counts */
+std::vector<uint64_t> elements_per_rank; /* element per rank counts */
+std::vector<uint64_t> faces_per_rank; /* faces per rank counts */
 std::map<uint64_t, mapping> mesh_mapping; /* body number to mesh rank data range mapping */
 std::map<int, std::list<std::pair<uint64_t, uint64_t>>>  deleted_nodes; /* rank mapping of deleted node ranges */
 std::vector<uint64_t> deleted_nodes_count; /* deleted nodes counts per rank */
 std::unordered_map<uint64_t, int>  ellip_mapping; /* ellipsoid body number to rank mapping */
+std::vector<uint64_t> ellips_per_rank; /* ellipsoids per rank counts */
 /* --- rank 0 */
 
 /* all ranks --- */
@@ -308,6 +312,7 @@ void compute_main_loop(REAL duration, REAL step)
 
             std::array<uint64_t,3> rng = {(unsigned)r, start, start+nodidx};
             mapping.ga_nranges.push_back(rng); /* handy in deletion code */
+            nodes_per_rank[rng[0]] += rng[2]-rng[1];
 
 	    deleted_nodes_count[r] -= nodidx; /* this number of deleted nodes is now reused */
 
@@ -356,6 +361,7 @@ void compute_main_loop(REAL duration, REAL step)
 
 	  std::array<uint64_t,3> rng = {(unsigned)r, count, count+nodidx};
 	  mapping.ga_nranges.push_back(rng); /* handy in deletion code */
+          nodes_per_rank[rng[0]] += rng[2]-rng[1];
 
 	  delete[] noddata;
 	}
@@ -426,6 +432,7 @@ void compute_main_loop(REAL duration, REAL step)
 
 	  std::array<uint64_t,3> rng = {(unsigned)r, count, count+eleidx};
 	  mapping.ga_eranges.push_back(rng); /* handy in deletion code */
+          elements_per_rank[rng[0]] += rng[2]-rng[1];
 
 	  delete[] eledata;
 	}
@@ -478,6 +485,7 @@ void compute_main_loop(REAL duration, REAL step)
 
 	  std::array<uint64_t,3> rng = {(unsigned)r, count, count+facidx};
 	  mapping.ga_franges.push_back(rng); /* handy in deletion code */
+          faces_per_rank[rng[0]] += rng[2]-rng[1];
 
 	  delete[] facdata;
 	}
@@ -488,14 +496,23 @@ void compute_main_loop(REAL duration, REAL step)
 
     auto GA_INSERT_ELLIPS = [](auto size)
     {
-      static uint64_t n = 0; /* static n spreads ellipsoids uniformly on ranks */
+      std::set<std::pair<uint64_t, int>> equeue;
+      for (auto ec = ellips_per_rank.begin(); ec != ellips_per_rank.end(); ec++)
+      {
+        equeue.insert(std::make_pair(*ec, ec - ellips_per_rank.begin()));
+      }
+
       std::map<int,std::vector<uint64_t>> ellips_on_rank;
       for (auto& bodnum : inserted_ellips)
       {
-	int rank = n % size;
+        auto nh = equeue.extract(equeue.begin()); /* smallest size rank */
+        int rank = nh.value().second; /* insert to this rank */
+        nh.value().first ++; /* update rank size */
+        equeue.insert(std::move(nh)); /* update queue */
+
 	ellip_mapping[bodnum] = rank;
         ellips_on_rank[rank].push_back(bodnum);
-        n ++;
+        ellips_per_rank[rank] ++;
       }
 
       for (auto& [r, vec] : ellips_on_rank)
@@ -604,6 +621,11 @@ void compute_main_loop(REAL duration, REAL step)
 
     if (!partitioned)
     {
+      nodes_per_rank.resize(size);
+      elements_per_rank.resize(size);
+      faces_per_rank.resize(size);
+      ellips_per_rank.resize(size);
+
       deleted_nodes_count.resize(size);
 
       std::fill(deleted_nodes_count.begin(), deleted_nodes_count.end(), 0);
@@ -641,7 +663,7 @@ void compute_main_loop(REAL duration, REAL step)
       {
 	std::map<uint64_t, part> parts = partition_meshes(inserted_meshes, ELEMENTS_BUNCH, FACES_BUNCH);
 
-	std::map<uint64_t, rankmap> maps = map_parts (parts);
+	std::map<uint64_t, rankmap> maps = map_parts (parts, nodes_per_rank, elements_per_rank, faces_per_rank);
 
 	auto [maxnodes, maxeles, maxfaces] = max_per_rank (maps);
 
@@ -874,16 +896,19 @@ void compute_main_loop(REAL duration, REAL step)
 	    {
 	      deleted_nodes[r[0]].push_back(std::make_pair(r[1],r[2])); /* used during insertion of new meshes */
 	      deleted_nodes_count[r[0]] += r[2]-r[1];
+              nodes_per_rank[r[0]] -= r[2]-r[1];
 	    }
 
 	    for (auto& r : map.ga_eranges)
 	    {
 	      deleted_elements[r[0]].push_back(std::make_pair(r[1],r[2]));
+              elements_per_rank[r[0]] -= r[2]-r[1];
 	    }
 
 	    for (auto& r : map.ga_franges)
 	    {
 	      deleted_faces[r[0]].push_back(std::make_pair(r[1],r[2]));
+              faces_per_rank[r[0]] -= r[2]-r[1];
 	    }
 	  }
 
@@ -905,7 +930,10 @@ void compute_main_loop(REAL duration, REAL step)
 
 	  for (auto& bodnum : deleted_ellips)
 	  {
-	    deleted_ellips_onrank[ellip_mapping[bodnum]].insert(bodnum);
+            int rank = ellip_mapping[bodnum];
+	    deleted_ellips_onrank[rank].insert(bodnum);
+            ellip_mapping.erase(bodnum);
+            ellips_per_rank[rank] --;
 	  }
 
 	  for (auto& [r, set] : deleted_ellips_onrank)
@@ -977,7 +1005,7 @@ void compute_main_loop(REAL duration, REAL step)
 
 	std::map<uint64_t, part> parts = partition_meshes(inserted_meshes, ELEMENTS_BUNCH, FACES_BUNCH);
 
-	std::map<uint64_t, rankmap> maps = map_parts (parts);
+	std::map<uint64_t, rankmap> maps = map_parts (parts, nodes_per_rank, elements_per_rank, faces_per_rank);
 
 	auto [maxnodes, maxeles, maxfaces] = max_per_rank (maps);
 

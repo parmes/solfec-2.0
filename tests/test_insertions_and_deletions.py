@@ -68,11 +68,14 @@ def read_debug_meshes(np):
   debug_meshes = dict()
   rank_nodes = []
   body_elems = dict()
+  nprank = [0]*np
+  eprank = [0]*np
   for r in range(0,np): # read nodes
     with open('debug_nodes%d.txt'%r) as f:
       lines = [line.rstrip('\n') for line in f]
     assert 'COUNT' in lines[1]
     nnod = int(lines[1].split()[1])
+    nprank[r] = nnod
     nlist = [tuple(float(f) for f in l.split()) for l in lines[2:2+nnod]]
     rank_nodes.append(nlist)
   for r in range(0,np): # read elements
@@ -80,6 +83,7 @@ def read_debug_meshes(np):
       lines = [line.rstrip('\n') for line in f]
     assert 'COUNT' in lines[1]
     nele = int(lines[1].split()[1])
+    eprank[r] = nele
     elist = []
     i = 2
     j = 0
@@ -123,15 +127,17 @@ def read_debug_meshes(np):
       elist.append(tuple(eledef))
     elist = sorted(elist)
     debug_meshes[bodnum] = (nlist, elist) # output sorted nodes and elements
-  return debug_meshes
+  return (debug_meshes, nprank, eprank)
 
 def read_debug_ellips(np):
   debug_ellips = dict()
+  eprank = [0]*np
   for r in range(0,np):
     with open('debug_ellips%d.txt'%r) as f:
       lines = [line.rstrip('\n') for line in f]
     assert 'COUNT' in lines[1]
     nell = int(lines[1].split()[1])
+    eprank[r] = nell
     i = 2
     j = 0
     while j < nell:
@@ -150,7 +156,7 @@ def read_debug_ellips(np):
       debug_ellips[bodnum] = (center, radius, rotation)
       i += 6
       j += 1
-  return debug_ellips
+  return (debug_ellips, eprank)
 
 def clean_debug_files():
   filelist = glob.glob('debug_*.txt')
@@ -253,31 +259,41 @@ class test_MESH_i(unittest.TestCase, CompareInputAssertions):
   def test_MESH_i(self):
     print('\ntesting MESH insertions')
     stdout_meshes, debug_meshes = run_test('INSMESH')
-    self.assertSameMeshes(stdout_meshes, debug_meshes)
+    print('   # nodes per rank: ' + str(debug_meshes[1]))
+    print('   # elements per rank: ' + str(debug_meshes[2]))
+    self.assertSameMeshes(stdout_meshes, debug_meshes[0])
 
 class test_MESH_id(unittest.TestCase, CompareInputAssertions):
   def test_MESH_id(self):
     print('\ntesting MESH insertions-deletions')
     stdout_meshes, debug_meshes = run_test('INSMESH DEL')
-    self.assertSameMeshes(stdout_meshes, debug_meshes)
+    print('   # nodes per rank: ' + str(debug_meshes[1]))
+    print('   # elements per rank: ' + str(debug_meshes[2]))
+    self.assertSameMeshes(stdout_meshes, debug_meshes[0])
 
 class test_MESH_idi(unittest.TestCase, CompareInputAssertions):
   def test_MESH_idi(self):
     print('\ntesting MESH insertions-deletions-insertions')
     stdout_meshes, debug_meshes = run_test('INSMESH DEL INSMESH')
-    self.assertSameMeshes(stdout_meshes, debug_meshes)
+    print('   # nodes per rank: ' + str(debug_meshes[1]))
+    print('   # elements per rank: ' + str(debug_meshes[2]))
+    self.assertSameMeshes(stdout_meshes, debug_meshes[0])
 
 class test_MESH_idid(unittest.TestCase, CompareInputAssertions):
   def test_MESH_idid(self):
     print('\ntesting MESH insertions-deletions-insertions-deletions')
     stdout_meshes, debug_meshes = run_test('INSMESH DEL INSMESH DEL')
-    self.assertSameMeshes(stdout_meshes, debug_meshes)
+    print('   # nodes per rank: ' + str(debug_meshes[1]))
+    print('   # elements per rank: ' + str(debug_meshes[2]))
+    self.assertSameMeshes(stdout_meshes, debug_meshes[0])
 
 class test_MESH_ididi(unittest.TestCase, CompareInputAssertions):
   def test_MESH_ididi(self):
     print('\ntesting MESH insertions-deletions-insertions-deletions-insertions')
     stdout_meshes, debug_meshes = run_test('INSMESH DEL INSMESH DEL INSMESH')
-    self.assertSameMeshes(stdout_meshes, debug_meshes)
+    print('   # nodes per rank: ' + str(debug_meshes[1]))
+    print('   # elements per rank: ' + str(debug_meshes[2]))
+    self.assertSameMeshes(stdout_meshes, debug_meshes[0])
 
 class test_MESH_idmany(unittest.TestCase, CompareInputAssertions):
   def test_MESH_idmany(self):
@@ -290,37 +306,44 @@ class test_MESH_idmany(unittest.TestCase, CompareInputAssertions):
     print('\ntesting MESH many-insertions-deletions:' +
       args.replace('INSMESH','I').replace('DEL','D'))
     stdout_meshes, debug_meshes = run_test(args)
-    self.assertSameMeshes(stdout_meshes, debug_meshes)
+    print('   # nodes per rank: ' + str(debug_meshes[1]))
+    print('   # elements per rank: ' + str(debug_meshes[2]))
+    self.assertSameMeshes(stdout_meshes, debug_meshes[0])
 
 class test_ELLIP_i(unittest.TestCase, CompareInputAssertions):
   def test_ELLIP_i(self):
     print('\ntesting ELLIP insertions')
     stdout_ellips, debug_ellips = run_test('INSELL')
-    self.assertSameEllips(stdout_ellips, debug_ellips)
+    print('   # ellips per rank: ' + str(debug_ellips[1]))
+    self.assertSameEllips(stdout_ellips, debug_ellips[0])
 
 class test_ELLIP_id(unittest.TestCase, CompareInputAssertions):
   def test_ELLIP_id(self):
     print('\ntesting ELLIP insertions-deletions')
     stdout_ellips, debug_ellips = run_test('INSELL DEL')
-    self.assertSameEllips(stdout_ellips, debug_ellips)
+    print('   # ellips per rank: ' + str(debug_ellips[1]))
+    self.assertSameEllips(stdout_ellips, debug_ellips[0])
 
 class test_ELLIP_idi(unittest.TestCase, CompareInputAssertions):
   def test_ELLIP_idi(self):
     print('\ntesting ELLIP insertions-deletions-insertions')
     stdout_ellips, debug_ellips = run_test('INSELL DEL INSELL')
-    self.assertSameEllips(stdout_ellips, debug_ellips)
+    print('   # ellips per rank: ' + str(debug_ellips[1]))
+    self.assertSameEllips(stdout_ellips, debug_ellips[0])
 
 class test_ELLIP_idid(unittest.TestCase, CompareInputAssertions):
   def test_ELLIP_idid(self):
     print('\ntesting ELLIP insertions-deletions-insertions-deletions')
     stdout_ellips, debug_ellips = run_test('INSELL DEL INSELL DEL')
-    self.assertSameEllips(stdout_ellips, debug_ellips)
+    print('   # ellips per rank: ' + str(debug_ellips[1]))
+    self.assertSameEllips(stdout_ellips, debug_ellips[0])
 
 class test_ELLIP_ididi(unittest.TestCase, CompareInputAssertions):
   def test_ELLIP_ididi(self):
     print('\ntesting ELLIP insertions-deletions-insertions-deletions-insertions')
     stdout_ellips, debug_ellips = run_test('INSELL DEL INSELL DEL INSELL')
-    self.assertSameEllips(stdout_ellips, debug_ellips)
+    print('   # ellips per rank: ' + str(debug_ellips[1]))
+    self.assertSameEllips(stdout_ellips, debug_ellips[0])
 
 class test_ELLIP_idmany(unittest.TestCase, CompareInputAssertions):
   def test_ELLIP_idmany(self):
@@ -333,4 +356,5 @@ class test_ELLIP_idmany(unittest.TestCase, CompareInputAssertions):
     print('\ntesting ELLIP  many-insertions-deletions:' +
       args.replace('INSELL','I').replace('DEL','D'))
     stdout_ellips, debug_ellips = run_test(args)
-    self.assertSameEllips(stdout_ellips, debug_ellips)
+    print('   # ellips per rank: ' + str(debug_ellips[1]))
+    self.assertSameEllips(stdout_ellips, debug_ellips[0])

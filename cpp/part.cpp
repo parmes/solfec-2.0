@@ -111,24 +111,25 @@ std::map<uint64_t, part> partition_meshes(const std::set<uint64_t> &bodnum_subse
 }
 
 /* map mesh partitioning to MPI ranks */
-std::map<uint64_t, rankmap> map_parts(const std::map<uint64_t, part> &parts)
+std::map<uint64_t, rankmap> map_parts(const std::map<uint64_t, part> &parts, const std::vector<uint64_t> &nodes_per_rank,
+                             const std::vector<uint64_t> &elements_per_rank, const std::vector<uint64_t> &faces_per_rank)
 {
-  int size;
+  std::set<std::pair<uint64_t, int>> nqueue, equeue, fqueue; /* rank-count-sized queues */
 
-  MPI_Comm_size (MPI_COMM_WORLD, &size);
-
-  uint64_t etot = 0, ftot = 0;
-
-
-  for (auto& [bodnum, part] : parts)
+  for (auto nc = nodes_per_rank.begin(); nc != nodes_per_rank.end(); nc++)
   {
-    etot += part.neparts; /* total number of element parititons */
-    ftot += part.nfparts; /* total number of face partitions */
+    nqueue.insert(std::make_pair(*nc, nc - nodes_per_rank.begin()));
   }
 
-  uint64_t esplit = 1 + etot / size, fsplit = 1 + ftot / size;
+  for (auto ec = elements_per_rank.begin(); ec != elements_per_rank.end(); ec++)
+  {
+    equeue.insert(std::make_pair(*ec, ec - elements_per_rank.begin()));
+  }
 
-  uint64_t esum = 0, fsum = 0;
+  for (auto fc = faces_per_rank.begin(); fc != faces_per_rank.end(); fc++)
+  {
+    fqueue.insert(std::make_pair(*fc, fc - faces_per_rank.begin()));
+  }
 
   std::map<uint64_t, rankmap> output;
 
@@ -136,24 +137,65 @@ std::map<uint64_t, rankmap> map_parts(const std::map<uint64_t, part> &parts)
   {
     struct rankmap &rankmap =  output[bodnum];
 
-    for (auto& e : part.epart)
+    rankmap.nrank.resize(part.npart.size());
+    rankmap.erank.resize(part.epart.size());
+    rankmap.frank.resize(part.fpart.size());
+
+    std::map<int64_t,std::vector<int64_t>> part_to_nod, part_to_ele, part_to_fac;
+
+    for (auto n = part.npart.begin(); n != part.npart.end(); n ++)
     {
-      rankmap.erank.push_back ((esum + e)/esplit);
+      part_to_nod[*n].push_back (n - part.npart.begin());
     }
 
-    for (auto& f : part.fpart)
+    for (auto e = part.epart.begin(); e != part.epart.end(); e ++)
     {
-      rankmap.frank.push_back ((fsum + f)/fsplit);
+      part_to_ele[*e].push_back (e - part.epart.begin());
     }
 
-    for (auto& n : part.npart)
+    for (auto f = part.fpart.begin(); f != part.fpart.end(); f ++)
     {
-      int nrank = (esum + n)/esplit; /* |element partitions| = |node partitions| */
-      rankmap.nrank.push_back (nrank);
+      part_to_fac[*f].push_back (f - part.fpart.begin());
     }
 
-    esum += part.neparts;
-    fsum += part.nfparts;
+    for (auto& [pno, vec] : part_to_nod)
+    {
+      auto nh = nqueue.extract(nqueue.begin()); /* smallest size rank */
+
+      for (auto& n : vec)
+      {
+        rankmap.nrank[n] = nh.value().second; /* insert to this rank */
+      }
+
+      nh.value().first += vec.size(); /* update rank size */
+      nqueue.insert(std::move(nh)); /* update queue */
+    }
+
+    for (auto& [pno, vec] : part_to_ele)
+    {
+      auto nh = equeue.extract(equeue.begin());
+
+      for (auto& e : vec)
+      {
+        rankmap.erank[e] = nh.value().second;
+      }
+
+      nh.value().first += vec.size();
+      equeue.insert(std::move(nh));
+    }
+
+    for (auto& [pno, vec] : part_to_fac)
+    {
+      auto nh = fqueue.extract(fqueue.begin());
+
+      for (auto& f : vec)
+      {
+        rankmap.frank[f] = nh.value().second;
+      }
+
+      nh.value().first += vec.size();
+      fqueue.insert(std::move(nh));
+    }
   }
 
   return output;
