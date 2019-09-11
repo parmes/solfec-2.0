@@ -87,16 +87,26 @@ void debug_print_compute_data()
 
     uint64_t count;
     ga_counters->get(rank, cn_nodes, cn_nodes+1, 0, 1, &count);
-    out << "COUNT " << count << std::endl;
 
-    REAL *data = new REAL[count*3];
-    ga_nodes->get(rank, 0, count, nd_X, nd_Z+1, data);
+    REAL *data = new REAL[count*4];
+    ga_nodes->get(rank, 0, count, nd_X, nd_unused+1, data);
+
+    REAL *unused = data+3*count;
+    uint64_t used = 0;
+    for (uint64_t i = 0; i < count; i ++)
+      if (unused[i] == 0.) used ++;
+
+    out << "COUNT " << used << std::endl;
 
     for (uint64_t i = 0; i < count; i ++)
     {
-      out << data[0*count+i] << " "
-          << data[1*count+i] << " "
-	  << data[2*count+i] << std::endl;
+      if (unused[i] == 0.)
+      {
+        out << i << " "
+            << data[0*count+i] << " "
+            << data[1*count+i] << " "
+            << data[2*count+i] << std::endl;
+      }
     }
 
     delete [] data;

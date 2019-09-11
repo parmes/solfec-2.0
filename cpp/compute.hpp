@@ -77,7 +77,8 @@ extern GA *ga_nodes; /* global array of nodal data */
 enum {nd_vx, nd_vy, nd_vz,   /* linear velocity */
       nd_x, nd_y, nd_z,      /* current position */
       nd_X, nd_Y, nd_Z,      /* reference position */
-      nd_last};
+      nd_unused,             /* unused node flag */
+      nd_last};     
 
 extern GA *ga_elements; /* global array of element data */
 enum {el_bodnum,

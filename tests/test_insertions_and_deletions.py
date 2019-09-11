@@ -76,8 +76,8 @@ def read_debug_meshes(np):
     assert 'COUNT' in lines[1]
     nnod = int(lines[1].split()[1])
     nprank[r] = nnod
-    nlist = [tuple(float(f) for f in l.split()) for l in lines[2:2+nnod]]
-    rank_nodes.append(nlist)
+    ndict = {int(l.split()[0]) : tuple(float(f) for f in l.split()[1:4]) for l in lines[2:2+nnod]}
+    rank_nodes.append(ndict)
   for r in range(0,np): # read elements
     with open('debug_elements%d.txt'%r) as f:
       lines = [line.rstrip('\n') for line in f]

@@ -304,6 +304,7 @@ void compute_main_loop(REAL duration, REAL step)
               noddata[nd_X*nodsize + nodidx] = x;
               noddata[nd_Y*nodsize + nodidx] = y;
               noddata[nd_Z*nodsize + nodidx] = z;
+              noddata[nd_unused*nodsize + nodidx] = 0.;
               nindex[i] = start + nodidx;
               nodidx ++;
             }
@@ -352,6 +353,7 @@ void compute_main_loop(REAL duration, REAL step)
 	    noddata[nd_X*nodsize + nodidx] = x;
 	    noddata[nd_Y*nodsize + nodidx] = y;
 	    noddata[nd_Z*nodsize + nodidx] = z;
+            noddata[nd_unused*nodsize + nodidx] = 0.;
 	    nindex[i] = count + nodidx;
 	    nodidx ++;
 	  }
@@ -897,6 +899,8 @@ void compute_main_loop(REAL duration, REAL step)
 	      deleted_nodes[r[0]].push_back(std::make_pair(r[1],r[2])); /* used during insertion of new meshes */
 	      deleted_nodes_count[r[0]] += r[2]-r[1];
               nodes_per_rank[r[0]] -= r[2]-r[1];
+              std::vector<REAL> unused(r[2]-r[1],1.);
+              ga_nodes->put(r[0], r[1], r[2], nd_unused, nd_unused+1, &unused[0]);
 	    }
 
 	    for (auto& r : map.ga_eranges)
