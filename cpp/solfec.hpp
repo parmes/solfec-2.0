@@ -156,7 +156,6 @@ struct output
   std::set<std::string> entities; /* output entities */
   std::set<uint64_t> subset; /* subset of body numbers */
   std::set<std::string> modes; /* output modes */
-  std::set<std::string> formats; /* output formats */
 };
 
 /* Python callback function */

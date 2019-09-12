@@ -1796,26 +1796,23 @@ static PyObject* print_HISTORIES (PyObject *self, PyObject *args, PyObject *kwds
 /* Declare output entities */
 static PyObject* OUTPUT (PyObject *self, PyObject *args, PyObject *kwds)
 {
-  KEYWORDS ("entities", "subset", "modes", "formats");
-  PyObject *entities, *subset, *modes, *formats;
+  KEYWORDS ("entities", "subset", "modes");
+  PyObject *entities, *subset, *modes;
   const char *ents[] = {"NUMBER", "COLOR", "DISPL",
     "LINVEL", "STRESS", "CF", "CFN", "CFT", "AREA",
     "BPAIR", "CPAIR"};
-  const char *mods[] = {"MESH", "CD"};
-  const char *frms[] = {"VTK", "XDMF"};
+  const char *mods[] = {"MESH", "EL", "CD"};
   struct output output;
 
   entities = NULL;
   subset = NULL;
   modes = NULL;
-  formats = NULL;
 
-  PARSEKEYS ("|OOOO", &entities, &subset, &modes, &formats);
+  PARSEKEYS ("|OOO", &entities, &subset, &modes);
 
   TYPETEST (is_string_or_list_of_strings (entities, kwl[0], ents, sizeof(ents)/sizeof(char*)) &&
             is_bodnum_or_list_of_bodnums (subset, kwl[1]) &&
-            is_string_or_list_of_strings (modes, kwl[2], mods, sizeof(mods)/sizeof(char*)) &&
-            is_string_or_list_of_strings (formats, kwl[3], frms, sizeof(frms)/sizeof(char*)));
+            is_string_or_list_of_strings (modes, kwl[2], mods, sizeof(mods)/sizeof(char*)));
 
   if (entities)
   {
@@ -1873,27 +1870,6 @@ static PyObject* OUTPUT (PyObject *self, PyObject *args, PyObject *kwds)
     }
   }
 
-  if (formats)
-  {
-    if (PyList_Check(formats))
-    {
-      for (int i = 0; i < PyList_Size(formats); i ++)
-      {
-	PyObject *item = PyList_GetItem(formats, i);
-
-	output.formats.insert(std::string(PyString_AsString(item)));
-      }
-    }
-    else output.formats.insert(std::string(PyString_AsString(formats)));
-  }
-  else
-  {
-    for (int i = 0; i < sizeof(frms)/sizeof(char*); i ++)
-    {
-      output.formats.insert(std::string(frms[i]));
-    }
-  }
-
   solfec::outputs.push_back (output);
 
   Py_RETURN_NONE;
@@ -1938,17 +1914,6 @@ static PyObject* print_OUTPUTS (PyObject *self, PyObject *args, PyObject *kwds)
         std::cout << "'" << (*it);
         auto jt = it; jt ++;
         if (jt != output.modes.end()) std::cout << "',";
-        else std::cout << "']" << std::endl;
-      }
-    }
-    if (output.formats.size())
-    {
-      std::cout << "OUTPUT_" << outnum << "_formats = [";
-      for (auto it = output.formats.begin(); it != output.formats.end(); it ++)
-      {
-        std::cout << "'" << (*it);
-        auto jt = it; jt ++;
-        if (jt != output.formats.end()) std::cout << "',";
         else std::cout << "']" << std::endl;
       }
     }

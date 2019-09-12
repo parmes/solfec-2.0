@@ -14,9 +14,9 @@ radius = (3, 2, 1)
 bodnum1 = ELLIP (center, radius, matnum, 2)
 
 # define subset OUTPUTS
-OUTPUT(['COLOR', 'DISPL'], bodnum0, formats='XDMF')
-OUTPUT(['LIBVEL', 'STRESS'], bodnum1, formats='VTK', modes=['MESH'])
-OUTPUT(['CF', 'AREA', 'CPAIR'], (bodnum0, bodnum1), modes='CD')
+OUTPUT(['COLOR', 'DISPL'], bodnum0)
+OUTPUT(['LINVEL', 'STRESS'], bodnum1, modes=['MESH'])
+OUTPUT(['CF', 'AREA', 'CPAIR'], [bodnum0, bodnum1], modes='CD')
 
 # print all outputs
 print_OUTPUTS()

@@ -339,7 +339,7 @@ reference "subsec:OUTPUT"
  and Chapter 
 \begin_inset CommandInset ref
 LatexCommand ref
-reference "cha:Output files"
+reference "cha:Post-processing"
 
 \end_inset
 
@@ -1534,11 +1534,7 @@ Before running a simulation, define scalar and/or vector entities included
 \end_layout
 
 \begin_layout Itemize
-*0.vtk.* 
-\series bold
-and/or
-\series default
- (*0.h5, *0.xmf) files for meshed bodies 
+*0.h5, *0.xmf files for meshed bodies 
 \series bold
 not
 \series default
@@ -1550,45 +1546,51 @@ a subset
 \end_layout
 
 \begin_layout Itemize
-*1.vtk.*, *2.vtk.*, ...
- 
+*1.h5, *1.xmf, *2.h5, *2.xmf, ...
+ files for meshed bodies specified as subsets, where numbers 1, 2, ...
+ match consecutive OUTPUT calls
+\end_layout
+
+\begin_layout Itemize
+*0cd.h5, *0cd.xmf files for contact data including bodies 
 \series bold
-and/or
+not
 \series default
- (*1.h5, *1.xmf, *2.h5, *2.xmf, ...) files for meshed bodies specified as subsets,
+ specified as 
+\series bold
+a subset
+\series default
+ in the OUTPUT command
+\end_layout
+
+\begin_layout Itemize
+*1cd.h5, *1cd.xmf, *2cd.h5, *2cd.xmf, ...
+ files for contact data including bodies specified as subsets, where numbers
+ 1, 2, ...
+ match consecutive OUTPUT calls
+\end_layout
+
+\begin_layout Itemize
+*0el.h5, *0el.xmf files for ellipsoidal particles including bodies 
+\series bold
+not
+\series default
+ specified as 
+\series bold
+a subset
+\series default
+ in the OUTPUT command
+\end_layout
+
+\begin_layout Itemize
+*1el.h5, *1el.xmf, *2el.h5, *2el.xmf, ...
+ files for ellipsoidal particles including bodies specified as subsets,
  where numbers 1, 2, ...
  match consecutive OUTPUT calls
 \end_layout
 
-\begin_layout Itemize
-*0cd.vtk.* 
-\series bold
-and/or
-\series default
- (*0cd.h5, *0cd.xmf) files for contact data including bodies 
-\series bold
-not
-\series default
- specified as 
-\series bold
-a subset
-\series default
- in the OUTPUT command
-\end_layout
-
-\begin_layout Itemize
-*1cd.vtk.*, *2cd.vtk.*, ...
- 
-\series bold
-and/or
-\series default
- (*1cd.h5, *1cd.xmf, *2cd.h5, *2cd.xmf, ...) files for contact data including bodies
- specified as subsets, where numbers 1, 2, ...
- match consecutive OUTPUT calls
-\end_layout
-
 \begin_layout Subsection*
-OUTPUT ( | entities, subset, modes, formats)
+OUTPUT ( | entities, subset, modes)
 \end_layout
 
 \begin_layout Itemize
@@ -1602,23 +1604,24 @@ entities
 
 \begin_deeper
 \begin_layout Itemize
-'NUMBER' - scalar field of body numbers (modes: 'MESH')
+'NUMBER' - scalar field of body numbers (modes: 'MESH', 'EL')
 \end_layout
 
 \begin_layout Itemize
-'COLOR' - scalar field of surface colors (modes: 'MESH')
+'COLOR' - scalar field of surface colors (modes: 'MESH', 'EL')
 \end_layout
 
 \begin_layout Itemize
-'DISPL' - 3-component vector field of displacements (modes: 'MESH')
+'DISPL' - 3-component vector field of displacements (modes: 'MESH', 'EL')
 \end_layout
 
 \begin_layout Itemize
-'LINVEL' - 3-component vector field of linear velocity (modes: 'MESH')
+'LINVEL' - 3-component vector field of linear velocity (modes: 'MESH', 'EL')
 \end_layout
 
 \begin_layout Itemize
-'STRESS' - 6-component tensor field representing Cauchy stress (modes: 'MESH')
+'STRESS' - 6-component tensor field representing Cauchy stress (modes: 'MESH',
+ 'EL')
 \end_layout
 
 \begin_layout Itemize
@@ -1668,27 +1671,8 @@ i, j, ...
 modes
 \series default
  - optional output mode or list of output modes: 'MESH' for mesh output,
- 'CD' for contact data output; default: ['MESH', 'CD']
-\end_layout
-
-\begin_layout Itemize
-
-\series bold
-formats
-\series default
- - optional output format, e.g.
- 'VTK' or 'XDMF', or a list, e.g.
- ['VTK', 'XDMF'], see Chapter 
-\begin_inset CommandInset ref
-LatexCommand ref
-reference "cha:Output files"
-plural "false"
-caps "false"
-noprefix "false"
-
-\end_inset
-
-; default: 'XDMF'
+ 'EL' for ellipsoid output, 'CD' for contact data output, ; default: ['MESH',
+ 'EL', 'CD']
 \end_layout
 
 \begin_layout Section
@@ -1793,39 +1777,15 @@ objkind
 \begin_layout Chapter
 \begin_inset CommandInset label
 LatexCommand label
-name "cha:Output files"
+name "cha:Post-processing"
 
 \end_inset
 
-Output files
+Post-processing
 \end_layout
 
 \begin_layout Standard
-Currently Solfec-2.0 supports the following output file formats:
-\end_layout
-
-\begin_layout Itemize
-\begin_inset CommandInset href
-LatexCommand href
-name "*.vtk"
-target "http://www.vtk.org/wp-content/uploads/2015/04/file-formats.pdf"
-literal "false"
-
-\end_inset
-
- text based legacy 
-\begin_inset CommandInset href
-LatexCommand href
-name "VTK format"
-target "http://www.vtk.org/wp-content/uploads/2015/04/file-formats.pdf"
-literal "false"
-
-\end_inset
-
-.
-\end_layout
-
-\begin_layout Itemize
+The 
 \begin_inset CommandInset href
 LatexCommand href
 name "*.xmf"
@@ -1837,17 +1797,13 @@ literal "false"
  HDF5/XML based 
 \begin_inset CommandInset href
 LatexCommand href
-name "XDMF format"
+name "XDMF output format"
 target "http://www.xdmf.org/index.php/XDMF_Model_and_Format"
 literal "false"
 
 \end_inset
 
-.
-\end_layout
-
-\begin_layout Standard
-Both of the above formats can be viewed with 
+ can be viewed with 
 \begin_inset CommandInset href
 LatexCommand href
 name "ParaView"
@@ -1856,7 +1812,7 @@ literal "false"
 
 \end_inset
 
- or 
+ and 
 \begin_inset CommandInset href
 LatexCommand href
 name "VisIt"
@@ -1866,14 +1822,76 @@ literal "false"
 \end_inset
 
 .
- See also the 
-\begin_inset CommandInset ref
-LatexCommand nameref
-reference "subsec:OUTPUT"
+ Sections below provide examples of using both softwares to visualize Solfec-2.0
+ results.
+\end_layout
+
+\begin_layout Section
+ParaView session viewing meshes
+\end_layout
+
+\begin_layout Standard
+\begin_inset Note Note
+status open
+
+\begin_layout Plain Layout
+TODO
+\end_layout
 
 \end_inset
 
- command for details on outputted entities and file kinds.
+
+\end_layout
+
+\begin_layout Section
+ParaView session viewing ellipsoidal particles
+\end_layout
+
+\begin_layout Standard
+\begin_inset Note Note
+status open
+
+\begin_layout Plain Layout
+TODO
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Section
+VisIt session viewing meshes
+\end_layout
+
+\begin_layout Standard
+\begin_inset Note Note
+status open
+
+\begin_layout Plain Layout
+TODO
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Section
+VisIt session viewing ellipsoidal particles
+\end_layout
+
+\begin_layout Standard
+\begin_inset Note Note
+status open
+
+\begin_layout Plain Layout
+TODO
+\end_layout
+
+\end_inset
+
+
 \end_layout
 
 \begin_layout Chapter
