@@ -43,6 +43,8 @@ extern int FACES_BUNCH; /* faces SIMD bunch size */
 
 extern bool debug_print; /* enable debug printing */
 
+extern bool debug_files; /* enable debug files output */
+
 extern GA *ga_counters; /* global array of MPI_UINT64_T counters; per rank:
 			[count of materials
 			 size of materials,

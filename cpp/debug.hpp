@@ -25,7 +25,7 @@ SOFTWARE.
 #ifndef __debug__
 #define __debug__
 
-/* print compute data into per rank files */
-void debug_print_compute_data();
+/* output compute data into per rank files */
+void debug_output_compute_data();
 
 #endif

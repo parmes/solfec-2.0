@@ -76,6 +76,8 @@ bool partitioned = false; /* initially paritioned */
 
 bool debug_print = false; /* enable debug printing */
 
+bool debug_files = false; /* enable debug files output */
+
 GA *ga_counters; /* global array of counters */
 GA *ga_materials; /* global array of materials */
 GA *ga_nodes; /* global array of nodal data */
@@ -1104,9 +1106,9 @@ void compute_main_loop(REAL duration, REAL step)
     ga_elldata->fence();
     ga_ellips->fence();
 
-    if (debug_print)
+    if (debug_files)
     {
-      debug_print_compute_data();
+      debug_output_compute_data();
     }
 
     /* TODO: create compute task graph including: */

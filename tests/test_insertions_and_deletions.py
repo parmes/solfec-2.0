@@ -236,7 +236,7 @@ class CompareInputAssertions:
 
 def run_test(arg_string):
   np = random.randint(2,12)
-  cmd = 'mpirun -np %d --oversubscribe ../solfec4 --debug_print insertions_and_deletions.py ' % np
+  cmd = 'mpirun -np %d --oversubscribe ../solfec4 --debug_files insertions_and_deletions.py ' % np
   solfec = os.popen(cmd + arg_string)
   output = solfec.read()
   solfec.close()

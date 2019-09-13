@@ -44,8 +44,8 @@ std::string sformat (const std::string& format, Args ... args)
   return std::string (buf.get(), buf.get() + size - 1); /* We don't want the '\0' inside */
 }
 
-/* print compute data into per rank files */
-void debug_print_compute_data()
+/* output compute data into per rank files */
+void debug_output_compute_data()
 {
   using namespace compute;
   std::ofstream out;

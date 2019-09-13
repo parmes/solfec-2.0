@@ -63,20 +63,29 @@ struct interval interval;
 
 int main (int argc, char *argv[])
 {
-  for (int i = 0; i < argc; i++)
+  auto parseflag = [] (int& argc, char* argv[], int i, const char *argstr, bool& flag)
   {
-    if (strcmp(argv[i], "--debug_print") == 0)
+    if (strcmp(argv[i], argstr) == 0)
     {
-      compute::debug_print = true;
+      flag = true;
       for (int j = i; j+1 < argc; j ++) argv[j] = argv[j+1];
       argc --;
     }
+  };
+
+  for (int i = 0; i < argc; i++)
+  {
+    parseflag (argc, argv, i, "--debug_print", compute::debug_print);
+    parseflag (argc, argv, i, "--debug_files", compute::debug_files);
   }
 
   if (argc == 1)
   {
     printf ("VERSION: 2.%s (%s)\n", VERSION_HASH, VERSION_DATE);
-    printf ("SYNOPSIS: [mpirun -np N] solfec%d [--debug_print] path/to/input/file.py\n", REALSIZE);
+    printf ("SYNOPSIS: [mpirun -np N] solfec%d [args] path/to/input/file.py\n", REALSIZE);
+    printf ("  where optional [args] include:\n", REALSIZE);
+    printf ("    --debug_print - print debug information (e.g. about state of computation)\n", REALSIZE);
+    printf ("    --debug_files - output debug files (e.g. used in tests)\n", REALSIZE);
     return 0;
   }
 
