@@ -206,9 +206,6 @@ REAL spline_value (struct spline *spline, REAL xval);
 /* interpret an input file (return 0 on success) */
 int input_python (const char *path);
 
-/* output initial model state */
-void output_initial_model ();
-
 /* output current results */
 void output_current_results ();
 

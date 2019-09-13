@@ -98,6 +98,12 @@ objs4/cpp/input.o: cpp/input.cpp
 objs8/cpp/input.o: cpp/input.cpp
 	$(MPICXX) -DREALSIZE=8 -Iinc -Iobjs8/ispc $(CFLAGS) $(PYTHONINC) $< -c -o $@
 
+objs4/cpp/output.o: cpp/output.cpp
+	$(MPICXX) -DREALSIZE=4 -Iinc -Iobjs4/ispc $(CFLAGS) $(HDF5INC) $< -c -o $@
+
+objs8/cpp/output.o: cpp/output.cpp
+	$(MPICXX) -DREALSIZE=8 -Iinc -Iobjs8/ispc $(CFLAGS) $(HDF5INC) $< -c -o $@
+
 objs4/%.o: %.cpp $(ISPC_HEADERS4) $(CPP_INC) $(C_INC)
 	$(MPICXX) -DREALSIZE=4 -Iinc -Ilib -Iobjs4/ispc $(CFLAGS) $< -c -o $@
 

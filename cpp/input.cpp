@@ -2039,8 +2039,6 @@ static PyObject* RUN (PyObject *self, PyObject *args, PyObject *kwds)
     }
   }
 
-  if (duration == 0) output_initial_model(); /* output initial model state */
-
   compute_main_loop (duration, step);
 
   solfec::velocities.clear();
