@@ -33,16 +33,26 @@ SOFTWARE.
 #include <fstream>
 #include <sstream>
 #include <string>
+#include <map>
+#include <set>
 #include "real.h"
 #include "err.h"
 #include "solfec.hpp"
+#include "compute.hpp"
 
-static uint64_t output_frame = 0;
+/* rank 0 --- */
+uint64_t output_frame = 0;
+
+std::map<std::pair<uint64_t,std::vector<uint64_t>>,uint64_t> topo_map;
+  /* maps hashed ordered bonum subset vectors to their initial output frames;
+     pair of (hash(vector), vector itself) is used as map key for faster key
+     comparisons in case of uncolliding hash values */
+/* --- rank 0 */
 
 /* append an XMF file */
 static void append_xmf_file (const char *xmf_path, std::string mode,
-  uint64_t elements, uint64_t nodes, uint64_t topo_size, const char *label,
-  const char *h5file, std::string ent)
+  uint64_t elements, uint64_t nodes, uint64_t topo_size, uint64_t topo_frame,
+  const char *label, const char *h5file, std::set<std::string> &ents)
 {
   FILE *xmf_file;
 
@@ -85,7 +95,7 @@ static void append_xmf_file (const char *xmf_path, std::string mode,
   {
     fprintf (xmf_file, "<Topology Type=\"Mixed\" NumberOfElements=\"%d\">\n", elements);
     fprintf (xmf_file, "<DataStructure Dimensions=\"%d\" NumberType=\"Int\" Format=\"HDF\">\n", topo_size);
-    fprintf (xmf_file, "%s:/%" PRIu64 "/TOPO\n", h5file, output_frame);
+    fprintf (xmf_file, "%s:/%" PRIu64 "/TOPO\n", h5file, topo_frame);
     fprintf (xmf_file, "</DataStructure>\n");
     fprintf (xmf_file, "</Topology>\n");
   }
@@ -101,9 +111,12 @@ static void append_xmf_file (const char *xmf_path, std::string mode,
   fprintf (xmf_file, "</DataStructure>\n");
   fprintf (xmf_file, "</Geometry>\n");
 
-  if (ent == "NUMBER")
+  std::set<std::string> modes0 = {"MESH", "SURF", "EL"};
+  std::set<std::string> modes1 = {"SURF", "EL"};
+
+  if (ents.count("NUMBER") && modes0.count(mode))
   {
-    if (mode == "MESH")
+    if (mode == "MESH" || mode == "SURF")
     {
       fprintf (xmf_file, "<Attribute Name=\"NUMBER\" Center=\"Cell\" AttributeType=\"Scalar\">\n");
       fprintf (xmf_file, "<DataStructure Dimensions=\"%" PRIu64 "\" NumberType=\"Int\" Format=\"HDF\">\n", elements);
@@ -117,9 +130,10 @@ static void append_xmf_file (const char *xmf_path, std::string mode,
     fprintf (xmf_file, "</DataStructure>\n");
     fprintf (xmf_file, "</Attribute>\n");
   }
-  else if (ent == "COLOR")
+
+  if (ents.count("COLOR") && modes1.count(mode))
   {
-    if (mode == "MESH")
+    if (mode == "SURF")
     {
       fprintf (xmf_file, "<Attribute Name=\"COLOR\" Center=\"Cell\" AttributeType=\"Scalar\">\n");
       fprintf (xmf_file, "<DataStructure Dimensions=\"%" PRIu64 "\" NumberType=\"Int\" Format=\"HDF\">\n", elements);
@@ -133,7 +147,8 @@ static void append_xmf_file (const char *xmf_path, std::string mode,
     fprintf (xmf_file, "</DataStructure>\n");
     fprintf (xmf_file, "</Attribute>\n");
   }
-  else if (ent == "DISPL")
+
+  if (ents.count("DISPL") && modes0.count(mode))
   {
     fprintf (xmf_file, "<Attribute Name=\"DISPL\" Center=\"Node\" AttributeType=\"Vector\">\n");
     fprintf (xmf_file, "<DataStructure Dimensions=\"%" PRIu64 " 3\" NumberType=\"Float\" Presicion=\"8\" Format=\"HDF\">\n", nodes);
@@ -141,7 +156,8 @@ static void append_xmf_file (const char *xmf_path, std::string mode,
     fprintf (xmf_file, "</DataStructure>\n");
     fprintf (xmf_file, "</Attribute>\n");
   }
-  else if (ent == "LINVEL")
+
+  if (ents.count("LINVEL") && modes0.count(mode))
   {
     fprintf (xmf_file, "<Attribute Name=\"LINVEL\" Center=\"Node\" AttributeType=\"Vector\">\n");
     fprintf (xmf_file, "<DataStructure Dimensions=\"%" PRIu64 " 3\" NumberType=\"Float\" Presicion=\"8\" Format=\"HDF\">\n", nodes);
@@ -149,7 +165,8 @@ static void append_xmf_file (const char *xmf_path, std::string mode,
     fprintf (xmf_file, "</DataStructure>\n");
     fprintf (xmf_file, "</Attribute>\n");
   }
-  else if (ent == "STRESS")
+
+  if (ents.count("STRESS") && modes0.count(mode))
   {
     fprintf (xmf_file, "<Attribute Name=\"STRESS\" Center=\"Node\" AttributeType=\"Vector\">\n");
     fprintf (xmf_file, "<DataStructure Dimensions=\"%" PRIu64 " 6\" NumberType=\"Float\" Presicion=\"8\" Format=\"HDF\">\n", nodes);
@@ -157,6 +174,7 @@ static void append_xmf_file (const char *xmf_path, std::string mode,
     fprintf (xmf_file, "</DataStructure>\n");
     fprintf (xmf_file, "</Attribute>\n");
   }
+
   /* TODO: other entities */ 
   
   fprintf (xmf_file, "</Grid>\n");
@@ -167,10 +185,204 @@ static void append_xmf_file (const char *xmf_path, std::string mode,
   fclose (xmf_file);
 }
 
-/* output hdf5 dataset from meshes */
-static std::tuple<uint64_t, uint64_t, uint64_t> h5_mesh_dataset (std::vector<uint64_t>& subset, std::string ent, hid_t h5_step)
+/* write hdf5 dataset from meshes; outputs elements, nodes, topo_size counters */
+static std::tuple<uint64_t, uint64_t, uint64_t> h5_mesh_dataset (std::vector<uint64_t>& subset, bool topology, std::set<std::string> &ents, hid_t h5_step)
 {
-  return  {0, 0, 0};
+  using namespace compute;
+  uint64_t elements = 0,
+           nodes = 0,
+           topo_size = 0;
+
+  for (auto bodnum : subset)
+  {
+    struct mesh &mesh = solfec::meshes[bodnum];
+
+    nodes += mesh.nodes.size();
+    elements += mesh.nhex+mesh.nwed+mesh.npyr+mesh.ntet;
+    topo_size += 9*mesh.nhex+7*mesh.nwed+6*mesh.npyr+5*mesh.ntet;
+  }
+
+  if (topology) /* TOPO */
+  {
+    std::vector<uint64_t> data;
+    uint64_t nc = 0;
+
+    for (auto bodnum : subset)
+    {
+      struct mesh &mesh = solfec::meshes[bodnum];
+
+      auto it = mesh.elements.begin();
+      for (; it != mesh.elements.end(); )
+      {
+        switch (*it)
+        {
+         case 8:
+           data.push_back(9); /* hex code */
+           data.push_back(nc+it[1]); /* nodes */
+           data.push_back(nc+it[2]);
+           data.push_back(nc+it[3]);
+           data.push_back(nc+it[4]);
+           data.push_back(nc+it[5]);
+           data.push_back(nc+it[6]);
+           data.push_back(nc+it[7]);
+           data.push_back(nc+it[8]);
+           it += 10;
+         break;
+         case 6:
+           data.push_back(8); /* wed code */
+           data.push_back(nc+it[1]); /* nodes */
+           data.push_back(nc+it[2]);
+           data.push_back(nc+it[3]);
+           data.push_back(nc+it[4]);
+           data.push_back(nc+it[5]);
+           data.push_back(nc+it[6]);
+           it += 8;
+         break;
+         case 5:
+           data.push_back(7); /* pyr code */
+           data.push_back(nc+it[1]); /* nodes */
+           data.push_back(nc+it[2]);
+           data.push_back(nc+it[3]);
+           data.push_back(nc+it[4]);
+           data.push_back(nc+it[5]);
+           it += 7;
+         break;
+         case 4: 
+           data.push_back(6); /* tet code */
+           data.push_back(nc+it[1]); /* nodes */
+           data.push_back(nc+it[2]);
+           data.push_back(nc+it[3]);
+           data.push_back(nc+it[4]);
+           it += 6;
+         break;
+        }
+      }
+
+      nc += mesh.nodes.size();
+    }
+
+    hsize_t length = data.size();
+    ASSERT (H5LTmake_dataset (h5_step, "TOPO", 1, &length, H5T_NATIVE_UINT64, &data[0]) >= 0, "HDF5 file write error");
+  }
+
+  bool displ = (bool)ents.count("DISPL");
+  std::vector<REAL> displ_data;
+  bool linvel = (bool)ents.count("LINVEL");
+  std::vector<REAL> linvel_data;
+
+  /* GEOM */
+  {
+    std::vector<REAL> data;
+    uint64_t size = 0;
+
+    for (auto bodnum : subset)
+    {
+      struct mapping &mapping = mesh_mapping[bodnum];
+
+      for (auto rng : mapping.ga_nranges)
+      {
+        auto nrng = rng[2]-rng[1];
+        std::vector<REAL> vals(nrng*9);
+
+        compute::ga_nodes->get(rng[0], rng[1], rng[2], nd_vx, nd_Z+1, &vals[0]);
+
+        for (uint64_t i = 0; i < nrng; i ++)
+        {
+          REAL x = vals[nrng*nd_x+i],
+               y = vals[nrng*nd_y+i],
+               z = vals[nrng*nd_z+i];
+
+          data.push_back (x);
+          data.push_back (y);
+          data.push_back (z);
+
+          if (displ)
+          {
+            data.push_back (x-vals[nrng*nd_X+i]);
+            data.push_back (y-vals[nrng*nd_Y+i]);
+            data.push_back (z-vals[nrng*nd_Z+i]);
+          }
+
+          if (linvel)
+          {
+            data.push_back (vals[nrng*nd_vx+i]);
+            data.push_back (vals[nrng*nd_vy+i]);
+            data.push_back (vals[nrng*nd_vz+i]);
+          }
+        }
+
+        size += nrng;
+      }
+    }
+
+    ASSERT (size == nodes, "Inconsistent nodes count during file output");
+
+    hsize_t dims[2] = {size, 3};
+#if REALSIZE==4
+    ASSERT (H5LTmake_dataset_float (h5_step, "GEOM", 2, dims, &data[0]) >= 0, "HDF5 file write error");
+#else
+    ASSERT (H5LTmake_dataset_double (h5_step, "GEOM", 2, dims, &data[0]) >= 0, "HDF5 file write error");
+#endif
+  }
+
+  if (ents.count("NUMBER"))
+  {
+    std::vector<uint64_t> data;
+
+    for (auto bodnum : subset)
+    {
+      struct mesh &mesh = solfec::meshes[bodnum];
+      auto ne = mesh.nhex+mesh.nwed+mesh.npyr+mesh.ntet;
+      std::vector<uint64_t> chunk(ne,bodnum);
+      data.insert(data.end(), chunk.begin(), chunk.end());
+    }
+
+    hsize_t length = data.size();
+    ASSERT (H5LTmake_dataset (h5_step, "NUMBER", 1, &length, H5T_NATIVE_UINT64, &data[0]) >= 0, "HDF5 file write error");
+  }
+
+  if (ents.count("DISPL"))
+  {
+    hsize_t dims[2] = {nodes, 3};
+#if REALSIZE==4
+    ASSERT (H5LTmake_dataset_float (h5_step, "GEOM", 2, dims, &displ_data[0]) >= 0, "HDF5 file write error");
+#else
+    ASSERT (H5LTmake_dataset_double (h5_step, "GEOM", 2, dims, &displ_data[0]) >= 0, "HDF5 file write error");
+#endif
+  }
+
+  if (ents.count("LINVEL"))
+  {
+    hsize_t dims[2] = {nodes, 3};
+#if REALSIZE==4
+    ASSERT (H5LTmake_dataset_float (h5_step, "GEOM", 2, dims, &linvel_data[0]) >= 0, "HDF5 file write error");
+#else
+    ASSERT (H5LTmake_dataset_double (h5_step, "GEOM", 2, dims, &linvel_data[0]) >= 0, "HDF5 file write error");
+#endif
+  }
+
+  if (ents.count("STRESS"))
+  {
+    std::vector<REAL> data(nodes*6, 0.); /* FIXME: TODO (add extra nodal valus) */
+    hsize_t dims[2] = {nodes, 6};
+#if REALSIZE==4
+    ASSERT (H5LTmake_dataset_float (h5_step, "STRESS", 2, dims, &data[0]) >= 0, "HDF5 file write error");
+#else
+    ASSERT (H5LTmake_dataset_double (h5_step, "STRESS", 2, dims, &data[0]) >= 0, "HDF5 file write error");
+#endif
+  }
+
+  return  {elements, nodes, topo_size};
+}
+
+/* https://stackoverflow.com/questions/20511347/a-good-hash-function-for-a-vector */
+uint64_t hashfunc(std::vector<uint64_t> const& vec)
+{
+  uint64_t seed = vec.size();
+  for(auto& i : vec) {
+    seed ^= i + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+  }
+  return seed;
 }
 
 /* output current results */
@@ -195,9 +407,23 @@ void output_current_results()
 
       for (auto bodnum : iout->subset)
       {
-        if (solfec::meshes.count(bodnum)) subset.push_back(bodnum);
+        if (solfec::meshes.count(bodnum)) subset.push_back(bodnum); /* ordered */
       }
 
+      uint64_t hash = hashfunc(subset);
+
+      auto key = std::make_pair(hash,subset);
+
+      uint64_t topo_frame;
+
+      if (!topo_map.count(key)) /* map current output frame for this subset: this is where mesh topology dataset will be stored */
+      {
+        topo_map[key] = output_frame;
+
+        topo_frame = output_frame;
+      }
+      else topo_frame = topo_map[key]; /* use previous output frame where mesh topology was stored */
+      
       if (subset.size() > 0)
       {
         auto nout = iout-solfec::outputs.begin();
@@ -228,16 +454,9 @@ void output_current_results()
         const char *label = "SOLFEC-2.0 meshes";
         std::string h5file = h5_path.str().substr(h5_path.str().find_last_of('/')+1);
 
-        std::set<std::string> ents = {"NUMBER", "COLOR", "DISPL", "LINVEL", "STRESS"};
+        auto [elements, nodes, topo_size] = h5_mesh_dataset (subset, output_frame == topo_frame, iout->entities, h5_step); /* append h5 file */
 
-        for (auto ent : iout->entities)
-        {
-          if (ents.count(ent))
-          {
-            auto [elements, nodes, topo_size] = h5_mesh_dataset (subset, ent, h5_step); /* append h5 file */
-            append_xmf_file (xmf_path.str().c_str(), "MESH", elements, nodes, topo_size, label, h5file.c_str(), ent); /* append xmf file */
-          }
-        }
+        append_xmf_file (xmf_path.str().c_str(), "MESH", elements, nodes, topo_size, topo_frame, label, h5file.c_str(), iout->entities); /* append xmf file */
 
         H5Gclose (h5_step);
         H5Fclose (h5_file);

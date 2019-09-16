@@ -36,6 +36,10 @@ struct mapping /* global array per rank entity ranges mapping */
 
 namespace compute
 {
+/* rank 0 --- */
+extern std::map<uint64_t, mapping> mesh_mapping; /* body number to mesh rank data range mapping */
+/* --- rank 0 */
+
 /* all ranks --- */
 extern int ELEMENTS_BUNCH; /* elements SIMD bunch size */
 

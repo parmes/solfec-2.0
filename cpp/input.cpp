@@ -1058,7 +1058,6 @@ static PyObject* print_MESH (PyObject *self, PyObject *args, PyObject *kwds)
   }
   {
     std::cout << "MESH_" << bodnum << "_elements = [";
-    uint64_t ne = mesh.elements.size();
     auto it = mesh.elements.begin();
     for (; it != mesh.elements.end(); )
     {
@@ -1801,7 +1800,7 @@ static PyObject* OUTPUT (PyObject *self, PyObject *args, PyObject *kwds)
   const char *ents[] = {"NUMBER", "COLOR", "DISPL",
     "LINVEL", "STRESS", "CF", "CFN", "CFT", "AREA",
     "BPAIR", "CPAIR"};
-  const char *mods[] = {"MESH", "EL", "CD"};
+  const char *mods[] = {"MESH", "SURF", "EL", "CD"};
   struct output output;
 
   entities = NULL;

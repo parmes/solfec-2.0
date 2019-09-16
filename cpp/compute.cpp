@@ -1111,22 +1111,29 @@ void compute_main_loop(REAL duration, REAL step)
       debug_output_compute_data();
     }
 
-    /* TODO: create compute task graph including: */
+    /* TODO: create compute task graph */
 
-    /* { */
-
-      /* compute step */
-
-      /* output solfec::histories at solfec::interval */
-
-      /* output solfec::outputs at solfec::interval */
-
-    /* } */
+    if (solfec::simulation_time == 0. || duration == 0.) output_current_results(); /* all ranks */
 
     for (REAL end = solfec::simulation_time + duration;
 	 solfec::simulation_time < end; solfec::simulation_time += step)
     {
       /* TODO: execute compute task graph */
+
+      if (0 /* all ranks -> time to write output files or histories */)
+      {
+        ga_nodes->fence(); /* XXX: may not be needed (depending on compute graph) */
+      }
+
+      if (0 /* all ranks -> time to write output files */)
+      {
+        output_current_results();
+      }
+
+      if (0 /* time to write histories */)
+      {
+        /* TODO */
+      }
     }
 
     if (rank == 0) break; /* exit and rejoin upon next RUN(), while others wait at MPI_Bcast */

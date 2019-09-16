@@ -1534,7 +1534,7 @@ Before running a simulation, define scalar and/or vector entities included
 \end_layout
 
 \begin_layout Itemize
-*0.h5, *0.xmf files for meshed bodies 
+*0.h5, *0.xmf files for bulk meshes of bodies 
 \series bold
 not
 \series default
@@ -1547,7 +1547,27 @@ a subset
 
 \begin_layout Itemize
 *1.h5, *1.xmf, *2.h5, *2.xmf, ...
- files for meshed bodies specified as subsets, where numbers 1, 2, ...
+ files for bulk meshes of bodies specified as subsets, where numbers 1,
+ 2, ...
+ match consecutive OUTPUT calls
+\end_layout
+
+\begin_layout Itemize
+*0sf.h5, *0sf.xmf files for surface meshes of bodies 
+\series bold
+not
+\series default
+ specified as 
+\series bold
+a subset
+\series default
+ in the OUTPUT command
+\end_layout
+
+\begin_layout Itemize
+*1sf.h5, *1sf.xmf, *2sf.h5, *2sf.xmf, ...
+ files for surface meshes of bodies specified as subsets, where numbers
+ 1, 2, ...
  match consecutive OUTPUT calls
 \end_layout
 
@@ -1604,24 +1624,26 @@ entities
 
 \begin_deeper
 \begin_layout Itemize
-'NUMBER' - scalar field of body numbers (modes: 'MESH', 'EL')
+'NUMBER' - scalar field of body numbers (modes: 'MESH', 'SURF', 'EL')
 \end_layout
 
 \begin_layout Itemize
-'COLOR' - scalar field of surface colors (modes: 'MESH', 'EL')
+'COLOR' - scalar field of surface colors (modes: 'SURF', 'EL')
 \end_layout
 
 \begin_layout Itemize
-'DISPL' - 3-component vector field of displacements (modes: 'MESH', 'EL')
+'DISPL' - 3-component vector field of displacements (modes: 'MESH', 'SURF',
+ 'EL')
 \end_layout
 
 \begin_layout Itemize
-'LINVEL' - 3-component vector field of linear velocity (modes: 'MESH', 'EL')
+'LINVEL' - 3-component vector field of linear velocity (modes: 'MESH', 'SURF',
+ 'EL')
 \end_layout
 
 \begin_layout Itemize
 'STRESS' - 6-component tensor field representing Cauchy stress (modes: 'MESH',
- 'EL')
+ 'SURF', 'EL')
 \end_layout
 
 \begin_layout Itemize
@@ -1670,9 +1692,9 @@ i, j, ...
 \series bold
 modes
 \series default
- - optional output mode or list of output modes: 'MESH' for mesh output,
- 'EL' for ellipsoid output, 'CD' for contact data output, ; default: ['MESH',
- 'EL', 'CD']
+ - optional output mode or list of output modes: 'MESH' for bulk mesh output,
+ , 'SURF' for surface mesh output, 'EL' for ellipsoid output, 'CD' for contact
+ data output, ; default: ['MESH', 'EL', 'CD']
 \end_layout
 
 \begin_layout Section
