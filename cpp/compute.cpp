@@ -162,7 +162,7 @@ void compute_main_loop(REAL duration, REAL step)
     MPI_Bcast (msg, 2, MPI_REAL, 0, MPI_COMM_WORLD);
     duration = msg[0]; step = msg[1];
 
-    if (duration == 0.0) break; /* rank 0 process communicated termination */
+    if (duration == -1.) break; /* rank 0 process communicated termination */
 
     using namespace compute;
     int rank, size;

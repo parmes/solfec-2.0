@@ -100,7 +100,7 @@ int main (int argc, char *argv[])
 
   if (rank == 0) input_python (argv[1]);
 
-  compute_main_loop(0., 0.);
+  compute_main_loop(-1., 0.);
 
   compute_finalize();
  

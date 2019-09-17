@@ -1728,7 +1728,7 @@ t
 \series bold
 duration
 \series default
- - simulation duration; 0 can be used to output the initial model state
+ - simulation duration; 0 can be used to output the model state
 \end_layout
 
 \begin_layout Itemize

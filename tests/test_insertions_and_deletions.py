@@ -158,6 +158,20 @@ def read_debug_ellips(np):
       j += 1
   return (debug_ellips, eprank)
 
+def clean_output_files():
+  filelist = glob.glob('insertions_and_deletions*.h5')
+  for filepath in filelist:
+    try:
+      os.remove(filepath)
+    except:
+      print("Error while deleting file : ", filepath)
+  filelist = glob.glob('insertions_and_deletions*.xmf')
+  for filepath in filelist:
+    try:
+      os.remove(filepath)
+    except:
+      print("Error while deleting file : ", filepath)
+
 def clean_debug_files():
   filelist = glob.glob('debug_*.txt')
   for filepath in filelist:
@@ -240,6 +254,7 @@ def run_test(arg_string):
   solfec = os.popen(cmd + arg_string)
   output = solfec.read()
   solfec.close()
+  clean_output_files()
 
   with open('debug_stdout.txt', 'w') as f: f.write(output)
 

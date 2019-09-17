@@ -3,12 +3,10 @@ import unittest, os
 
 output0 = \
 '''OUTPUT_0_entities = ['AREA','BPAIR','CF','CFN','CFT','COLOR','CPAIR','DISPL','LINVEL','NUMBER','STRESS']
-OUTPUT_0_modes = ['CD','EL','MESH']
-OUTPUT_0_entities = ['AREA','BPAIR','CF','CFN','CFT','COLOR','CPAIR','DISPL','LINVEL','NUMBER','STRESS']
-OUTPUT_0_modes = ['CD','EL','MESH']
+OUTPUT_0_modes = ['CD','EL','MESH','SURF']
 OUTPUT_1_entities = ['COLOR','DISPL']
 OUTPUT_1_subset = [0]
-OUTPUT_1_modes = ['CD','EL','MESH']
+OUTPUT_1_modes = ['CD','EL','MESH','SURF']
 OUTPUT_2_entities = ['LINVEL','STRESS']
 OUTPUT_2_subset = [1]
 OUTPUT_2_modes = ['MESH']

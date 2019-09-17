@@ -2,7 +2,6 @@
 
 # define print default outputs
 OUTPUT()
-print_OUTPUTS()
 
 # add bodies
 matnum = MATERIAL (1E3, 1E9, 0.25, 0.0)

@@ -197,7 +197,7 @@ static std::tuple<uint64_t, uint64_t, uint64_t> h5_mesh_dataset (std::vector<uin
   {
     struct mesh &mesh = solfec::meshes[bodnum];
 
-    nodes += mesh.nodes.size();
+    nodes += mesh.nodes[0].size();
     elements += mesh.nhex+mesh.nwed+mesh.npyr+mesh.ntet;
     topo_size += 9*mesh.nhex+7*mesh.nwed+6*mesh.npyr+5*mesh.ntet;
   }
@@ -258,7 +258,7 @@ static std::tuple<uint64_t, uint64_t, uint64_t> h5_mesh_dataset (std::vector<uin
         }
       }
 
-      nc += mesh.nodes.size();
+      nc += mesh.nodes[0].size();
     }
 
     hsize_t length = data.size();
@@ -298,16 +298,16 @@ static std::tuple<uint64_t, uint64_t, uint64_t> h5_mesh_dataset (std::vector<uin
 
           if (displ)
           {
-            data.push_back (x-vals[nrng*nd_X+i]);
-            data.push_back (y-vals[nrng*nd_Y+i]);
-            data.push_back (z-vals[nrng*nd_Z+i]);
+            displ_data.push_back (x-vals[nrng*nd_X+i]);
+            displ_data.push_back (y-vals[nrng*nd_Y+i]);
+            displ_data.push_back (z-vals[nrng*nd_Z+i]);
           }
 
           if (linvel)
           {
-            data.push_back (vals[nrng*nd_vx+i]);
-            data.push_back (vals[nrng*nd_vy+i]);
-            data.push_back (vals[nrng*nd_vz+i]);
+            linvel_data.push_back (vals[nrng*nd_vx+i]);
+            linvel_data.push_back (vals[nrng*nd_vy+i]);
+            linvel_data.push_back (vals[nrng*nd_vz+i]);
           }
         }
 
@@ -345,9 +345,9 @@ static std::tuple<uint64_t, uint64_t, uint64_t> h5_mesh_dataset (std::vector<uin
   {
     hsize_t dims[2] = {nodes, 3};
 #if REALSIZE==4
-    ASSERT (H5LTmake_dataset_float (h5_step, "GEOM", 2, dims, &displ_data[0]) >= 0, "HDF5 file write error");
+    ASSERT (H5LTmake_dataset_float (h5_step, "DISPL", 2, dims, &displ_data[0]) >= 0, "HDF5 file write error");
 #else
-    ASSERT (H5LTmake_dataset_double (h5_step, "GEOM", 2, dims, &displ_data[0]) >= 0, "HDF5 file write error");
+    ASSERT (H5LTmake_dataset_double (h5_step, "DISPL", 2, dims, &displ_data[0]) >= 0, "HDF5 file write error");
 #endif
   }
 
@@ -355,9 +355,9 @@ static std::tuple<uint64_t, uint64_t, uint64_t> h5_mesh_dataset (std::vector<uin
   {
     hsize_t dims[2] = {nodes, 3};
 #if REALSIZE==4
-    ASSERT (H5LTmake_dataset_float (h5_step, "GEOM", 2, dims, &linvel_data[0]) >= 0, "HDF5 file write error");
+    ASSERT (H5LTmake_dataset_float (h5_step, "LINVEL", 2, dims, &linvel_data[0]) >= 0, "HDF5 file write error");
 #else
-    ASSERT (H5LTmake_dataset_double (h5_step, "GEOM", 2, dims, &linvel_data[0]) >= 0, "HDF5 file write error");
+    ASSERT (H5LTmake_dataset_double (h5_step, "LINVEL", 2, dims, &linvel_data[0]) >= 0, "HDF5 file write error");
 #endif
   }
 
@@ -408,6 +408,14 @@ void output_current_results()
       for (auto bodnum : iout->subset)
       {
         if (solfec::meshes.count(bodnum)) subset.push_back(bodnum); /* ordered */
+      }
+
+      if (subset.empty()) /* use all meshes */
+      {
+        for (const auto& pair : solfec::meshes)
+        {
+          subset.push_back(pair.first);
+        }
       }
 
       uint64_t hash = hashfunc(subset);

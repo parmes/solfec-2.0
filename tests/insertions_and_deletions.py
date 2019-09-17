@@ -17,7 +17,7 @@ def insert_meshes():
     for j in range(s,s+2*n,2):
       for k in range(s,s+2*n,2):
         nodes = [(0+i, 0+j, 0+k),
-                 (1+i, 0+j, 0+j),
+                 (1+i, 0+j, 0+k),
                  (1+i, 1+j, 0+k),
                  (0+i, 1+j, 0+k),
                  (0+i, 0+j, 1+k),
@@ -63,13 +63,13 @@ else:
   for arg in ARGV():
     if arg == 'INSMESH':
       insert_meshes()
-      RUN (1.0, 1.0)
+      RUN (0.0, 1.0)
     if arg == 'INSELL':
       insert_ellips()
-      RUN (1.0, 1.0)
+      RUN (0.0, 1.0)
     if arg == 'DEL':
       delete_bodies()
-      RUN (1.0, 1.0)
+      RUN (0.0, 1.0)
 
   # print the current state
   for item in bodnum_list:
