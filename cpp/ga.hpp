@@ -30,6 +30,7 @@ SOFTWARE.
  */
 
 #include <mpi.h>
+#include <stdint.h>
 #include "mutex.hpp"
 
 #ifndef __ga__

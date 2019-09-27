@@ -188,10 +188,10 @@ static void append_xmf_file (const char *xmf_path, std::string mode,
 /* write hdf5 dataset from meshes; outputs elements, nodes, topo_size counters */
 static std::tuple<uint64_t, uint64_t, uint64_t> h5_mesh_dataset (std::vector<uint64_t>& subset, bool topology, std::set<std::string> &ents, hid_t h5_step)
 {
+  uint64_t elements = 0, nodes = 0, topo_size = 0;
+  std::map<uint64_t,uint64_t> nprank;
+  std::map<uint64_t,uint64_t> nprior;
   using namespace compute;
-  uint64_t elements = 0,
-           nodes = 0,
-           topo_size = 0;
 
   for (auto bodnum : subset)
   {
@@ -200,65 +200,90 @@ static std::tuple<uint64_t, uint64_t, uint64_t> h5_mesh_dataset (std::vector<uin
     nodes += mesh.nodes[0].size();
     elements += mesh.nhex+mesh.nwed+mesh.npyr+mesh.ntet;
     topo_size += 9*mesh.nhex+7*mesh.nwed+6*mesh.npyr+5*mesh.ntet;
+
+    struct mapping &mapping = mesh_mapping[bodnum];
+
+    for (auto rng : mapping.ga_nranges)
+    {
+      nprank[rng[0]] += rng[2]-rng[1];
+    }
+  }
+
+  uint64_t nc = 0;
+
+  for (auto& [rank, nnod] : nprank)
+  {
+    nprior[rank] = nc; /* node count prior to this rank */
+
+    nc += nnod;
+
+    nnod = 0; /* nprank[rank] = 0 */
   }
 
   if (topology) /* TOPO */
   {
     std::vector<uint64_t> data;
-    uint64_t nc = 0;
 
     for (auto bodnum : subset)
     {
-      struct mesh &mesh = solfec::meshes[bodnum];
+      struct mapping &mapping = mesh_mapping[bodnum];
 
-      auto it = mesh.elements.begin();
-      for (; it != mesh.elements.end(); )
+      uint64_t k = 0;
+
+      for (auto rng : mapping.ga_eranges)
       {
-        switch (*it)
-        {
-         case 8:
-           data.push_back(9); /* hex code */
-           data.push_back(nc+it[1]); /* nodes */
-           data.push_back(nc+it[2]);
-           data.push_back(nc+it[3]);
-           data.push_back(nc+it[4]);
-           data.push_back(nc+it[5]);
-           data.push_back(nc+it[6]);
-           data.push_back(nc+it[7]);
-           data.push_back(nc+it[8]);
-           it += 10;
-         break;
-         case 6:
-           data.push_back(8); /* wed code */
-           data.push_back(nc+it[1]); /* nodes */
-           data.push_back(nc+it[2]);
-           data.push_back(nc+it[3]);
-           data.push_back(nc+it[4]);
-           data.push_back(nc+it[5]);
-           data.push_back(nc+it[6]);
-           it += 8;
-         break;
-         case 5:
-           data.push_back(7); /* pyr code */
-           data.push_back(nc+it[1]); /* nodes */
-           data.push_back(nc+it[2]);
-           data.push_back(nc+it[3]);
-           data.push_back(nc+it[4]);
-           data.push_back(nc+it[5]);
-           it += 7;
-         break;
-         case 4: 
-           data.push_back(6); /* tet code */
-           data.push_back(nc+it[1]); /* nodes */
-           data.push_back(nc+it[2]);
-           data.push_back(nc+it[3]);
-           data.push_back(nc+it[4]);
-           it += 6;
-         break;
-        }
-      }
+        auto nrng = rng[2]-rng[1];
+        std::vector<uint64_t> vals(nrng*el_last);
 
-      nc += mesh.nodes[0].size();
+        compute::ga_elements->get(rng[0], rng[1], rng[2], 0, el_last, &vals[0]);
+
+        for (uint64_t i = 0; i < nrng; i ++)
+        {
+          uint64_t type = vals[el_type*nrng+i];
+
+          switch (type)
+          {
+           case 8:
+             data.push_back(9); /* hex code */
+             data.push_back(nprior[vals[el_nd0_rnk*nrng+i]]+vals[el_nd0_idx*nrng+i]); /* nodes */
+             data.push_back(nprior[vals[el_nd1_rnk*nrng+i]]+vals[el_nd1_idx*nrng+i]);
+             data.push_back(nprior[vals[el_nd2_rnk*nrng+i]]+vals[el_nd2_idx*nrng+i]);
+             data.push_back(nprior[vals[el_nd3_rnk*nrng+i]]+vals[el_nd3_idx*nrng+i]);
+             data.push_back(nprior[vals[el_nd4_rnk*nrng+i]]+vals[el_nd4_idx*nrng+i]);
+             data.push_back(nprior[vals[el_nd5_rnk*nrng+i]]+vals[el_nd5_idx*nrng+i]);
+             data.push_back(nprior[vals[el_nd6_rnk*nrng+i]]+vals[el_nd6_idx*nrng+i]);
+             data.push_back(nprior[vals[el_nd7_rnk*nrng+i]]+vals[el_nd7_idx*nrng+i]);
+           break;
+           case 6:
+             data.push_back(8); /* wed code */
+             data.push_back(nprior[vals[el_nd0_rnk*nrng+i]]+vals[el_nd0_idx*nrng+i]); /* nodes */
+             data.push_back(nprior[vals[el_nd1_rnk*nrng+i]]+vals[el_nd1_idx*nrng+i]);
+             data.push_back(nprior[vals[el_nd2_rnk*nrng+i]]+vals[el_nd2_idx*nrng+i]);
+             data.push_back(nprior[vals[el_nd3_rnk*nrng+i]]+vals[el_nd3_idx*nrng+i]);
+             data.push_back(nprior[vals[el_nd4_rnk*nrng+i]]+vals[el_nd4_idx*nrng+i]);
+             data.push_back(nprior[vals[el_nd5_rnk*nrng+i]]+vals[el_nd5_idx*nrng+i]);
+           break;
+           case 5:
+             data.push_back(7); /* pyr code */
+             data.push_back(nprior[vals[el_nd0_rnk*nrng+i]]+vals[el_nd0_idx*nrng+i]); /* nodes */
+             data.push_back(nprior[vals[el_nd1_rnk*nrng+i]]+vals[el_nd1_idx*nrng+i]);
+             data.push_back(nprior[vals[el_nd2_rnk*nrng+i]]+vals[el_nd2_idx*nrng+i]);
+             data.push_back(nprior[vals[el_nd3_rnk*nrng+i]]+vals[el_nd3_idx*nrng+i]);
+             data.push_back(nprior[vals[el_nd4_rnk*nrng+i]]+vals[el_nd4_idx*nrng+i]);
+           break;
+           case 4: 
+             data.push_back(6); /* tet code */
+             data.push_back(nprior[vals[el_nd0_rnk*nrng+i]]+vals[el_nd0_idx*nrng+i]); /* nodes */
+             data.push_back(nprior[vals[el_nd1_rnk*nrng+i]]+vals[el_nd1_idx*nrng+i]);
+             data.push_back(nprior[vals[el_nd2_rnk*nrng+i]]+vals[el_nd2_idx*nrng+i]);
+             data.push_back(nprior[vals[el_nd3_rnk*nrng+i]]+vals[el_nd3_idx*nrng+i]);
+           break;
+          }
+        }
+
+        auto rno = mapping.ga_nranges[k++];
+        nc += rno[2] - rno[1];
+      }
     }
 
     hsize_t length = data.size();
@@ -266,13 +291,13 @@ static std::tuple<uint64_t, uint64_t, uint64_t> h5_mesh_dataset (std::vector<uin
   }
 
   bool displ = (bool)ents.count("DISPL");
-  std::vector<REAL> displ_data;
+  std::vector<REAL> displ_data(nodes*3);
   bool linvel = (bool)ents.count("LINVEL");
-  std::vector<REAL> linvel_data;
+  std::vector<REAL> linvel_data(nodes*3);
 
   /* GEOM */
   {
-    std::vector<REAL> data;
+    std::vector<REAL> data(nodes*3);
     uint64_t size = 0;
 
     for (auto bodnum : subset)
@@ -292,24 +317,28 @@ static std::tuple<uint64_t, uint64_t, uint64_t> h5_mesh_dataset (std::vector<uin
                y = vals[nrng*nd_y+i],
                z = vals[nrng*nd_z+i];
 
-          data.push_back (x);
-          data.push_back (y);
-          data.push_back (z);
+          uint64_t of = nprior[rng[0]] + nprank[rng[0]];
+
+          data[(of+i)*3+0] = x;
+          data[(of+i)*3+1] = y;
+          data[(of+i)*3+2] = z;
 
           if (displ)
           {
-            displ_data.push_back (x-vals[nrng*nd_X+i]);
-            displ_data.push_back (y-vals[nrng*nd_Y+i]);
-            displ_data.push_back (z-vals[nrng*nd_Z+i]);
+            displ_data[(of+i)*3+0] = x-vals[nrng*nd_X+i];
+            displ_data[(of+i)*3+1] = y-vals[nrng*nd_Y+i];
+            displ_data[(of+i)*3+2] = z-vals[nrng*nd_Z+i];
           }
 
           if (linvel)
           {
-            linvel_data.push_back (vals[nrng*nd_vx+i]);
-            linvel_data.push_back (vals[nrng*nd_vy+i]);
-            linvel_data.push_back (vals[nrng*nd_vz+i]);
+            linvel_data[(of+i)*3+0] = vals[nrng*nd_vx+i];
+            linvel_data[(of+i)*3+1] = vals[nrng*nd_vy+i];
+            linvel_data[(of+i)*3+2] = vals[nrng*nd_vz+i];
           }
         }
+
+        nprank[rng[0]] += nrng;
 
         size += nrng;
       }
@@ -363,7 +392,7 @@ static std::tuple<uint64_t, uint64_t, uint64_t> h5_mesh_dataset (std::vector<uin
 
   if (ents.count("STRESS"))
   {
-    std::vector<REAL> data(nodes*6, 0.); /* FIXME: TODO (add extra nodal valus) */
+    std::vector<REAL> data(nodes*6, 0.); /* FIXME: TODO (add extra nodal values to store stress) */
     hsize_t dims[2] = {nodes, 6};
 #if REALSIZE==4
     ASSERT (H5LTmake_dataset_float (h5_step, "STRESS", 2, dims, &data[0]) >= 0, "HDF5 file write error");

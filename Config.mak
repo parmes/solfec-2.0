@@ -7,8 +7,8 @@ PYTHONINC=-I/opt/local/Library/Frameworks/Python.framework/Versions/3.7/include/
 PYTHONLIB=-L/opt/local/Library/Frameworks/Python.framework/Versions/3.7/lib/python3.7/config-3.7m-darwin -lpython3.7m -ldl -framework CoreFoundation
 
 # HDF5 paths (HDF5 is used to write output files)
-HDF5INC=-I/opt/local/include
-HDF5LIB=-L/opt/local/lib -lhdf5 -lhdf5_hl
+HDF5INC=-I/usr/local/include
+HDF5LIB=-L/usr/local/lib -lhdf5 -lhdf5_hl
 
 # Debug version
 DEBUG=yes
