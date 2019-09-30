@@ -870,14 +870,10 @@ void compute_main_loop(REAL duration, REAL step)
               uint64_t bodnum = *jtem;
               while (bodnum == *jtem && jtem < end) jtem ++;
               auto& xx_ranges = (ga_name == ga_elements ? mesh_mapping[bodnum].ga_eranges : mesh_mapping[bodnum].ga_franges);
-              for(auto &xr : xx_ranges)
-              {
-                if (xr[0] == r) /* remap mapped range */
-                {
-                  xr[1] = item - start;
-                  xr[2] = jtem - start;
-                }
-              }
+              auto new_end = std::remove_if(xx_ranges.begin(), xx_ranges.end(), [r](auto& rng) { return rng[0] == r; });
+              xx_ranges.erase(new_end, xx_ranges.end()); /* erase current rank ranges */
+	      std::array<uint64_t,3> rng = {(unsigned)r, (unsigned)(item-start), (unsigned)(jtem-start)}; /* remapped range */
+              xx_ranges.push_back(rng); /* insert remapped range */
             }
 
 	    delete [] data;

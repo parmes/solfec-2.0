@@ -27,6 +27,7 @@ SOFTWARE.
 #include <mpi.h>
 #include <hdf5.h>
 #include <hdf5_hl.h>
+#include <unordered_map>
 #include <inttypes.h>
 #include <stdio.h>
 #include <iostream>
@@ -188,16 +189,14 @@ static void append_xmf_file (const char *xmf_path, std::string mode,
 /* write hdf5 dataset from meshes; outputs elements, nodes, topo_size counters */
 static std::tuple<uint64_t, uint64_t, uint64_t> h5_mesh_dataset (std::vector<uint64_t>& subset, bool topology, std::set<std::string> &ents, hid_t h5_step)
 {
+  std::map<uint64_t, std::unordered_map<uint64_t, uint64_t>> nindex;
   uint64_t elements = 0, nodes = 0, topo_size = 0;
-  std::map<uint64_t,uint64_t> nprank;
-  std::map<uint64_t,uint64_t> nprior;
   using namespace compute;
 
   for (auto bodnum : subset)
   {
     struct mesh &mesh = solfec::meshes[bodnum];
 
-    nodes += mesh.nodes[0].size();
     elements += mesh.nhex+mesh.nwed+mesh.npyr+mesh.ntet;
     topo_size += 9*mesh.nhex+7*mesh.nwed+6*mesh.npyr+5*mesh.ntet;
 
@@ -205,19 +204,11 @@ static std::tuple<uint64_t, uint64_t, uint64_t> h5_mesh_dataset (std::vector<uin
 
     for (auto rng : mapping.ga_nranges)
     {
-      nprank[rng[0]] += rng[2]-rng[1];
+      for (uint64_t i = rng[1]; i < rng[2]; i ++)
+      {
+        nindex[rng[0]][i] = nodes ++;
+      }
     }
-  }
-
-  uint64_t nc = 0;
-
-  for (auto& [rank, nnod] : nprank)
-  {
-    nprior[rank] = nc; /* node count prior to this rank */
-
-    nc += nnod;
-
-    nnod = 0; /* nprank[rank] = 0 */
   }
 
   if (topology) /* TOPO */
@@ -245,44 +236,41 @@ static std::tuple<uint64_t, uint64_t, uint64_t> h5_mesh_dataset (std::vector<uin
           {
            case 8:
              data.push_back(9); /* hex code */
-             data.push_back(nprior[vals[el_nd0_rnk*nrng+i]]+vals[el_nd0_idx*nrng+i]); /* nodes */
-             data.push_back(nprior[vals[el_nd1_rnk*nrng+i]]+vals[el_nd1_idx*nrng+i]);
-             data.push_back(nprior[vals[el_nd2_rnk*nrng+i]]+vals[el_nd2_idx*nrng+i]);
-             data.push_back(nprior[vals[el_nd3_rnk*nrng+i]]+vals[el_nd3_idx*nrng+i]);
-             data.push_back(nprior[vals[el_nd4_rnk*nrng+i]]+vals[el_nd4_idx*nrng+i]);
-             data.push_back(nprior[vals[el_nd5_rnk*nrng+i]]+vals[el_nd5_idx*nrng+i]);
-             data.push_back(nprior[vals[el_nd6_rnk*nrng+i]]+vals[el_nd6_idx*nrng+i]);
-             data.push_back(nprior[vals[el_nd7_rnk*nrng+i]]+vals[el_nd7_idx*nrng+i]);
+             data.push_back(nindex[vals[el_nd0_rnk*nrng+i]][vals[el_nd0_idx*nrng+i]]); /* nodes */
+             data.push_back(nindex[vals[el_nd1_rnk*nrng+i]][vals[el_nd1_idx*nrng+i]]);
+             data.push_back(nindex[vals[el_nd2_rnk*nrng+i]][vals[el_nd2_idx*nrng+i]]);
+             data.push_back(nindex[vals[el_nd3_rnk*nrng+i]][vals[el_nd3_idx*nrng+i]]);
+             data.push_back(nindex[vals[el_nd4_rnk*nrng+i]][vals[el_nd4_idx*nrng+i]]);
+             data.push_back(nindex[vals[el_nd5_rnk*nrng+i]][vals[el_nd5_idx*nrng+i]]);
+             data.push_back(nindex[vals[el_nd6_rnk*nrng+i]][vals[el_nd6_idx*nrng+i]]);
+             data.push_back(nindex[vals[el_nd7_rnk*nrng+i]][vals[el_nd7_idx*nrng+i]]);
            break;
            case 6:
              data.push_back(8); /* wed code */
-             data.push_back(nprior[vals[el_nd0_rnk*nrng+i]]+vals[el_nd0_idx*nrng+i]); /* nodes */
-             data.push_back(nprior[vals[el_nd1_rnk*nrng+i]]+vals[el_nd1_idx*nrng+i]);
-             data.push_back(nprior[vals[el_nd2_rnk*nrng+i]]+vals[el_nd2_idx*nrng+i]);
-             data.push_back(nprior[vals[el_nd3_rnk*nrng+i]]+vals[el_nd3_idx*nrng+i]);
-             data.push_back(nprior[vals[el_nd4_rnk*nrng+i]]+vals[el_nd4_idx*nrng+i]);
-             data.push_back(nprior[vals[el_nd5_rnk*nrng+i]]+vals[el_nd5_idx*nrng+i]);
+             data.push_back(nindex[vals[el_nd0_rnk*nrng+i]][vals[el_nd0_idx*nrng+i]]); /* nodes */
+             data.push_back(nindex[vals[el_nd1_rnk*nrng+i]][vals[el_nd1_idx*nrng+i]]);
+             data.push_back(nindex[vals[el_nd2_rnk*nrng+i]][vals[el_nd2_idx*nrng+i]]);
+             data.push_back(nindex[vals[el_nd3_rnk*nrng+i]][vals[el_nd3_idx*nrng+i]]);
+             data.push_back(nindex[vals[el_nd4_rnk*nrng+i]][vals[el_nd4_idx*nrng+i]]);
+             data.push_back(nindex[vals[el_nd5_rnk*nrng+i]][vals[el_nd5_idx*nrng+i]]);
            break;
            case 5:
              data.push_back(7); /* pyr code */
-             data.push_back(nprior[vals[el_nd0_rnk*nrng+i]]+vals[el_nd0_idx*nrng+i]); /* nodes */
-             data.push_back(nprior[vals[el_nd1_rnk*nrng+i]]+vals[el_nd1_idx*nrng+i]);
-             data.push_back(nprior[vals[el_nd2_rnk*nrng+i]]+vals[el_nd2_idx*nrng+i]);
-             data.push_back(nprior[vals[el_nd3_rnk*nrng+i]]+vals[el_nd3_idx*nrng+i]);
-             data.push_back(nprior[vals[el_nd4_rnk*nrng+i]]+vals[el_nd4_idx*nrng+i]);
+             data.push_back(nindex[vals[el_nd0_rnk*nrng+i]][vals[el_nd0_idx*nrng+i]]); /* nodes */
+             data.push_back(nindex[vals[el_nd1_rnk*nrng+i]][vals[el_nd1_idx*nrng+i]]);
+             data.push_back(nindex[vals[el_nd2_rnk*nrng+i]][vals[el_nd2_idx*nrng+i]]);
+             data.push_back(nindex[vals[el_nd3_rnk*nrng+i]][vals[el_nd3_idx*nrng+i]]);
+             data.push_back(nindex[vals[el_nd4_rnk*nrng+i]][vals[el_nd4_idx*nrng+i]]);
            break;
            case 4: 
              data.push_back(6); /* tet code */
-             data.push_back(nprior[vals[el_nd0_rnk*nrng+i]]+vals[el_nd0_idx*nrng+i]); /* nodes */
-             data.push_back(nprior[vals[el_nd1_rnk*nrng+i]]+vals[el_nd1_idx*nrng+i]);
-             data.push_back(nprior[vals[el_nd2_rnk*nrng+i]]+vals[el_nd2_idx*nrng+i]);
-             data.push_back(nprior[vals[el_nd3_rnk*nrng+i]]+vals[el_nd3_idx*nrng+i]);
+             data.push_back(nindex[vals[el_nd0_rnk*nrng+i]][vals[el_nd0_idx*nrng+i]]); /* nodes */
+             data.push_back(nindex[vals[el_nd1_rnk*nrng+i]][vals[el_nd1_idx*nrng+i]]);
+             data.push_back(nindex[vals[el_nd2_rnk*nrng+i]][vals[el_nd2_idx*nrng+i]]);
+             data.push_back(nindex[vals[el_nd3_rnk*nrng+i]][vals[el_nd3_idx*nrng+i]]);
            break;
           }
         }
-
-        auto rno = mapping.ga_nranges[k++];
-        nc += rno[2] - rno[1];
       }
     }
 
@@ -311,34 +299,32 @@ static std::tuple<uint64_t, uint64_t, uint64_t> h5_mesh_dataset (std::vector<uin
 
         compute::ga_nodes->get(rng[0], rng[1], rng[2], nd_vx, nd_Z+1, &vals[0]);
 
-        for (uint64_t i = 0; i < nrng; i ++)
+        for (uint64_t i = 0, j = rng[1]; i < nrng; i ++, j ++)
         {
           REAL x = vals[nrng*nd_x+i],
                y = vals[nrng*nd_y+i],
                z = vals[nrng*nd_z+i];
 
-          uint64_t of = nprior[rng[0]] + nprank[rng[0]];
+          uint64_t k = nindex[rng[0]][j];
 
-          data[(of+i)*3+0] = x;
-          data[(of+i)*3+1] = y;
-          data[(of+i)*3+2] = z;
+          data[k*3+0] = x;
+          data[k*3+1] = y;
+          data[k*3+2] = z;
 
           if (displ)
           {
-            displ_data[(of+i)*3+0] = x-vals[nrng*nd_X+i];
-            displ_data[(of+i)*3+1] = y-vals[nrng*nd_Y+i];
-            displ_data[(of+i)*3+2] = z-vals[nrng*nd_Z+i];
+            displ_data[k*3+0] = x-vals[nrng*nd_X+i];
+            displ_data[k*3+1] = y-vals[nrng*nd_Y+i];
+            displ_data[k*3+2] = z-vals[nrng*nd_Z+i];
           }
 
           if (linvel)
           {
-            linvel_data[(of+i)*3+0] = vals[nrng*nd_vx+i];
-            linvel_data[(of+i)*3+1] = vals[nrng*nd_vy+i];
-            linvel_data[(of+i)*3+2] = vals[nrng*nd_vz+i];
+            linvel_data[k*3+0] = vals[nrng*nd_vx+i];
+            linvel_data[k*3+1] = vals[nrng*nd_vy+i];
+            linvel_data[k*3+2] = vals[nrng*nd_vz+i];
           }
         }
-
-        nprank[rng[0]] += nrng;
 
         size += nrng;
       }
@@ -499,9 +485,8 @@ void output_current_results()
         H5Fclose (h5_file);
       }
     }
+    /* TODO: other modes */
   }
-
-  /* TODO: other modes */
 
   output_frame ++;
 }
