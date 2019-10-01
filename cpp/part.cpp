@@ -226,6 +226,7 @@ std::tuple<uint64_t, uint64_t, uint64_t> max_per_rank (const std::map<uint64_t, 
     }
   }
 
+#if 0
   if (compute::debug_print)
   {
     std::cout << "DBG: In mesh partitioning:" << std::endl;
@@ -243,6 +244,7 @@ std::tuple<uint64_t, uint64_t, uint64_t> max_per_rank (const std::map<uint64_t, 
       std::cout << "DBG:   faces on rank " << r << " = " << n << std::endl;
     }
   }
+#endif
 
   using pair_type = decltype(nrank)::value_type;
 

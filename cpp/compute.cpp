@@ -26,7 +26,9 @@ SOFTWARE.
 
 #include <unordered_map>
 #include <algorithm>
+#include <iostream>
 #include <cstring>
+#include <numeric>
 #include <limits>
 #include <mpi.h>
 #include <list>
@@ -35,6 +37,7 @@ SOFTWARE.
 #include "real.h"
 #include "err.h"
 #include "alg.h"
+#include "fmt.hpp"
 #include "part.hpp"
 #include "mesh.hpp"
 #include "dynlb.hpp"
@@ -71,6 +74,8 @@ std::vector<uint64_t> ellips_per_rank; /* ellipsoids per rank counts */
 int ELEMENTS_BUNCH = 16; /* elements SIMD bunch size */
 
 int FACES_BUNCH = 16; /* faces SIMD bunch size */
+
+REAL IMBALANCE_TOLERANCE = 1.2; /* data imbalance tolerance */
 
 bool partitioned = false; /* initially paritioned */
 
@@ -1101,6 +1106,100 @@ void compute_main_loop(REAL duration, REAL step)
     ga_faces->fence();
     ga_elldata->fence();
     ga_ellips->fence();
+
+    /* rebalance data if required */
+
+    auto x = std::minmax_element (elements_per_rank.begin(), elements_per_rank.end());
+    auto y = std::minmax_element (ellips_per_rank.begin(), ellips_per_rank.end());
+    REAL im0[2] = {(REAL)*x.second / (REAL)(*x.first+1), (REAL)*y.second / (REAL)(*y.first+1)}, im1[2];
+
+    MPI_Reduce (im0, im1, 2, MPI_REAL, MPI_MAX, 0, MPI_COMM_WORLD);
+
+    if (rank == 0)
+    {
+      if (debug_print)
+      {
+        std::cout << "DBG: ELEMENTs imbalance: " << FMT("%.2f") << im1[0] << std::endl;
+        std::cout << "DBG: ELLIPs imbalance: " << FMT("%.2f") << im1[1] << std::endl;
+      }
+
+      if (im1[0] > IMBALANCE_TOLERANCE)
+      {
+        auto sum = std::accumulate(elements_per_rank.begin(), elements_per_rank.end(), 0);
+        auto avg = sum/size;
+
+        std::vector<std::map<uint64_t,uint64_t>> meshes_on_ranks(size);
+
+        for (auto& [bodnum, mapping] : mesh_mapping)
+        {
+          for (auto& rng : mapping.ga_eranges)
+          {
+            meshes_on_ranks[rng[0]][bodnum] += rng[2]-rng[1]; /* sum up elements per mesh per rank */
+          }
+        }
+
+        /* TODO: calculate migration mapping based on (avg, meshes_on_ranks) */
+
+        /* TODO: broadcast migration mapping */
+
+        /* TODO: migrate meshes */
+
+        /* TODO: fence mesh updates */
+      }
+
+      if (im1[1] > IMBALANCE_TOLERANCE)
+      {
+        auto sum = std::accumulate(ellips_per_rank.begin(), ellips_per_rank.end(), 0);
+        auto avg = sum/size;
+
+        std::vector<std::vector<uint64_t>> ellips_on_ranks(size);
+
+        for (auto& [bodnum, rank] : ellip_mapping)
+        {
+          ellips_on_ranks[rank].push_back(bodnum);
+        }
+
+        /* TODO: calculate migration mapping based on (avg, ellips_on_ranks) */
+
+        /* TODO: broadcast migration mapping */
+
+        /* TODO: migrate ellipsoids */
+
+        /* TODO: fence ellips updates */
+      }
+    }
+    else
+    {
+      if (im1[0] > IMBALANCE_TOLERANCE)
+      {
+        /* TODO: broadcast migration mapping */
+
+        /* TODO: migrate meshes */
+
+        /* TODO: fence mesh updates */
+      }
+
+      if (im1[1] > IMBALANCE_TOLERANCE)
+      {
+        /* TODO: broadcast migration mapping */
+
+        /* TODO: migrate ellipsoids */
+
+        /* TODO: fence ellips updates */
+      }
+    }
+
+    if (rank == 0 && debug_print)
+    {
+      for (auto it = elements_per_rank.begin(); it != elements_per_rank.end(); it ++)
+      {
+        std::cout << "DBG: elements on rank " << it-elements_per_rank.begin() << " = " << *it << std::endl;
+      }
+      for (auto it = ellips_per_rank.begin(); it != ellips_per_rank.end(); it ++)
+      {
+        std::cout << "DBG: ellipsoids on rank " << it-ellips_per_rank.begin() << " = " << *it << std::endl;
+      }
+    }
 
     if (debug_files)
     {
