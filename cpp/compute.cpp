@@ -94,6 +94,173 @@ GA *ga_contact; /* global array of contact REAL entities */
 /* --- all ranks */
 };
 
+/* calculate mesh migration mapping;
+ *** in/out: ***
+ * rbe - MPI_COMM_WORLD size vector of maps of bodnums to element counts stored per rank;
+ * modified internally and undefined upon return;
+ *** out: ***
+ * (sendbuf, sendcounts, displs) as appropriate for MPI_Scatterv, where
+ * sendbuf stores continguous tuples (bodnum, rank, n_org0, n_org1, n_dst0, n_dst1,
+ * e_org0, e_org1, e_dst0, e_dst1, f_org0, f_org1, f_dst0, f_dst1) of bodnums, their
+ * migration ranks, and original global array ranges ({n_,e_,f_}org0, {n_,e_,f_}org1),
+ * and destination global array ranges ({n_,e_,f_}dst0, {n_,e_,f_}dst1) of * {n_}nodes,
+ * {e_}elements and {f_}faces
+ *** modified globals: ***
+ * nodes_per_rank, elements_per_rank, faces_per_rank, mesh_mapping, deleted_nodes,
+ * deleted_nodes_counts */
+static void mesh_migration_map (std::vector<std::map<uint64_t,uint64_t>> &rbe,
+  std::vector<uint64_t> &sendbuf, std::vector<int> &sendcounts, std::vector<int> &displs)
+{
+  /* XXX: this routine works on the assumption that only a single element range per body per rank is always stored;
+          check back that this is the case */
+
+  std::vector<std::map<uint64_t,std::set<uint64_t>>> rbr(rbe.size()); /* post-migration new rank to (body, origin ranks) map */
+  std::set<std::pair<uint64_t,int>> sorted; /* updatable set of pairs of (element count, rank) */
+  using namespace compute;
+
+  for (auto it = rbe.begin(); it != rbe.end(); it ++)
+  {
+    int rank = (int)(it - rbe.begin());
+    uint64_t totalcount = 0;
+    for (auto& [bodnum, count] : *it)
+    {
+      totalcount += count;
+    }
+    sorted.insert(std::make_pair(totalcount, rank));
+  }
+
+  while (true)
+  {
+    auto big = sorted.extract(--sorted.end()); /* largest element count rank */
+
+    auto& val0 = big.value(); /* element count, rank */
+
+    auto rnk = val0.second;
+
+    auto it = min_element(rbe[rnk].begin(), rbe[rnk].end(), /* bodnum of minimum element count */
+            [](const auto& l, const auto& r) { return l.second < r.second; });
+
+    auto small = sorted.extract(sorted.begin()); /* smallest element count rank */
+
+    auto& val1 = small.value();
+
+    std::cout << "Count of largest is " << val0.first << " and smallest is " << val1.first;
+    std::cout << " and increment is " << it->second << std::endl;
+
+    val0.first -= it->second; /* subtract from largest */
+    val1.first += it->second; /* add to smallest */
+
+    if (val0.first < val1.first) break; /* no more refinement possible */
+ 
+    rbe[val0.second].erase (it->first);
+    rbr[val1.second][it->first].insert(val0.second);
+
+    sorted.insert(std::move(val0)); /* reinsert modified pairs */
+    sorted.insert(std::move(val1));
+  }
+
+  std::vector<std::vector<std::pair<uint64_t,uint64_t>>> send (rbe.size());
+
+  for (auto it = rbr.begin(); it != rbr.end(); it ++)
+  {
+    int rank0 = (int)(it - rbr.begin());
+    for (auto& [bodnum, ranks] : *it)
+    {
+      for (auto& rank1 : ranks)
+      {
+        send[rank0].push_back(std::make_pair(bodnum,rank1));
+      }
+    }
+  }
+
+  sendbuf.clear();
+  sendcounts.clear();
+  displs.resize(1,0);
+
+  for (auto it = send.begin(); it != send.end(); it ++)
+  {
+    auto orgr = it-send.begin();
+
+    for (auto& [bodnum, rank] : *it)
+    {
+      auto& mapping = mesh_mapping[bodnum];
+
+      uint64_t n_org0 = 0, n_org1 = 0, n_dst0 = 0, n_dst1 = 0;
+      for (auto& r : mapping.ga_nranges)
+      {
+        if (r[0] == orgr) /* only move nodes if possible */
+        {
+          /* TODO */
+        }
+      }
+
+      uint64_t e_org0, e_org1, e_dst0, e_dst1;
+      for (auto& r : mapping.ga_eranges)
+      {
+        if (r[0] == orgr)
+        {
+          auto sz = r[2]-r[1];
+
+          e_org0 = r[1];
+          e_org1 = r[2];
+          e_dst0 = elements_per_rank[rank];
+          e_dst1 = e_dst0 + sz;
+
+#if 0
+          r[0] = rank;
+          r[1] = e_dst0;
+          r[2] = e_dst1;
+          elements_per_rank[orgr] -= sz;
+          elements_per_rank[rank] += sz;
+#endif
+          break;
+        }
+      }
+
+      uint64_t f_org0 = 0, f_org1 = 0, f_dst0 = 0, f_dst1 = 0;
+      for (auto& r : mapping.ga_franges)
+      {
+        if (r[0] == rank)
+        {
+          auto sz = r[2]-r[1];
+
+          f_org0 = r[1];
+          f_org1 = r[2];
+          f_dst0 = faces_per_rank[rank];
+          f_dst1 = f_dst0 + sz;
+
+#if 0
+          r[0] = rank;
+          r[1] = f_dst0;
+          r[2] = f_dst1;
+          faces_per_rank[orgr] -= sz;
+          faces_per_rank[rank] += sz;
+#endif
+          break;
+        }
+      }
+
+      sendbuf.push_back(bodnum);
+      sendbuf.push_back(rank);
+      sendbuf.push_back(n_org0);
+      sendbuf.push_back(n_org1);
+      sendbuf.push_back(n_dst0);
+      sendbuf.push_back(n_dst1);
+      sendbuf.push_back(e_org0);
+      sendbuf.push_back(e_org1);
+      sendbuf.push_back(e_dst0);
+      sendbuf.push_back(e_dst1);
+      sendbuf.push_back(f_org0);
+      sendbuf.push_back(f_org1);
+      sendbuf.push_back(f_dst0);
+      sendbuf.push_back(f_dst1);
+    }
+
+    sendcounts.push_back(14*it->size());
+    displs.push_back(displs.back()+14*it->size());
+  }
+}
+
 /* insert solfec::materials[matnum] into computation */
 void compute_insert_material(uint64_t matnum)
 {
@@ -1125,9 +1292,6 @@ void compute_main_loop(REAL duration, REAL step)
 
       if (im1[0] > IMBALANCE_TOLERANCE)
       {
-        auto sum = std::accumulate(elements_per_rank.begin(), elements_per_rank.end(), 0);
-        auto avg = sum/size;
-
         std::vector<std::map<uint64_t,uint64_t>> meshes_on_ranks(size);
 
         for (auto& [bodnum, mapping] : mesh_mapping)
@@ -1138,7 +1302,32 @@ void compute_main_loop(REAL duration, REAL step)
           }
         }
 
-        /* TODO: calculate migration mapping based on (avg, meshes_on_ranks) */
+        /* calculate migration mapping based on meshes_on_ranks */
+        std::vector<uint64_t> sendbuf;
+        std::vector<int> sendcounts;
+        std::vector<int> displs;
+        mesh_migration_map (meshes_on_ranks, sendbuf, sendcounts, displs);
+
+        if (debug_print)
+        {
+          std::vector<uint64_t> epr = elements_per_rank;
+
+          for (int i = 0; i < size; i ++)
+          {
+            std::cout << "DBG: Migrating " << sendcounts[i]/14 << " meshes from rank " << i << std::endl;
+            for (int j = displs[i]; j < displs[i+1]; j += 14)
+            {
+              std::cout << "DBG:    bodnum " << sendbuf[j] << " to rank " << sendbuf[j+1] << std::endl;
+              epr[i] -= sendbuf[j+7]-sendbuf[j+6];
+              epr[sendbuf[j+1]] += sendbuf[j+7]-sendbuf[j+6];
+            }
+          }
+
+          for (auto it = epr.begin(); it != epr.end(); it ++)
+          {
+            std::cout << "DBG: post-migration --> elements on rank " << it-epr.begin() << " = " << *it << std::endl;
+          }
+        }
 
         /* TODO: broadcast migration mapping */
 
