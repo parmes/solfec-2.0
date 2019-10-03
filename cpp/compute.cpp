@@ -75,7 +75,7 @@ int ELEMENTS_BUNCH = 16; /* elements SIMD bunch size */
 
 int FACES_BUNCH = 16; /* faces SIMD bunch size */
 
-REAL IMBALANCE_TOLERANCE = 1.2; /* data imbalance tolerance */
+REAL IMBALANCE_TOLERANCE = 1.1; /* data imbalance tolerance */
 
 bool partitioned = false; /* initially paritioned */
 
@@ -94,7 +94,7 @@ GA *ga_contact; /* global array of contact REAL entities */
 /* --- all ranks */
 };
 
-/* calculate mesh migration mapping;
+/* RANK 0: calculate mesh migration mapping;
  *** in/out: ***
  * rbe - MPI_COMM_WORLD size vector of maps of bodnums to element counts stored per rank;
  * modified internally and undefined upon return;
@@ -111,8 +111,18 @@ GA *ga_contact; /* global array of contact REAL entities */
 static void mesh_migration_map (std::vector<std::map<uint64_t,uint64_t>> &rbe,
   std::vector<uint64_t> &sendbuf, std::vector<int> &sendcounts, std::vector<int> &displs)
 {
-  /* XXX: this routine works on the assumption that only a single element range per body per rank is always stored;
-          check back that this is the case */
+  /* XXX 1: this routine works on the assumption that only a single element range per body per rank is always stored;
+            check back that this is the case */
+
+  /* XXX 2: note that this is an element-balance driven migration scheme, where nodes and faces are migrated with elements;
+            a more refined approach can supersede it, where nodes, elements, and faces are migrated independently */
+
+  /* XXX 3: also note that currenlty, pre-existing per-rank continguous ranges of entities (elements) are used as data
+            transfer increments, even though these originally coalesced from the smaller BUNCHes; this constraints the
+            achievable degree of balance; a refinement is possible, where these coalesced ranges are again dismemberd into
+            BUNCHes for the purpose of a finer balancing */
+
+  /* XXX 4: finally note, that currently node movement is not implemented */
 
   std::vector<std::map<uint64_t,std::set<uint64_t>>> rbr(rbe.size()); /* post-migration new rank to (body, origin ranks) map */
   std::set<std::pair<uint64_t,int>> sorted; /* updatable set of pairs of (element count, rank) */
@@ -129,6 +139,8 @@ static void mesh_migration_map (std::vector<std::map<uint64_t,uint64_t>> &rbe,
     sorted.insert(std::make_pair(totalcount, rank));
   }
 
+  REAL im0 = (REAL)(--sorted.end())->first/(REAL)sorted.begin()->first;
+
   while (true)
   {
     auto big = sorted.extract(--sorted.end()); /* largest element count rank */
@@ -144,13 +156,17 @@ static void mesh_migration_map (std::vector<std::map<uint64_t,uint64_t>> &rbe,
 
     auto& val1 = small.value();
 
-    std::cout << "Count of largest is " << val0.first << " and smallest is " << val1.first;
-    std::cout << " and increment is " << it->second << std::endl;
+    if (it == rbe[rnk].end() || it->second == 0) break; /* catch empty rank case (infinite imbalance) */
+
+    std::cout << "DBG: Largest per rank element count: " << val0.first << ", smallest: " << val1.first;
+    std::cout << ", transferred count: " << it->second << std::endl;
 
     val0.first -= it->second; /* subtract from largest */
     val1.first += it->second; /* add to smallest */
 
-    if (val0.first < val1.first) break; /* no more refinement possible */
+    REAL im1 = (REAL)std::max(val0.first,val1.first)/(REAL)std::min(val0.first,val1.first);
+
+    if (im1 >= im0) break; /* no more refinement possible */
  
     rbe[val0.second].erase (it->first);
     rbr[val1.second][it->first].insert(val0.second);
@@ -163,10 +179,10 @@ static void mesh_migration_map (std::vector<std::map<uint64_t,uint64_t>> &rbe,
 
   for (auto it = rbr.begin(); it != rbr.end(); it ++)
   {
-    int rank0 = (int)(it - rbr.begin());
+    int rank1 = (int)(it - rbr.begin());
     for (auto& [bodnum, ranks] : *it)
     {
-      for (auto& rank1 : ranks)
+      for (auto& rank0 : ranks)
       {
         send[rank0].push_back(std::make_pair(bodnum,rank1));
       }
@@ -206,13 +222,13 @@ static void mesh_migration_map (std::vector<std::map<uint64_t,uint64_t>> &rbe,
           e_dst0 = elements_per_rank[rank];
           e_dst1 = e_dst0 + sz;
 
-#if 0
+          /* RANK 0 --- */
           r[0] = rank;
           r[1] = e_dst0;
           r[2] = e_dst1;
           elements_per_rank[orgr] -= sz;
           elements_per_rank[rank] += sz;
-#endif
+          /* --- RANK 0 */
           break;
         }
       }
@@ -229,13 +245,13 @@ static void mesh_migration_map (std::vector<std::map<uint64_t,uint64_t>> &rbe,
           f_dst0 = faces_per_rank[rank];
           f_dst1 = f_dst0 + sz;
 
-#if 0
+          /* RANK 0 --- */
           r[0] = rank;
           r[1] = f_dst0;
           r[2] = f_dst1;
           faces_per_rank[orgr] -= sz;
           faces_per_rank[rank] += sz;
-#endif
+          /* --- RANK 0 */
           break;
         }
       }
@@ -259,6 +275,129 @@ static void mesh_migration_map (std::vector<std::map<uint64_t,uint64_t>> &rbe,
     sendcounts.push_back(14*it->size());
     displs.push_back(displs.back()+14*it->size());
   }
+}
+
+/* RANK 0: resize down compute::ga_elements or compute::ga_faces arrays
+ *** in: ***
+ * cn_name - cn_elements or cn_faces
+ * ga_name - ga_elments or ga_faces
+ * xx_last - el_last or fa_last
+ * rank_deleted_ranges - std::vector<std::pair<uint64_t,uint64_t>> vector of entity ranges;
+ * xx_bodnum - el_bodnum or fa_bodnum */
+auto GA_RESIZE_DOWN_RANK_MESH_ELE_FAC = [](int rank, auto cn_name, auto ga_name, auto xx_last, auto rank_deleted_ranges, auto xx_bodnum)
+{
+  using namespace compute;
+
+  uint64_t count0, count1;
+  ga_counters->get(rank, cn_name, cn_name+1, 0, 1, &count0);
+
+  uint64_t *data = new uint64_t [count0 * xx_last];
+  ga_name->get(rank, 0, count0, 0, xx_last, data);
+
+  std::set<std::pair<uint64_t,uint64_t>> deleted_ranges;
+  count1 = count0;
+  for (auto& rng : rank_deleted_ranges)
+  {
+    count1 -= rng.second-rng.first;
+    deleted_ranges.insert(rng);
+  }
+
+  std::set<std::pair<uint64_t,uint64_t>> left_ranges;
+  uint64_t j = 0;
+  for (auto& rng : deleted_ranges)
+  {
+    if (j < rng.first)
+    {
+      left_ranges.insert(std::pair<uint64_t,uint64_t>(j, rng.first));
+    }
+
+    j = rng.second;
+  }
+  if (j < count0)
+  {
+    left_ranges.insert(std::pair<uint64_t,uint64_t>(j, count0));
+  }
+
+  j = 0;
+  for (uint64_t i = 0, *item = data; i < xx_last; i ++, item += count0)
+  {
+    for (auto & rng : left_ranges)
+    {
+      std::memmove (&data[j], &item[rng.first], sizeof(uint64_t [rng.second-rng.first]));
+      j += rng.second-rng.first;
+    }
+  }
+
+  ga_name->put(rank, 0, count1, 0, xx_last, data);
+  ga_counters->put(rank, cn_name, cn_name+1, 0, 1, &count1);
+
+  for (uint64_t *start = &data[count1*xx_bodnum], *item = start,
+       *jtem = item, *end = start+count1; item < end; item = jtem)
+  {
+    uint64_t bodnum = *jtem;
+    while (bodnum == *jtem && jtem < end) jtem ++;
+    auto& xx_ranges = (ga_name == ga_elements ? mesh_mapping[bodnum].ga_eranges : mesh_mapping[bodnum].ga_franges);
+    auto new_end = std::remove_if(xx_ranges.begin(), xx_ranges.end(), [rank](auto& rng) { return rng[0] == rank; });
+    xx_ranges.erase(new_end, xx_ranges.end()); /* erase current rank ranges */
+    std::array<uint64_t,3> rng = {(unsigned)rank, (unsigned)(item-start), (unsigned)(jtem-start)}; /* remapped range */
+    xx_ranges.push_back(rng); /* insert remapped range */
+  }
+
+  delete [] data;
+};
+
+/* COLLECTIVE: migrate mesh data by modifying global arrays
+ *** in: ***
+ * data - array of 14-tuples of (bodnum, rank, n_org0, n_org1, n_dst0, n_dst1,
+ *        e_org0, e_org1, e_dst0, e_dst1, f_org0, f_org1, f_dst0, f_dst1) as
+ *        defined in mesh_migration_map() */
+static void ALL_migrate_meshes (const std::vector<uint64_t> &data)
+{
+  ASSERT (data.size() % 14 == 0, "Mesh migratio data size is corrupted");
+  using namespace compute;
+  int rank0;
+  MPI_Comm_rank (MPI_COMM_WORLD, &rank0);
+
+  std::vector<std::pair<uint64_t,uint64_t>> deleted_elements, deleted_faces;
+
+  for (auto it = data.begin(); it != data.end(); it += 14)
+  {
+    uint64_t bodnum = it[0],
+             rank1  = it[1],
+             n_org0 = it[2],
+             n_org1 = it[3],
+             n_dst0 = it[4],
+             n_dst1 = it[5],
+             e_org0 = it[6],
+             e_org1 = it[7],
+             e_dst0 = it[8],
+             e_dst1 = it[9],
+             f_org0 = it[10],
+             f_org1 = it[11],
+             f_dst0 = it[12],
+             f_dst1 = it[13];
+
+    uint64_t count = e_org1-e_org0;
+    std::vector<uint64_t> data(count*el_last);
+    ga_elements->get(rank0, e_org0, e_org1, 0, el_last, &data[0]);
+    ga_elements->put(rank1, e_dst0, e_dst1, 0, el_last, &data[0]);
+    ga_counters->acc(rank1, cn_elements, cn_elements+1, 0, 1, &count);
+    deleted_elements.push_back(std::make_pair(e_org0, e_org1));
+
+    count = f_org1-f_org0;
+    data.resize(count*fa_last);
+    ga_faces->get(rank0, f_org0, f_org1, 0, fa_last, &data[0]);
+    ga_faces->put(rank1, f_dst0, f_dst1, 0, fa_last, &data[0]);
+    ga_counters->acc(rank1, cn_faces, cn_faces+1, 0, 1, &count);
+    deleted_faces.push_back(std::make_pair(f_org0, f_org1));
+  }
+
+  ga_counters->fence();
+  ga_elements->fence();
+  ga_faces->fence();
+
+  GA_RESIZE_DOWN_RANK_MESH_ELE_FAC (rank0, cn_elements, ga_elements, el_last, deleted_elements, el_bodnum);
+  GA_RESIZE_DOWN_RANK_MESH_ELE_FAC (rank0, cn_faces, ga_faces, fa_last, deleted_faces, fa_bodnum);
 }
 
 /* insert solfec::materials[matnum] into computation */
@@ -989,68 +1128,13 @@ void compute_main_loop(REAL duration, REAL step)
 	
       if (rank == 0)
       {
-	auto GA_RESIZE_DOWN = [](auto cn_name, auto ga_name, auto xx_last, auto rank_deleted_ranges, auto xx_bodnum)
-	{
-	  for (auto& [r, vec] : rank_deleted_ranges)
-	  {
-	    uint64_t count0, count1;
-	    ga_counters->get(r, cn_name, cn_name+1, 0, 1, &count0);
-
-	    uint64_t *data = new uint64_t [count0 * xx_last];
-	    ga_name->get(r, 0, count0, 0, xx_last, data);
-
-            std::set<std::pair<uint64_t,uint64_t>> deleted_ranges;
-	    count1 = count0;
-	    for (auto& rng : vec)
-	    {
-              count1 -= rng.second-rng.first;
-              deleted_ranges.insert(rng);
-	    }
-
-            std::set<std::pair<uint64_t,uint64_t>> left_ranges;
-            uint64_t j = 0;
-            for (auto& rng : deleted_ranges)
-            {
-              if (j < rng.first)
-              {
-                left_ranges.insert(std::pair<uint64_t,uint64_t>(j, rng.first));
-              }
-
-              j = rng.second;
-            }
-            if (j < count0)
-            {
-              left_ranges.insert(std::pair<uint64_t,uint64_t>(j, count0));
-            }
-
-            j = 0;
-	    for (uint64_t i = 0, *item = data; i < xx_last; i ++, item += count0)
-	    {
-              for (auto & rng : left_ranges)
-              {
-                std::memmove (&data[j], &item[rng.first], sizeof(uint64_t [rng.second-rng.first]));
-                j += rng.second-rng.first;
-              }
-	    }
-
-	    ga_name->put(r, 0, count1, 0, xx_last, data);
-	    ga_counters->put(r, cn_name, cn_name+1, 0, 1, &count1);
-
-            for (uint64_t *start = &data[count1*xx_bodnum], *item = start,
-                 *jtem = item, *end = start+count1; item < end; item = jtem)
-            {
-              uint64_t bodnum = *jtem;
-              while (bodnum == *jtem && jtem < end) jtem ++;
-              auto& xx_ranges = (ga_name == ga_elements ? mesh_mapping[bodnum].ga_eranges : mesh_mapping[bodnum].ga_franges);
-              auto new_end = std::remove_if(xx_ranges.begin(), xx_ranges.end(), [r](auto& rng) { return rng[0] == r; });
-              xx_ranges.erase(new_end, xx_ranges.end()); /* erase current rank ranges */
-	      std::array<uint64_t,3> rng = {(unsigned)r, (unsigned)(item-start), (unsigned)(jtem-start)}; /* remapped range */
-              xx_ranges.push_back(rng); /* insert remapped range */
-            }
-
-	    delete [] data;
-	  }
-	};
+        auto GA_RESIZE_DOWN = [](auto cn_name, auto ga_name, auto xx_last, auto rank_deleted_ranges, auto xx_bodnum)
+        {
+          for (auto& [rnk, vec] : rank_deleted_ranges)
+          {
+            GA_RESIZE_DOWN_RANK_MESH_ELE_FAC (rnk, cn_name, ga_name, xx_last, vec, xx_bodnum);
+          }
+        };
 
 	if (!deleted_meshes.empty())
 	{
@@ -1280,14 +1364,23 @@ void compute_main_loop(REAL duration, REAL step)
     auto y = std::minmax_element (ellips_per_rank.begin(), ellips_per_rank.end());
     REAL im0[2] = {(REAL)*x.second / (REAL)(*x.first+1), (REAL)*y.second / (REAL)(*y.first+1)}, im1[2];
 
-    MPI_Reduce (im0, im1, 2, MPI_REAL, MPI_MAX, 0, MPI_COMM_WORLD);
+    MPI_Allreduce (im0, im1, 2, MPI_REAL, MPI_MAX, MPI_COMM_WORLD);
 
     if (rank == 0)
     {
       if (debug_print)
       {
-        std::cout << "DBG: ELEMENTs imbalance: " << FMT("%.2f") << im1[0] << std::endl;
-        std::cout << "DBG: ELLIPs imbalance: " << FMT("%.2f") << im1[1] << std::endl;
+        for (auto it = elements_per_rank.begin(); it != elements_per_rank.end(); it ++)
+        {
+          std::cout << "DBG: pre-migration --> elements on rank " << it-elements_per_rank.begin() << " = " << *it << std::endl;
+        }
+        for (auto it = ellips_per_rank.begin(); it != ellips_per_rank.end(); it ++)
+        {
+          std::cout << "DBG: pre-migration --> ellipsoids on rank " << it-ellips_per_rank.begin() << " = " << *it << std::endl;
+        }
+
+        std::cout << "DBG: pre-migration --> ELEMENTs imbalance: " << FMT("%.2f") << im1[0] << std::endl;
+        std::cout << "DBG: pre-migration --> ELLIPs imbalance: " << FMT("%.2f") << im1[1] << std::endl;
       }
 
       if (im1[0] > IMBALANCE_TOLERANCE)
@@ -1310,30 +1403,31 @@ void compute_main_loop(REAL duration, REAL step)
 
         if (debug_print)
         {
-          std::vector<uint64_t> epr = elements_per_rank;
-
           for (int i = 0; i < size; i ++)
           {
             std::cout << "DBG: Migrating " << sendcounts[i]/14 << " meshes from rank " << i << std::endl;
             for (int j = displs[i]; j < displs[i+1]; j += 14)
             {
               std::cout << "DBG:    bodnum " << sendbuf[j] << " to rank " << sendbuf[j+1] << std::endl;
-              epr[i] -= sendbuf[j+7]-sendbuf[j+6];
-              epr[sendbuf[j+1]] += sendbuf[j+7]-sendbuf[j+6];
             }
-          }
-
-          for (auto it = epr.begin(); it != epr.end(); it ++)
-          {
-            std::cout << "DBG: post-migration --> elements on rank " << it-epr.begin() << " = " << *it << std::endl;
           }
         }
 
-        /* TODO: broadcast migration mapping */
+        /* broadcast migration mapping */
+        int recvcount;
+        ASSERT(sendcounts.size() == size, "Inconsistent sendcounts size");
+        MPI_Scatter (&sendcounts[0], 1, MPI_INT, &recvcount, 1, MPI_INT, 0, MPI_COMM_WORLD);
+        std::vector<uint64_t> recvbuf(recvcount);
+        MPI_Scatterv (&sendbuf[0], &sendcounts[0], &displs[0], MPI_UINT64_T, &recvbuf[0], recvcount, MPI_UINT64_T, 0, MPI_COMM_WORLD);
 
-        /* TODO: migrate meshes */
+        /* migrate meshes */
+        ALL_migrate_meshes (recvbuf);
 
-        /* TODO: fence mesh updates */
+        /* fence mesh updates */
+        ga_counters->fence();
+        ga_nodes->fence();
+        ga_elements->fence();
+        ga_faces->fence();
       }
 
       if (im1[1] > IMBALANCE_TOLERANCE)
@@ -1357,15 +1451,24 @@ void compute_main_loop(REAL duration, REAL step)
         /* TODO: fence ellips updates */
       }
     }
-    else
+    else /* rank > 0 */
     {
       if (im1[0] > IMBALANCE_TOLERANCE)
       {
-        /* TODO: broadcast migration mapping */
+        /* broadcast migration mapping */
+        int recvcount;
+        MPI_Scatter (NULL, 0, MPI_INT, &recvcount, 1, MPI_INT, 0, MPI_COMM_WORLD);
+        std::vector<uint64_t> recvbuf(recvcount);
+        MPI_Scatterv (NULL, NULL, NULL, MPI_UINT64_T, &recvbuf[0], recvcount, MPI_UINT64_T, 0, MPI_COMM_WORLD);
 
-        /* TODO: migrate meshes */
+        /* migrate meshes */
+        ALL_migrate_meshes (recvbuf);
 
-        /* TODO: fence mesh updates */
+        /* fence mesh updates */
+        ga_counters->fence();
+        ga_nodes->fence();
+        ga_elements->fence();
+        ga_faces->fence();
       }
 
       if (im1[1] > IMBALANCE_TOLERANCE)
@@ -1388,6 +1491,14 @@ void compute_main_loop(REAL duration, REAL step)
       {
         std::cout << "DBG: ellipsoids on rank " << it-ellips_per_rank.begin() << " = " << *it << std::endl;
       }
+
+      auto z = std::minmax_element (elements_per_rank.begin(), elements_per_rank.end());
+      REAL im = (REAL)*z.second / (REAL)(*z.first+1);
+      std::cout << "DBG: ELEMENTs imbalance: " << FMT("%.2f") << im << std::endl;
+
+      z = std::minmax_element (ellips_per_rank.begin(), ellips_per_rank.end());
+      im = (REAL)*z.second / (REAL)(*z.first+1);
+      std::cout << "DBG: ELLIPs imbalance: " << FMT("%.2f") << im << std::endl;
     }
 
     if (debug_files)
