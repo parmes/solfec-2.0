@@ -72,6 +72,8 @@ else:
       RUN (0.0, 1.0)
 
   # print the current state
+  '''
   for item in bodnum_list:
     if item[1] == 'MESH': print_MESH(item[0])
     else: print_ELLIP(item[0])
+  '''
