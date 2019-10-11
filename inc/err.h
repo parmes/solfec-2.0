@@ -32,6 +32,12 @@ SOFTWARE.
     fprintf (stderr, __VA_ARGS__);\
     fprintf (stderr, "\n"); MPI_Abort (MPI_COMM_WORLD, 1); } } while (0)
 
+#if DEBUG
+  #define ASSERT_DEBUG(__test__, ...) ASSERT(__test__, __VA_ARGS__)
+#else
+  #define ASSERT_DEBUG(__test__, ...)
+#endif
+
 /* memory validity assertion */
 #define ERRMEM(__pointer__) ASSERT (__pointer__, "Out of memory!");
 

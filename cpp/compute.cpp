@@ -77,6 +77,8 @@ int FACES_BUNCH = 16; /* faces SIMD bunch size */
 
 REAL IMBALANCE_TOLERANCE = 1.1; /* data imbalance tolerance */
 
+REAL ELEMIGRATIO_THRESHOLD = 0.05; /* element migration ratio below which rank-0 GA read-write access is used */
+
 bool partitioned = false; /* initially paritioned */
 
 bool debug_print = false; /* enable debug printing */
@@ -138,7 +140,9 @@ static void mesh_migration_map (std::vector<std::map<uint64_t,std::vector<std::a
     sorted.insert(std::make_pair(totalcount, rank));
   }
 
-  REAL im0 = (REAL)(--sorted.end())->first/(REAL)sorted.begin()->first;
+  REAL im0 = (REAL)(--sorted.end())->first/(REAL)(sorted.begin()->first+1);
+
+  if (debug_print) std::cout << "DBG: migration algo im0 = " << im0 << std::endl;
 
   while (true)
   {
@@ -185,9 +189,16 @@ static void mesh_migration_map (std::vector<std::map<uint64_t,std::vector<std::a
     val0.first -= count; /* subtract from largest */
     val1.first += count; /* add to smallest */
 
-    REAL im1 = (REAL)std::max(val0.first,val1.first)/(REAL)std::min(val0.first,val1.first);
+    /* INFO: this approach is inherently safe in terms of the global array storage space, since the largest possible
+       space was already uniformly allocated on all ranks, and the algorithm only makes the largest used space smaller */
+
+    REAL im1 = (REAL)std::max(val0.first,val1.first)/(REAL)(std::min(val0.first,val1.first)+1);
+
+    if (debug_print) std::cout << "DBG: migration algo im1 = " << im1 << std::endl;
 
     if (im1 >= im0) break; /* no more refinement possible */
+
+    im0 = im1;
  
     rbrng[val0.second][min_bodnum].erase (min_it);
     send[val0.second].push_back(std::make_pair(min_bodnum,min_rng));
@@ -333,9 +344,7 @@ static void migrate_meshes (std::vector<uint64_t> &sendbuf, std::vector<int> &se
 
     std::vector<std::pair<uint64_t,uint64_t>> deleted_elements, deleted_faces;
 
-#if DEBUG
-    ASSERT ((displs[rank0+1]-displs[rank0]) % 7 == 0, "Mesh migratio data size is corrupted");
-#endif
+    ASSERT_DEBUG ((displs[rank0+1]-displs[rank0]) % 7 == 0, "Mesh migratio data size is corrupted");
     for (auto it = &sendbuf[displs[rank0]]; it < &sendbuf[displs[rank0+1]]; it += 7)
     {
       uint64_t bodnum = it[0],
@@ -378,14 +387,13 @@ static void migrate_meshes (std::vector<uint64_t> &sendbuf, std::vector<int> &se
 
 /* COLLECTIVE: migrate mesh data by modifying global arrays
  *** in: ***
+ * rank0 - current rank
  * data - array of 7-tuples of (bodnum, rank, type, org0, org1, dst0, dst1)
  *        as defined in mesh_migration_map() */
-static void ALL_migrate_meshes (const std::vector<uint64_t> &data)
+static void ALL_migrate_meshes (int rank0, const std::vector<uint64_t> &data)
 {
-  ASSERT (data.size() % 7 == 0, "Mesh migratio data size is corrupted");
+  ASSERT_DEBUG (data.size() % 7 == 0, "Mesh migratio data size is corrupted");
   using namespace compute;
-  int rank0;
-  MPI_Comm_rank (MPI_COMM_WORLD, &rank0);
 
   std::vector<std::pair<uint64_t,uint64_t>> deleted_elements, deleted_faces;
 
@@ -436,6 +444,53 @@ static void ALL_migrate_meshes (const std::vector<uint64_t> &data)
   ga_elements->fence();
   ga_faces->fence();
   ga_nodes->fence();
+}
+
+/* RANK 0: remap element/face ranges to reflect compactification undergone in GA_RESIZE_DOWN_RANK_MESH_ELE_FAC */
+static void post_ALL_migrate_meshes (int size)
+{
+  using namespace compute;
+
+  std::vector<std::set<std::array<uint64_t,3>>> rank_to_erange(size); /* rank-transposed mesh_mapping[*].ga_eranges */
+
+  for (auto& [bodnum, mapping] : mesh_mapping)
+  {
+    for (auto& rng : mapping.ga_eranges)
+    {
+      std::array<uint64_t,3> r = {rng[1], rng[2], bodnum};
+      rank_to_erange[rng[0]].insert(r);
+    }
+
+    mapping.ga_eranges.clear();
+  }
+
+  for (auto ir = rank_to_erange.begin(); ir != rank_to_erange.end(); ir ++)
+  {
+    std::vector<std::array<uint64_t,3>> ranges;
+
+    auto rank = ir-rank_to_erange.begin();
+
+    uint64_t pos = 0;
+
+    if (debug_print) std::cout << "DBG: Unmodified ranges of rank " << rank << " are:";
+    for (auto& rng : *ir)
+    {
+      if (debug_print) std::cout << " (" << rng[0] << "," << rng[1] << ")";
+      std::array<uint64_t,3> r = {rng[2], pos, pos+(rng[1]-rng[0])};
+      ranges.push_back(r);
+      pos = r[2];
+    }
+    if (debug_print) std::cout << std::endl;
+
+    if (debug_print) std::cout << "DBG: Modified ranges of rank " << rank << " are:";
+    for (auto& rng : ranges)
+    {
+      if (debug_print) std::cout << " (" << rng[1] << "," << rng[2] << ")";
+      std::array<uint64_t,3> r = {(unsigned)rank, rng[1], rng[2]};
+      mesh_mapping[rng[0]].ga_eranges.push_back(r);
+    }
+    if (debug_print) std::cout << std::endl;
+  }
 }
 
 /* insert solfec::materials[matnum] into computation */
@@ -1472,24 +1527,38 @@ void compute_main_loop(REAL duration, REAL step)
           }
         }
 
-#if 0
-        /* broadcast migration mapping */
-        int recvcount;
-        ASSERT(sendcounts.size() == size, "Inconsistent sendcounts size");
-        MPI_Scatter (&sendcounts[0], 1, MPI_INT, &recvcount, 1, MPI_INT, 0, MPI_COMM_WORLD);
-        std::vector<uint64_t> recvbuf(recvcount);
-        MPI_Scatterv (&sendbuf[0], &sendcounts[0], &displs[0], MPI_UINT64_T, &recvbuf[0], recvcount, MPI_UINT64_T, 0, MPI_COMM_WORLD);
+        uint64_t etot = std::accumulate(elements_per_rank.begin(), elements_per_rank.end(), 0);
+        uint64_t esent = 0;
+        for (auto it = &sendbuf[0], end = &sendbuf[displs[size]]; it != end; it += 7) { if (it[2] == 1) esent += it[4]-it[3]; }
 
-        /* migrate meshes */
-        ALL_migrate_meshes (recvbuf);
-#else
-        migrate_meshes (sendbuf, sendcounts, displs);
+        REAL elemigratio = (REAL)esent/(REAL)(etot+1);
+        MPI_Bcast (&elemigratio, 1, MPI_REAL, 0, MPI_COMM_WORLD);
 
-        ga_counters->fence();
-        ga_elements->fence();
-        ga_faces->fence();
-        ga_nodes->fence();
-#endif
+        if (debug_print) std::cout << "DBG: migration (rank-0/ranks-all) approach elemigratio: " << elemigratio << "; and threshold: " << ELEMIGRATIO_THRESHOLD << std::endl;
+
+        if (elemigratio > ELEMIGRATIO_THRESHOLD) /* all ranks GA read-write access */
+        {
+          /* broadcast migration mapping */
+          int recvcount;
+          ASSERT_DEBUG (sendcounts.size() == size, "Inconsistent sendcounts size");
+          MPI_Scatter (&sendcounts[0], 1, MPI_INT, &recvcount, 1, MPI_INT, 0, MPI_COMM_WORLD);
+          std::vector<uint64_t> recvbuf(recvcount);
+          MPI_Scatterv (&sendbuf[0], &sendcounts[0], &displs[0], MPI_UINT64_T, &recvbuf[0], recvcount, MPI_UINT64_T, 0, MPI_COMM_WORLD);
+
+          /* migrate meshes */
+          ALL_migrate_meshes (rank, recvbuf);
+
+          post_ALL_migrate_meshes (size);
+        }
+        else /* rank-0 GA read-write access */
+        {
+          migrate_meshes (sendbuf, sendcounts, displs);
+
+          ga_counters->fence();
+          ga_elements->fence();
+          ga_faces->fence();
+          ga_nodes->fence();
+        }
 
         /* post-migration bodnums */
         if (debug_print)
@@ -1540,21 +1609,27 @@ void compute_main_loop(REAL duration, REAL step)
     {
       if (imb[0] > IMBALANCE_TOLERANCE)
       {
-#if 0
-        /* broadcast migration mapping */
-        int recvcount;
-        MPI_Scatter (NULL, 0, MPI_INT, &recvcount, 1, MPI_INT, 0, MPI_COMM_WORLD);
-        std::vector<uint64_t> recvbuf(recvcount);
-        MPI_Scatterv (NULL, NULL, NULL, MPI_UINT64_T, &recvbuf[0], recvcount, MPI_UINT64_T, 0, MPI_COMM_WORLD);
+        REAL elemigratio;
+        MPI_Bcast (&elemigratio, 1, MPI_REAL, 0, MPI_COMM_WORLD);
 
-        /* migrate meshes */
-        ALL_migrate_meshes (recvbuf);
-#else
-        ga_counters->fence();
-        ga_elements->fence();
-        ga_faces->fence();
-        ga_nodes->fence();
-#endif
+        if (elemigratio > ELEMIGRATIO_THRESHOLD) /* all ranks GA read-write access */
+        {
+          /* broadcast migration mapping */
+          int recvcount;
+          MPI_Scatter (NULL, 0, MPI_INT, &recvcount, 1, MPI_INT, 0, MPI_COMM_WORLD);
+          std::vector<uint64_t> recvbuf(recvcount);
+          MPI_Scatterv (NULL, NULL, NULL, MPI_UINT64_T, &recvbuf[0], recvcount, MPI_UINT64_T, 0, MPI_COMM_WORLD);
+
+          /* migrate meshes */
+          ALL_migrate_meshes (rank, recvbuf);
+        }
+        else /* rank-0 GA read-write access */
+        {
+          ga_counters->fence();
+          ga_elements->fence();
+          ga_faces->fence();
+          ga_nodes->fence();
+        }
       }
 
       if (imb[1] > IMBALANCE_TOLERANCE)
