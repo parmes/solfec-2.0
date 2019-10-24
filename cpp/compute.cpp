@@ -98,8 +98,10 @@ GA *ga_contact; /* global array of contact REAL entities */
 
 /* RANK 0: calculate mesh migration mapping;
  *** in/out: ***
- * rbrng - MPI_COMM_WORLD size vector of maps of bodnums to vectors of element ranges per rank;
+ * r_b_rng - MPI_COMM_WORLD size vector of maps of bodnums to vectors of element/face ranges per rank;
  * modified internally and undefined upon return;
+ * rng_type - range type as either 'elements' or 'faces';
+ * append - append sendbuf, sendcounts, displs vectors flag;
  *** out: ***
  * (sendbuf, sendcounts, displs) as appropriate for MPI_Scatterv, where
  * sendbuf stores continguous tuples (bodnum, rank, type, org0, org1, dst0, dst1)
@@ -109,8 +111,8 @@ GA *ga_contact; /* global array of contact REAL entities */
  *** modified globals: ***
  * nodes_per_rank, elements_per_rank, faces_per_rank, mesh_mapping, deleted_nodes,
  * deleted_nodes_counts */
-static void mesh_migration_map (std::vector<std::map<uint64_t,std::vector<std::array<uint64_t,3>*>>> rbrng,
-  std::vector<uint64_t> &sendbuf, std::vector<int> &sendcounts, std::vector<int> &displs)
+static void mesh_migration_map (std::vector<std::map<uint64_t,std::vector<std::array<uint64_t,3>*>>> r_b_rng, /* (r)ank-(b)ody-(r)a(ng)e */
+  std::string rng_type, std::vector<uint64_t> &sendbuf, std::vector<int> &sendcounts, std::vector<int> &displs, bool append=false)
 {
   /* XXX 1: note that this is an element-balance driven migration scheme, where nodes and faces are migrated with elements;
             a more refined approach can supersede it, where nodes, elements, and faces are migrated independently */
@@ -122,13 +124,14 @@ static void mesh_migration_map (std::vector<std::map<uint64_t,std::vector<std::a
 
   /* XXX 3: finally note, that currently node movement is not implemented */
 
-  std::vector<std::vector<std::pair<uint64_t,std::array<uint64_t,3>*>>> send (rbrng.size()); /* post-migrtion new rank to (body, origin ranges) map */
+  std::vector<std::vector<std::pair<uint64_t,std::array<uint64_t,3>*>>> send (r_b_rng.size()); /* post-migrtion new rank to (body, origin ranges) map */
+  bool rng_ele = rng_type == "elements" ? true : false;
   std::set<std::pair<uint64_t,int>> sorted; /* updatable set of pairs of (element count, rank) */
   using namespace compute;
 
-  for (auto it = rbrng.begin(); it != rbrng.end(); it ++)
+  for (auto it = r_b_rng.begin(); it != r_b_rng.end(); it ++)
   {
-    int rank = (int)(it - rbrng.begin());
+    int rank = (int)(it - r_b_rng.begin());
     uint64_t totalcount = 0;
     for (auto& [bodnum, vector] : *it)
     {
@@ -142,7 +145,7 @@ static void mesh_migration_map (std::vector<std::map<uint64_t,std::vector<std::a
 
   REAL im0 = (REAL)(--sorted.end())->first/(REAL)(sorted.begin()->first+1);
 
-  if (debug_print) std::cout << "DBG: migration algo im0 = " << im0 << std::endl;
+  if (debug_print) std::cout << "DBG: " << rng_type << " migration algo im0 = " << im0 << std::endl;
 
   while (true)
   {
@@ -157,7 +160,7 @@ static void mesh_migration_map (std::vector<std::map<uint64_t,std::vector<std::a
     uint64_t min_bodnum;
     it_type min_it;
 
-    for (auto& [bodnum, vector] : rbrng[rnk])
+    for (auto& [bodnum, vector] : r_b_rng[rnk])
     {
       it_type it = min_element(vector.begin(), vector.end(), /* range of minimum element count */
                    [](auto l, auto r) { return ((*l)[2]-(*l)[1]) < ((*r)[2] - (*r)[1]); });
@@ -182,7 +185,7 @@ static void mesh_migration_map (std::vector<std::map<uint64_t,std::vector<std::a
 
     if (debug_print)
     {
-      std::cout << "DBG: Largest per rank element count: " << val0.first << ", smallest: " << val1.first;
+      std::cout << "DBG: Largest per rank " << rng_type << " count: " << val0.first << ", smallest: " << val1.first;
       std::cout << ", transferred count: " << count << std::endl;
     }
 
@@ -200,7 +203,7 @@ static void mesh_migration_map (std::vector<std::map<uint64_t,std::vector<std::a
 
     im0 = im1;
  
-    rbrng[val0.second][min_bodnum].erase (min_it);
+    r_b_rng[val0.second][min_bodnum].erase (min_it);
     send[val0.second].push_back(std::make_pair(min_bodnum,min_rng));
     /* RANK 0 --- */
     (*min_rng)[0] = val1.second; /* overwrite source rank with desitnation rank (via pointer with mesh_mapping[bodnum]) */
@@ -210,6 +213,10 @@ static void mesh_migration_map (std::vector<std::map<uint64_t,std::vector<std::a
     sorted.insert(std::move(val1));
   }
 
+  std::vector<uint64_t> in_sendbuf = sendbuf;
+  std::vector<int> in_sendcounts = sendcounts;
+  std::vector<int> in_displs = displs;
+
   sendbuf.clear();
   sendcounts.clear();
   displs.resize(1,0);
@@ -217,6 +224,18 @@ static void mesh_migration_map (std::vector<std::map<uint64_t,std::vector<std::a
   for (auto it = send.begin(); it != send.end(); it ++)
   {
     auto rank0 = it-send.begin(); /* source range */
+
+    size_t in_count = 0;
+
+    if (append) /* append existing current rank data */
+    {
+      in_count = in_sendcounts[rank0];
+
+      for (auto x = &in_sendbuf[in_displs[rank0]], y = &in_sendbuf[in_displs[rank0+1]]; x != y; x++)
+      {
+        sendbuf.push_back(*x);
+      }
+    }
 
     for (auto jt : *it)
     {
@@ -226,14 +245,15 @@ static void mesh_migration_map (std::vector<std::map<uint64_t,std::vector<std::a
 
       sendbuf.push_back(bodnum);
       sendbuf.push_back(rank1);
-      sendbuf.push_back(1); /* entity type: element */
+      if (rng_ele) sendbuf.push_back(1); /* entity type: element */
+      else sendbuf.push_back(2); /* entity type: element */
 
       sendbuf.push_back((*rng)[1]); /* source range */
       sendbuf.push_back((*rng)[2]);
 
       auto sz = (*rng)[2]-(*rng)[1];
 
-      uint64_t dst0 = elements_per_rank[rank1];
+      uint64_t dst0 = rng_ele ? elements_per_rank[rank1] : faces_per_rank[rank1];
       uint64_t dst1 = dst0 + sz;
 
       sendbuf.push_back(dst0); /* destination range */
@@ -242,13 +262,21 @@ static void mesh_migration_map (std::vector<std::map<uint64_t,std::vector<std::a
       /* RANK 0 --- */
       (*rng)[1] = dst0; /* overwrite source range with destination range (via pointer with mesh_mapping[bodnum]) */
       (*rng)[2] = dst1;
-      elements_per_rank[rank0] -= sz;
-      elements_per_rank[rank1] += sz;
+      if (rng_ele)
+      {
+        elements_per_rank[rank0] -= sz;
+        elements_per_rank[rank1] += sz;
+      }
+      else
+      {
+        faces_per_rank[rank0] -= sz;
+        faces_per_rank[rank1] += sz;
+      }
       /* --- RANK 0 */
     }
 
-    sendcounts.push_back(7*it->size());
-    displs.push_back(displs.back()+7*it->size());
+    sendcounts.push_back(7*it->size()+in_count);
+    displs.push_back(displs.back()+7*it->size()+in_count);
   }
 }
 
@@ -1484,23 +1512,40 @@ void compute_main_loop(REAL duration, REAL step)
     {
       if (imb[0] > IMBALANCE_TOLERANCE)
       {
-        std::vector<std::map<uint64_t,std::vector<std::array<uint64_t,3>*>>> ranges_on_ranks(size);
+        std::vector<std::map<uint64_t,std::vector<std::array<uint64_t,3>*>>> eranges_on_ranks(size),
+                                                                             franges_on_ranks(size);
 
         for (auto& [bodnum, mapping] : mesh_mapping)
         {
           for (auto& rng : mapping.ga_eranges)
           {
-            ranges_on_ranks[rng[0]][bodnum].push_back(&rng); /* collect element ranges per mesh per rank */
+            eranges_on_ranks[rng[0]][bodnum].push_back(&rng); /* collect element ranges per mesh per rank */
+          }
+
+          for (auto& rng : mapping.ga_franges)
+          {
+            franges_on_ranks[rng[0]][bodnum].push_back(&rng); /* collect face ranges per mesh per rank */
           }
         }
 
         /* pre-migration bodnums */
         if (debug_print)
         {
-          std::cout << "DBG: pre-migration bodnums:" << std::endl;
-          for (auto it = ranges_on_ranks.begin(); it != ranges_on_ranks.end(); it ++)
+          std::cout << "DBG: pre-migration element range bodnums:" << std::endl;
+          for (auto it = eranges_on_ranks.begin(); it != eranges_on_ranks.end(); it ++)
           {
-            std::cout << "DBG:  on rank " << (it-ranges_on_ranks.begin()) << ":";
+            std::cout << "DBG:  on rank " << (it-eranges_on_ranks.begin()) << ":";
+            for (auto& [bodnum, v] : *it)
+            {
+              std::cout << " " << bodnum;
+            }
+            std::cout << std::endl;
+          }
+
+          std::cout << "DBG: pre-migration face range bodnums:" << std::endl;
+          for (auto it = franges_on_ranks.begin(); it != franges_on_ranks.end(); it ++)
+          {
+            std::cout << "DBG:  on rank " << (it-franges_on_ranks.begin()) << ":";
             for (auto& [bodnum, v] : *it)
             {
               std::cout << " " << bodnum;
@@ -1509,11 +1554,12 @@ void compute_main_loop(REAL duration, REAL step)
           }
         }
 
-        /* calculate migration mapping based on ranges_on_ranks */
+        /* calculate migration mapping based on eranges_on_ranks, franges_on_ranks */
         std::vector<uint64_t> sendbuf;
         std::vector<int> sendcounts;
         std::vector<int> displs;
-        mesh_migration_map (ranges_on_ranks, sendbuf, sendcounts, displs);
+        mesh_migration_map (eranges_on_ranks, "elements", sendbuf, sendcounts, displs);
+        mesh_migration_map (franges_on_ranks, "faces", sendbuf, sendcounts, displs, true);
 
         if (debug_print)
         {
