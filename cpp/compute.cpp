@@ -124,7 +124,7 @@ static void mesh_migration_map (std::vector<std::map<uint64_t,std::vector<std::a
 
   /* XXX 3: finally note, that currently node movement is not implemented */
 
-  std::vector<std::vector<std::pair<uint64_t,std::array<uint64_t,3>*>>> send (r_b_rng.size()); /* post-migrtion new rank to (body, origin ranges) map */
+  std::vector<std::vector<std::pair<uint64_t,std::array<uint64_t,3>*>>> send (r_b_rng.size()); /* post-migration new rank to (body, origin ranges) map */
   bool rng_ele = rng_type == "elements" ? true : false;
   std::set<std::pair<uint64_t,int>> sorted; /* updatable set of pairs of (element count, rank) */
   using namespace compute;
@@ -143,15 +143,15 @@ static void mesh_migration_map (std::vector<std::map<uint64_t,std::vector<std::a
     sorted.insert(std::make_pair(totalcount, rank));
   }
 
-  REAL im0 = (REAL)(--sorted.end())->first/(REAL)(sorted.begin()->first+1);
+  REAL im0 = (REAL)(--sorted.end())->first/(REAL)(sorted.begin()->first + 1);
 
   if (debug_print) std::cout << "DBG: " << rng_type << " migration algo im0 = " << im0 << std::endl;
 
   while (true)
   {
-    auto big = sorted.extract(--sorted.end()); /* largest element count rank */
+    auto big = sorted.extract(--sorted.end()); /* largest element/face count rank */
 
-    auto& val0 = big.value(); /* element count, rank */
+    auto& val0 = big.value(); /* element/face count, rank */
 
     auto rnk = val0.second;
 
@@ -162,7 +162,7 @@ static void mesh_migration_map (std::vector<std::map<uint64_t,std::vector<std::a
 
     for (auto& [bodnum, vector] : r_b_rng[rnk])
     {
-      it_type it = min_element(vector.begin(), vector.end(), /* range of minimum element count */
+      it_type it = min_element(vector.begin(), vector.end(), /* range of minimum element/face count */
                    [](auto l, auto r) { return ((*l)[2]-(*l)[1]) < ((*r)[2] - (*r)[1]); });
 
       if (it == vector.end()) break; /* empty range set case */
@@ -175,7 +175,7 @@ static void mesh_migration_map (std::vector<std::map<uint64_t,std::vector<std::a
       }
     }
 
-    auto small = sorted.extract(sorted.begin()); /* smallest element count rank */
+    auto small = sorted.extract(sorted.begin()); /* smallest element/face count rank */
 
     auto& val1 = small.value();
 
@@ -195,11 +195,11 @@ static void mesh_migration_map (std::vector<std::map<uint64_t,std::vector<std::a
     /* INFO: this approach is inherently safe in terms of the global array storage space, since the largest possible
        space was already uniformly allocated on all ranks, and the algorithm only makes the largest used space smaller */
 
-    REAL im1 = (REAL)std::max(val0.first,val1.first)/(REAL)(std::min(val0.first,val1.first)+1);
+    REAL im1 = (REAL)val0.first/(REAL)(val1.first + 1);
 
     if (debug_print) std::cout << "DBG: migration algo im1 = " << im1 << std::endl;
 
-    if (im1 >= im0) break; /* no more refinement possible */
+    if (im1 > im0 || val0.first < val1.first) break; /* no more refinement possible */
 
     im0 = im1;
  
@@ -246,7 +246,7 @@ static void mesh_migration_map (std::vector<std::map<uint64_t,std::vector<std::a
       sendbuf.push_back(bodnum);
       sendbuf.push_back(rank1);
       if (rng_ele) sendbuf.push_back(1); /* entity type: element */
-      else sendbuf.push_back(2); /* entity type: element */
+      else sendbuf.push_back(2); /* entity type: face */
 
       sendbuf.push_back((*rng)[1]); /* source range */
       sendbuf.push_back((*rng)[2]);
