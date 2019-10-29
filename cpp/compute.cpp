@@ -114,10 +114,9 @@ GA *ga_contact; /* global array of contact REAL entities */
 static void mesh_migration_map (std::vector<std::map<uint64_t,std::vector<std::array<uint64_t,3>*>>> r_b_rng, /* (r)ank-(b)ody-(r)a(ng)e */
   std::string rng_type, std::vector<uint64_t> &sendbuf, std::vector<int> &sendcounts, std::vector<int> &displs, bool append=false)
 {
-  /* XXX 1: note that this is an element-balance driven migration scheme, where nodes and faces are migrated with elements;
-            a more refined approach can supersede it, where nodes, elements, and faces are migrated independently */
+  /* XXX 1: note that this is an element-balance driven migration scheme, where nodes and faces are migrated with elements */
 
-  /* XXX 2: also note that currenlty, pre-existing per-rank continguous ranges of entities (elements) are used as data
+  /* XXX 2: also note that currenlty, pre-existing per-rank continguous ranges of entities (elements/faces) are used as data
             transfer increments, even though these originally coalesced from the smaller BUNCHes; this constraints the
             achievable degree of balance; a refinement is possible, where these coalesced ranges are again dismemberd into
             BUNCHes for the purpose of a finer balancing */
@@ -390,6 +389,7 @@ static void migrate_meshes (std::vector<uint64_t> &sendbuf, std::vector<int> &se
       {
         std::vector<uint64_t> data(count*el_last);
         ga_elements->get(rank0, org0, org1, 0, el_last, &data[0]);
+        /* XXX: at this stage node rank/index remapping is poissible */
         ga_elements->put(rank1, dst0, dst1, 0, el_last, &data[0]);
         ga_counters->acc(rank1, cn_elements, cn_elements+1, 0, 1, &count);
         deleted_elements.push_back(std::make_pair(org0, org1));
@@ -399,6 +399,7 @@ static void migrate_meshes (std::vector<uint64_t> &sendbuf, std::vector<int> &se
       {
         std::vector<uint64_t> data(count*fa_last);
         ga_faces->get(rank0, org0, org1, 0, fa_last, &data[0]);
+        /* XXX: at this stage node rank/index remapping is poissible */
         ga_faces->put(rank1, dst0, dst1, 0, fa_last, &data[0]);
         ga_counters->acc(rank1, cn_faces, cn_faces+1, 0, 1, &count);
         deleted_faces.push_back(std::make_pair(org0, org1));
@@ -442,6 +443,7 @@ static void ALL_migrate_meshes (int rank0, const std::vector<uint64_t> &data)
     {
       std::vector<uint64_t> data(count*el_last);
       ga_elements->get(rank0, org0, org1, 0, el_last, &data[0]);
+      /* XXX: at this stage node rank/index remapping is poissible */
       ga_elements->put(rank1, dst0, dst1, 0, el_last, &data[0]);
       ga_counters->acc(rank1, cn_elements, cn_elements+1, 0, 1, &count);
       deleted_elements.push_back(std::make_pair(org0, org1));
@@ -451,6 +453,7 @@ static void ALL_migrate_meshes (int rank0, const std::vector<uint64_t> &data)
     {
       std::vector<uint64_t> data(count*fa_last);
       ga_faces->get(rank0, org0, org1, 0, fa_last, &data[0]);
+      /* XXX: at this stage node rank/index remapping is poissible */
       ga_faces->put(rank1, dst0, dst1, 0, fa_last, &data[0]);
       ga_counters->acc(rank1, cn_faces, cn_faces+1, 0, 1, &count);
       deleted_faces.push_back(std::make_pair(org0, org1));

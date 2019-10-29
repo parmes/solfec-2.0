@@ -22,6 +22,9 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
+#include <vector>
+#include <array>
+#include <map>
 #include "ga.hpp"
 
 #ifndef __compute__
