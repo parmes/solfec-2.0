@@ -11,7 +11,8 @@ CPP_SRC=cpp/tasksys.cpp cpp/solfec.cpp cpp/input.cpp cpp/spline.cpp cpp/output.c
 	cpp/dynlb.cpp cpp/debug.cpp cpp/timestep.cpp
 
 # ISPC files
-ISPC_SRC=ispc/util.ispc ispc/alloc.ispc ispc/part.ispc ispc/rcb.ispc
+ISPC_SRC=ispc/util.ispc ispc/alloc.ispc ispc/part.ispc ispc/rcb.ispc\
+         ispc/hex0.ispc ispc/wed0.ispc ispc/pyr0.ispc ispc/tet0.ispc
 
 # ISPC targets
 ISPC_TARGETS=sse2,sse4,avx

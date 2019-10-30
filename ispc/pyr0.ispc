@@ -22,13 +22,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-#include <taskflow/taskflow.hpp>
+/* Contributors: Tomasz Koziara */
 
-#ifndef __timestep__
-#define __timestep__
-
-/* returns a time step task that can be preceded or followed by any
- * externally added task */
-tf::Task time_step_task (REAL time, REAL step, tf::Taskflow& taskflow);
-
-#endif
+export void pyr0 ()
+{
+}

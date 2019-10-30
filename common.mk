@@ -76,10 +76,10 @@ cleanall: clean
 version:
 	python python/version.py
 
-$(EXE)4: $(CPP_OBJS4) $(C_OBJS4) $(ISPC_OBJS4)
+$(EXE)4: $(ISPC_OBJS4) $(CPP_OBJS4) $(C_OBJS4)
 	$(MPICXX) $(CFLAGS) -fopenmp -o $@ $^ $(LIBS)
 
-$(EXE)8: $(CPP_OBJS8) $(C_OBJS8) $(ISPC_OBJS8)
+$(EXE)8: $(ISPC_OBJS8) $(CPP_OBJS8) $(C_OBJS8)
 	$(MPICXX) $(CFLAGS) -fopenmp -o $@ $^ $(LIBS)
 
 objs4/%_ispc.h objs4/%_ispc.o objs4/%_ispc_sse2.o objs4/%_ispc_sse4.o objs4/%_ispc_avx.o: %.ispc
