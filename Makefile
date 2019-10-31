@@ -12,7 +12,7 @@ CPP_SRC=cpp/tasksys.cpp cpp/solfec.cpp cpp/input.cpp cpp/spline.cpp cpp/output.c
 
 # ISPC files
 ISPC_SRC=ispc/util.ispc ispc/alloc.ispc ispc/part.ispc ispc/rcb.ispc\
-         ispc/hex0.ispc ispc/wed0.ispc ispc/pyr0.ispc ispc/tet0.ispc
+         ispc/hex1.ispc ispc/wed1.ispc ispc/pyr1.ispc ispc/tet1.ispc
 
 # ISPC targets
 ISPC_TARGETS=sse2,sse4,avx
