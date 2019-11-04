@@ -30,42 +30,42 @@ static const uniform REAL I_TET1_X[] = {0.25};
 static const uniform REAL I_TET1_Y[] = {0.25};
 static const uniform REAL I_TET1_Z[] = {0.25};
 static const uniform REAL I_TET1_W[] = {0.16666666666666666};
-#define           I_TET1_N      1
+#define                   I_TET1_N      1
 
 static const uniform REAL I_PYR1_X[] = {0.00};
 static const uniform REAL I_PYR1_Y[] = {0.00};
 static const uniform REAL I_PYR1_Z[] = {0.25};
 static const uniform REAL I_PYR1_W[] = {1.333333333333333333};
-#define           I_PYR1_N      1
+#define                   I_PYR1_N      1
 
 static const uniform REAL I_WED1_X[] = {0.25};
 static const uniform REAL I_WED1_Y[] = {0.25};
 static const uniform REAL I_WED1_Z[] = {0.00};
 static const uniform REAL I_WED1_W[] = {0.333333333333333333};
-#define           I_WED1_N      1
+#define                   I_WED1_N      1
 
 static const uniform REAL I_HEX1_X[] = {0.0};
 static const uniform REAL I_HEX1_Y[] = {0.0};
 static const uniform REAL I_HEX1_Z[] = {0.0};
 static const uniform REAL I_HEX1_W[] = {8.0};
-#define           I_HEX1_N      1
+#define                   I_HEX1_N      1
 
 static const uniform REAL I_TRI1_X[] = {0.333333333333333333};
 static const uniform REAL I_TRI1_Y[] = {0.333333333333333333};
 static const uniform REAL I_TRI1_W[] = {0.5};
-#define           I_TRI1_N      1
+#define                   I_TRI1_N      1
 
 static const uniform REAL I_QUA1_X [] = {0.0};
 static const uniform REAL I_QUA1_Y [] = {0.0};
 static const uniform REAL I_QUA1_W [] = {4.0};
-#define           I_QUA1_N       1
+#define                   I_QUA1_N       1
 
 /* order 2 */
 static const uniform REAL I_TET2_X [] = {0.13819660112501052, 0.13819660112501052, 0.13819660112501052, 0.58541019662496840};
 static const uniform REAL I_TET2_Y [] = {0.13819660112501052, 0.13819660112501052, 0.58541019662496840, 0.13819660112501052};
 static const uniform REAL I_TET2_Z [] = {0.13819660112501052, 0.58541019662496840, 0.13819660112501052, 0.13819660112501052};
 static const uniform REAL I_TET2_W [] = {0.04166666666666666, 0.04166666666666666, 0.04166666666666666, 0.04166666666666666};
-#define           I_TET2_N       4
+#define                   I_TET2_N       4
 
 #define ISQR3_PYR1 0.263184055569714
 #define ISQR3_PYR2 0.506616303349788
@@ -77,37 +77,37 @@ static const uniform REAL I_PYR2_X[] = {-ISQR3_PYR1,  ISQR3_PYR1, ISQR3_PYR1, -I
 static const uniform REAL I_PYR2_Y[] = {-ISQR3_PYR1, -ISQR3_PYR1, ISQR3_PYR1,  ISQR3_PYR1, -ISQR3_PYR2, -ISQR3_PYR2, ISQR3_PYR2,  ISQR3_PYR2};
 static const uniform REAL I_PYR2_Z[] = {_1SUB_PYR1,  _1SUB_PYR1,  _1SUB_PYR1,  _1SUB_PYR1,  _1SUB_PYR2,  _1SUB_PYR2, _1SUB_PYR2,  _1SUB_PYR2};
 static const uniform REAL I_PYR2_W[] = {_1_WPYR1, _1_WPYR1, _1_WPYR1, _1_WPYR1, _1_WPYR2, _1_WPYR2, _1_WPYR2,  _1_WPYR2};
-#define           I_PYR2_N      8
+#define                   I_PYR2_N      8
 
 #define ISQR3 0.57735026918962584 
 static const uniform REAL I_WED2_X[] = {0.66666666666666667, 0.16666666666666667, 0.16666666666666667, 0.66666666666666667, 0.16666666666666667, 0.16666666666666667};
 static const uniform REAL I_WED2_Y[] = {0.16666666666666667, 0.66666666666666667, 0.16666666666666667, 0.16666666666666667, 0.66666666666666667, 0.16666666666666667};
 static const uniform REAL I_WED2_Z[] = {-ISQR3, -ISQR3, -ISQR3, ISQR3, ISQR3, ISQR3};
 static const uniform REAL I_WED2_W[] = {0.16666666666666667, 0.16666666666666667, 0.16666666666666667, 0.16666666666666667, 0.16666666666666667, 0.16666666666666667};
-#define           I_WED2_N      6
+#define                   I_WED2_N      6
 
 static const uniform REAL I_HEX2_X [] = {-ISQR3,  ISQR3,  ISQR3, -ISQR3, -ISQR3,  ISQR3, ISQR3, -ISQR3};
 static const uniform REAL I_HEX2_Y [] = {-ISQR3, -ISQR3,  ISQR3,  ISQR3, -ISQR3, -ISQR3, ISQR3,  ISQR3};
 static const uniform REAL I_HEX2_Z [] = {-ISQR3, -ISQR3, -ISQR3, -ISQR3,  ISQR3,  ISQR3, ISQR3,  ISQR3};
 static const uniform REAL I_HEX2_W [] = {1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0};
-#define           I_HEX2_N       8
+#define                   I_HEX2_N       8
 
 static const uniform REAL I_TRI2_X[] = {0.66666666666666667, 0.16666666666666667, 0.16666666666666667};
 static const uniform REAL I_TRI2_Y[] = {0.16666666666666667, 0.66666666666666667, 0.16666666666666667};
 static const uniform REAL I_TRI2_W[] = {0.16666666666666667, 0.16666666666666667, 0.16666666666666667};
-#define           I_TRI2_N      3
+#define                   I_TRI2_N      3
 
 static const uniform REAL I_QUA2_X [] = {-ISQR3,  ISQR3, ISQR3, -ISQR3};
 static const uniform REAL I_QUA2_Y [] = {-ISQR3, -ISQR3, ISQR3,  ISQR3};
 static const uniform REAL I_QUA2_W [] = {1.0, 1.0, 1.0, 1.0};
-#define           I_QUA2_N       4
+#define                   I_QUA2_N       4
 
 /* order 3 */
 static const uniform REAL I_HEX3_X [] = {0.7745966692414834, -0.7745966692414834, -0.7745966692414834, -0.7745966692414834, -0.7745966692414834, -0.7745966692414834, -0.7745966692414834, -0.7745966692414834, -0.7745966692414834, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.7745966692414834, 0.7745966692414834, 0.7745966692414834, 0.7745966692414834, 0.7745966692414834, 0.7745966692414834, 0.7745966692414834, 0.7745966692414834, 0.7745966692414834};
 static const uniform REAL I_HEX3_Y [] = {-0.7745966692414834, -0.7745966692414834, -0.7745966692414834, 0.0, 0.0, 0.0, 0.7745966692414834, 0.7745966692414834, 0.7745966692414834, -0.7745966692414834, -0.7745966692414834, -0.7745966692414834, 0.0, 0.0, 0.0, 0.7745966692414834, 0.7745966692414834, 0.7745966692414834, -0.7745966692414834, -0.7745966692414834, -0.7745966692414834, 0.0, 0.0, 0.0, 0.7745966692414834, 0.7745966692414834, 0.7745966692414834};
 static const uniform REAL I_HEX3_Z [] = {-0.7745966692414834, 0.0, 0.7745966692414834, -0.7745966692414834, 0.0, 0.7745966692414834, -0.7745966692414834, 0.0, 0.7745966692414834, -0.7745966692414834, 0.0, 0.7745966692414834, -0.7745966692414834, 0.0, 0.7745966692414834, -0.7745966692414834, 0.0, 0.7745966692414834, -0.7745966692414834, 0.0, 0.7745966692414834, -0.7745966692414834, 0.0, 0.7745966692414834, -0.7745966692414834, 0.0, 0.7745966692414834};
 static const uniform REAL I_HEX3_W [] = {0.1714677640603567, 0.27434842249657065, 0.1714677640603567, 0.27434842249657065, 0.43895747599451296, 0.27434842249657065, 0.1714677640603567, 0.27434842249657065, 0.1714677640603567, 0.27434842249657065, 0.43895747599451296, 0.27434842249657065, 0.438957475994513, 0.7023319615912208, 0.438957475994513, 0.27434842249657065, 0.43895747599451296, 0.27434842249657065, 0.1714677640603567, 0.27434842249657065, 0.1714677640603567, 0.27434842249657065, 0.43895747599451296, 0.27434842249657065, 0.1714677640603567, 0.27434842249657065, 0.1714677640603567};
-#define           I_HEX3_N    27 
+#define                   I_HEX3_N    27 
 
 /* order 4 */
 
@@ -115,47 +115,10 @@ static const uniform REAL I_HEX4_X [] = {-0.8611363115940526, -0.861136311594052
 static const uniform REAL I_HEX4_Y [] = {-0.8611363115940526, -0.8611363115940526, -0.8611363115940526, -0.8611363115940526, -0.3399810435848563, -0.3399810435848563, -0.3399810435848563, -0.3399810435848563, 0.3399810435848563, 0.3399810435848563, 0.3399810435848563, 0.3399810435848563, 0.8611363115940526, 0.8611363115940526, 0.8611363115940526, 0.8611363115940526, -0.8611363115940526, -0.8611363115940526, -0.8611363115940526, -0.8611363115940526, -0.3399810435848563, -0.3399810435848563, -0.3399810435848563, -0.3399810435848563, 0.3399810435848563, 0.3399810435848563, 0.3399810435848563, 0.3399810435848563, 0.8611363115940526, 0.8611363115940526, 0.8611363115940526, 0.8611363115940526, -0.8611363115940526, -0.8611363115940526, -0.8611363115940526, -0.8611363115940526, -0.3399810435848563, -0.3399810435848563, -0.3399810435848563, -0.3399810435848563, 0.3399810435848563, 0.3399810435848563, 0.3399810435848563, 0.3399810435848563, 0.8611363115940526, 0.8611363115940526, 0.8611363115940526, 0.8611363115940526, -0.8611363115940526, -0.8611363115940526, -0.8611363115940526, -0.8611363115940526, -0.3399810435848563, -0.3399810435848563, -0.3399810435848563, -0.3399810435848563, 0.3399810435848563, 0.3399810435848563, 0.3399810435848563, 0.3399810435848563, 0.8611363115940526, 0.8611363115940526, 0.8611363115940526, 0.8611363115940526};
 static const uniform REAL I_HEX4_Z [] = {-0.8611363115940526, -0.3399810435848563, 0.3399810435848563, 0.8611363115940526, -0.8611363115940526, -0.3399810435848563, 0.3399810435848563, 0.8611363115940526, -0.8611363115940526, -0.3399810435848563, 0.3399810435848563, 0.8611363115940526, -0.8611363115940526, -0.3399810435848563, 0.3399810435848563, 0.8611363115940526, -0.8611363115940526, -0.3399810435848563, 0.3399810435848563, 0.8611363115940526, -0.8611363115940526, -0.3399810435848563, 0.3399810435848563, 0.8611363115940526, -0.8611363115940526, -0.3399810435848563, 0.3399810435848563, 0.8611363115940526, -0.8611363115940526, -0.3399810435848563, 0.3399810435848563, 0.8611363115940526, -0.8611363115940526, -0.3399810435848563, 0.3399810435848563, 0.8611363115940526, -0.8611363115940526, -0.3399810435848563, 0.3399810435848563, 0.8611363115940526, -0.8611363115940526, -0.3399810435848563, 0.3399810435848563, 0.8611363115940526, -0.8611363115940526, -0.3399810435848563, 0.3399810435848563, 0.8611363115940526, -0.8611363115940526, -0.3399810435848563, 0.3399810435848563, 0.8611363115940526, -0.8611363115940526, -0.3399810435848563, 0.3399810435848563, 0.8611363115940526, -0.8611363115940526, -0.3399810435848563, 0.3399810435848563, 0.8611363115940526, -0.8611363115940526, -0.3399810435848563, 0.3399810435848563, 0.8611363115940526};
 static const uniform REAL I_HEX4_W [] = {0.04209147749053145, 0.07891151579507055, 0.07891151579507055, 0.04209147749053145, 0.07891151579507055, 0.1479403360567813, 0.1479403360567813, 0.07891151579507055, 0.07891151579507055, 0.1479403360567813, 0.1479403360567813, 0.07891151579507055, 0.04209147749053145, 0.07891151579507055, 0.07891151579507055, 0.04209147749053145, 0.07891151579507055, 0.1479403360567813, 0.1479403360567813, 0.07891151579507055, 0.1479403360567813, 0.27735296695391304, 0.27735296695391304, 0.1479403360567813, 0.1479403360567813, 0.27735296695391304, 0.27735296695391304, 0.1479403360567813, 0.07891151579507055, 0.1479403360567813, 0.1479403360567813, 0.07891151579507055, 0.07891151579507055, 0.1479403360567813, 0.1479403360567813, 0.07891151579507055, 0.1479403360567813, 0.27735296695391304, 0.27735296695391304, 0.1479403360567813, 0.1479403360567813, 0.27735296695391304, 0.27735296695391304, 0.1479403360567813, 0.07891151579507055, 0.1479403360567813, 0.1479403360567813, 0.07891151579507055, 0.04209147749053145, 0.07891151579507055, 0.07891151579507055, 0.04209147749053145, 0.07891151579507055, 0.1479403360567813, 0.1479403360567813, 0.07891151579507055, 0.07891151579507055, 0.1479403360567813, 0.1479403360567813, 0.07891151579507055, 0.04209147749053145, 0.07891151579507055, 0.07891151579507055, 0.04209147749053145};
-#define           I_HEX4_N    64
-
-/* collective rules */
-static const uniform REAL *I_TET_X [] = {NULL, I_TET1_X, I_TET2_X}; /* FIXME: unifrom type * uniform [] */
-static const uniform REAL *I_TET_Y [] = {NULL, I_TET1_Y, I_TET2_Y};
-static const uniform REAL *I_TET_Z [] = {NULL, I_TET1_Z, I_TET2_Z};
-static const uniform REAL *I_TET_W [] = {NULL, I_TET1_W, I_TET2_W};
-static const uniform int   I_TET_N [] = {   0, I_TET1_N, I_TET2_N};
-
-static const uniform REAL *I_PYR_X [] = {NULL, I_PYR1_X, I_PYR2_X};
-static const uniform REAL *I_PYR_Y [] = {NULL, I_PYR1_Y, I_PYR2_Y};
-static const uniform REAL *I_PYR_Z [] = {NULL, I_PYR1_Z, I_PYR2_Z};
-static const uniform REAL *I_PYR_W [] = {NULL, I_PYR1_W, I_PYR2_W};
-static const uniform int   I_PYR_N [] = {   0, I_PYR1_N, I_PYR2_N};
-
-static const uniform REAL *I_WED_X [] = {NULL, I_WED1_X, I_WED2_X};
-static const uniform REAL *I_WED_Y [] = {NULL, I_WED1_Y, I_WED2_Y};
-static const uniform REAL *I_WED_Z [] = {NULL, I_WED1_Z, I_WED2_Z};
-static const uniform REAL *I_WED_W [] = {NULL, I_WED1_W, I_WED2_W};
-static const uniform int   I_WED_N [] = {   0, I_WED1_N, I_WED2_N};
-
-static const uniform REAL *I_HEX_X [] = {NULL, I_HEX1_X, I_HEX2_X, I_HEX3_X, I_HEX4_X};
-static const uniform REAL *I_HEX_Y [] = {NULL, I_HEX1_Y, I_HEX2_Y, I_HEX3_Y, I_HEX4_Y};
-static const uniform REAL *I_HEX_Z [] = {NULL, I_HEX1_Z, I_HEX2_Z, I_HEX3_Z, I_HEX4_Z};
-static const uniform REAL *I_HEX_W [] = {NULL, I_HEX1_W, I_HEX2_W, I_HEX3_W, I_HEX4_W};
-static const uniform int   I_HEX_N [] = {   0, I_HEX1_N, I_HEX2_N, I_HEX3_N, I_HEX4_N};
-
-static const uniform REAL *I_TRI_X [] = {NULL, I_TRI1_X, I_TRI2_X};
-static const uniform REAL *I_TRI_Y [] = {NULL, I_TRI1_Y, I_TRI2_Y};
-static const uniform REAL *I_TRI_W [] = {NULL, I_TRI1_W, I_TRI2_W};
-static const uniform int   I_TRI_N [] = {   0, I_TRI1_N, I_TRI2_N};
-
-static const uniform REAL *I_QUA_X [] = {NULL, I_QUA1_X, I_QUA2_X};
-static const uniform REAL *I_QUA_Y [] = {NULL, I_QUA1_Y, I_QUA2_Y};
-static const uniform REAL *I_QUA_W [] = {NULL, I_QUA1_W, I_QUA2_W};
-static const uniform int   I_QUA_N [] = {   0, I_QUA1_N, I_QUA2_N};
-
-#define INTEGRATION_MAX_ORDER 4 /* integration order bound */
+#define                   I_HEX4_N    64
 
 /* minimal local coords */
-static uniform REAL mincoord [9][3] =
+const static uniform REAL mincoord [9][3] =
 {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0},
  {0, 0, 0}, /* tet */
  {-1, -1, 0}, /* pyr */
@@ -164,7 +127,7 @@ static uniform REAL mincoord [9][3] =
  {-1, -1, -1}}; /* hex */
 
 /* maximal local coords */
-static uniform REAL maxcoord [9][3] =
+const static uniform REAL maxcoord [9][3] =
 {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0},
  {1, 1, 1}, /* tet */
  {1, 1, 1}, /* pyr */
@@ -173,48 +136,118 @@ static uniform REAL maxcoord [9][3] =
  {1, 1, 1}}; /* hex */
 
 /* load 3D integrator data */
-inline static uniform int integrator3d_load (uniform int type, uniform int order, const uniform REAL **X, const uniform REAL **Y, const uniform REAL **Z, const uniform REAL **W)
+inline static uniform int integrator3d_load (uniform int type, uniform int order,
+  const uniform REAL * uniform * uniform X, const uniform REAL * uniform * uniform Y,
+  const uniform REAL * uniform * uniform Z, const uniform REAL * uniform * uniform W)
 {
   uniform int N;
-
-  ASSERT_DEBUG (order >= 1 && order <= INTEGRATION_MAX_ORDER, "Integration order out of bounds");
 
   switch (type)
   {
   case 4:
   {
-    *X = I_TET_X [order];
-    *Y = I_TET_Y [order];
-    *Z = I_TET_Z [order];
-    *W = I_TET_W [order];
-     N = I_TET_N [order];
+    assert (order >= 1 && order <= 2);
+
+    switch (order)
+    {
+    case 1:
+    *X = I_TET1_X;
+    *Y = I_TET1_Y;
+    *Z = I_TET1_Z;
+    *W = I_TET1_W;
+     N = I_TET1_N;
+    break;
+    case 2:
+    *X = I_TET2_X;
+    *Y = I_TET2_Y;
+    *Z = I_TET2_Z;
+    *W = I_TET2_W;
+     N = I_TET2_N;
+    break;
+    }
   }
   break;
   case 5:
   {
-    *X = I_PYR_X [order];
-    *Y = I_PYR_Y [order];
-    *Z = I_PYR_Z [order];
-    *W = I_PYR_W [order];
-     N = I_PYR_N [order];
+    assert (order >= 1 && order <= 2);
+
+    switch (order)
+    {
+    case 1:
+    *X = I_PYR1_X;
+    *Y = I_PYR1_Y;
+    *Z = I_PYR1_Z;
+    *W = I_PYR1_W;
+     N = I_PYR1_N;
+    break;
+    case 2:
+    *X = I_PYR2_X;
+    *Y = I_PYR2_Y;
+    *Z = I_PYR2_Z;
+    *W = I_PYR2_W;
+     N = I_PYR2_N;
+    break;
+    }
   }
   break;
   case 6:
   {
-    *X = I_WED_X [order];
-    *Y = I_WED_Y [order];
-    *Z = I_WED_Z [order];
-    *W = I_WED_W [order];
-     N = I_WED_N [order];
+    assert (order >= 1 && order <= 2);
+
+    switch (order)
+    {
+    case 1:
+    *X = I_WED1_X;
+    *Y = I_WED1_Y;
+    *Z = I_WED1_Z;
+    *W = I_WED1_W;
+     N = I_WED1_N;
+    break;
+    case 2:
+    *X = I_WED2_X;
+    *Y = I_WED2_Y;
+    *Z = I_WED2_Z;
+    *W = I_WED2_W;
+     N = I_WED2_N;
+    break;
+    }
   }
   break;
   case 8:
   {
-    *X = I_HEX_X [order];
-    *Y = I_HEX_Y [order];
-    *Z = I_HEX_Z [order];
-    *W = I_HEX_W [order];
-     N = I_HEX_N [order];
+    assert (order >= 1 && order <= 4);
+
+    switch(order)
+    {
+    case 1:
+    *X = I_HEX1_X;
+    *Y = I_HEX1_Y;
+    *Z = I_HEX1_Z;
+    *W = I_HEX1_W;
+     N = I_HEX1_N;
+    break;
+    case 2:
+    *X = I_HEX2_X;
+    *Y = I_HEX2_Y;
+    *Z = I_HEX2_Z;
+    *W = I_HEX2_W;
+     N = I_HEX2_N;
+    break;
+    case 3:
+    *X = I_HEX3_X;
+    *Y = I_HEX3_Y;
+    *Z = I_HEX3_Z;
+    *W = I_HEX3_W;
+     N = I_HEX3_N;
+    break;
+    case 4:
+    *X = I_HEX4_X;
+    *Y = I_HEX4_Y;
+    *Z = I_HEX4_Z;
+    *W = I_HEX4_W;
+     N = I_HEX4_N;
+    break;
+    }
   }
   break;
   }
@@ -222,37 +255,53 @@ inline static uniform int integrator3d_load (uniform int type, uniform int order
   return N;
 }
 
-/* predict 3D integration order */
-typedef enum {MASS, BODF, INTF} ENTITY3D;
-static uniform int integrator3d_order (uniform int type, ENTITY3D entity)
-{
-  if (type == 8 && entity == MASS) return 4;
-  return 2; /* XXX */
-}
-
 /* load 2D integrator data */
-inline static uniform int integrator2d_load (uniform int type, uniform int order, const uniform REAL **X, const uniform REAL **Y, const uniform REAL **W)
+inline static uniform int integrator2d_load (uniform int type, uniform int order,
+  const uniform REAL * uniform * uniform X, const uniform REAL * uniform * uniform Y,
+  const uniform REAL * uniform * uniform W)
 {
   uniform int N;
 
-  ASSERT_DEBUG (order >= 1 && order <= INTEGRATION_MAX_ORDER, "Integration order out of bounds");
+  assert (order >= 1 && order <= 2);
 
   switch (type)
   {
   case 3:
   {
-    *X = I_TRI_X [order];
-    *Y = I_TRI_Y [order];
-    *W = I_TRI_W [order];
-     N = I_TRI_N [order];
+    switch (order)
+    {
+    case 1:
+    *X = I_TRI1_X;
+    *Y = I_TRI1_Y;
+    *W = I_TRI1_W;
+     N = I_TRI1_N;
+    break;
+    case 2:
+    *X = I_TRI2_X;
+    *Y = I_TRI2_Y;
+    *W = I_TRI2_W;
+     N = I_TRI2_N;
+    break;
+    }
   }
   break;
   case 4:
   {
-    *X = I_QUA_X [order];
-    *Y = I_QUA_Y [order];
-    *W = I_QUA_W [order];
-     N = I_QUA_N [order];
+    switch (order)
+    {
+    case 1:
+    *X = I_QUA1_X;
+    *Y = I_QUA1_Y;
+    *W = I_QUA1_W;
+     N = I_QUA1_N;
+    break;
+    case 2:
+    *X = I_QUA2_X;
+    *Y = I_QUA2_Y;
+    *W = I_QUA2_W;
+     N = I_QUA2_N;
+    break;
+    }
   }
   break;
   }
@@ -260,40 +309,44 @@ inline static uniform int integrator2d_load (uniform int type, uniform int order
   return N;
 }
 
-/* predict 2D integration order */
-static uniform int integrator2d_order (uniform int type)
-{
-  if (type == 3) return 1;
-  else return 2; /* quads */
-}
-
-/* element integration; note that below __t__->ver, __t__->center are in local element coordinates already */
-#define INTEGRATE3D(TYPE, ENTITY, ...)\
+/* element integral begins */
+#define INTEGRAL3D_BEGIN(TYPE, ORDER)\
 {\
-  const uniform REAL *__X__, *__Y__, *__Z__, *__W__;\
-  uniform REAL point [3], weight;\
-  uniform int __N__, __k__, __l__;\
+  uniform int __N__;\
+  const uniform REAL * uniform __X__;\
+  const uniform REAL * uniform __Y__;\
+  const uniform REAL * uniform __Z__;\
+  const uniform REAL * uniform __W__;\
+  REAL point [3], weight;\
+  int __k__, __l__;\
 \
-  __N__ = integrator3d_load (TYPE, integrator3d_order (TYPE, ENTITY), &__X__, &__Y__, &__Z__, &__W__);\
+  __N__ = integrator3d_load (TYPE, ORDER, &__X__, &__Y__, &__Z__, &__W__);\
   for (__k__ = 0; __k__ < __N__; __k__ ++)\
   {\
     point [0] = __X__ [__k__];\
     point [1] = __Y__ [__k__];\
     point [2] = __Z__ [__k__];\
     weight = __W__ [__k__];\
-\
-    __VA_ARGS__\
+
+/* integration code in between
+ * uses point and weight values */
+
+/* element integral ends */
+#define INTEGRAL3D_END()\
   }\
 }
 
 /* face integral begins */
-#define INTEGRAL2D_BEGIN(TYPE)\
+#define INTEGRAL2D_BEGIN(TYPE, ORDER)\
 {\
-  const uniform REAL *__X__, *__Y__, *__W__;\
-  uniform REAL point [2], weight;\
-  uniform int __N__, __k__;\
+  uniform int __N__;\
+  const uniform REAL * uniform __X__;\
+  const uniform REAL * uniform __Y__;\
+  const uniform REAL * uniform __W__;\
+  REAL point [2], weight;\
+  int __k__;\
 \
-  __N__ = integrator2d_load (TYPE, integrator2d_order (TYPE), &__X__, &__Y__, &__W__);\
+  __N__ = integrator2d_load (TYPE, ORDER, &__X__, &__Y__, &__W__);\
   for (__k__ = 0; __k__ < __N__; __k__ ++)\
   {\
     point [0] = __X__ [__k__];\

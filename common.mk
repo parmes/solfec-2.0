@@ -106,10 +106,10 @@ objs4/cpp/output.o: cpp/output.cpp
 objs8/cpp/output.o: cpp/output.cpp
 	$(MPICXX) -DREALSIZE=8 -Iinc -Iobjs8/ispc $(CFLAGS) $(HDF5INC) $< -c -o $@
 
-objs4/%.o: %.cpp $(ISPC_HEADERS4) $(CPP_INC) $(C_INC)
+objs4/%.o: %.cpp $(CPP_INC) $(C_INC)
 	$(MPICXX) -DREALSIZE=4 -Iinc -Ilib -Iobjs4/ispc $(CFLAGS) $< -c -o $@
 
-objs8/%.o: %.cpp $(ISPC_HEADERS8) $(CPP_INC) $(C_INC)
+objs8/%.o: %.cpp $(CPP_INC) $(C_INC)
 	$(MPICXX) -DREALSIZE=8 -Iinc -Ilib -Iobjs8/ispc $(CFLAGS) $< -c -o $@
 
 objs4/%.o: %.c $(C_INC)
