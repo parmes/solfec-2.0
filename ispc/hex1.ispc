@@ -99,33 +99,41 @@ inline static REAL hex1_det (REAL nodes[8][3], REAL point[], REAL F[])
   return DET (F);
 }
 
-#if 0
 /* element deformation determinant at local point */
 inline static void hex1_gradient (REAL q[8][3], REAL point[], REAL F0[], REAL derivs[], REAL F[])
 {
-  REAL local_derivs[24], IF0[9], det, *l, *d;
+  REAL local_derivs[24], IF0[9], det;
+  varying REAL * varying l;
+  varying REAL * varying d;
   int i, j, k;
 
   hex1_derivs (point, local_derivs);
 
   INVERT (F0, IF0, det);
   assert (det > 0.0);
-  for (k = 0, l = local_derivs, d = derivs; k < 8; k ++, l += 3, d += 3) { TVMUL (IF0, l, d); }
+  for (k = 0, l = local_derivs, d = derivs; k < 8; k ++, l += 3, d += 3)
+  { 
+#pragma ignore warning
+    TVMUL (IF0, l, d);
+  }
 
   IDENTITY (F);
 
   for (i = 0; i < 3; i ++)
     for (j = 0; j < 3; j ++)
-      for (k = 0; k < 8; k ++) F [3*j+i] += q[k][i] * derivs [3*k+j];
+      for (k = 0; k < 8; k ++)
+      {
+#pragma ignore warning
+        F [3*j+i] += q[k][i] * derivs [3*k+j];
+      }
 }
-#endif
 
-/* calculate volumes of n input elements */
-export void hex1_volumes (uniform int n,
+/* calculate element volume */
+export void hex1_volumes (uniform int n, /* number of elements */
   uniform REAL * uniform x[8],
   uniform REAL * uniform y[8],
   uniform REAL * uniform z[8],
-  uniform REAL volume[])
+  uniform REAL volume[]) /* output volumes per element */
 {
   foreach (i = 0 ... n)
   {
@@ -144,17 +152,18 @@ export void hex1_volumes (uniform int n,
 
     INTEGRAL3D_END()
 
+#pragma ignore warning
     volume[i] = vol;
   }
 }
 
-/* lump contribution of the element mass into the global diagonal matrix */
-export void hex1_lump_mass (uniform int n,
+/* calculate element lumped mass contribution */
+export void hex1_lump_mass (uniform int n, /* number of elements */
   uniform REAL * uniform x[8],
   uniform REAL * uniform y[8],
   uniform REAL * uniform z[8],
   uniform REAL density[],
-  uniform REAL * uniform lump_mass[8])
+  uniform REAL * uniform lump_mass[8]) /* output nodal mass -- same along x, y, z -- per element */
 
 {
   foreach (i = 0 ... n)
@@ -197,14 +206,13 @@ export void hex1_lump_mass (uniform int n,
   }
 }
 
-#if 0
-/* copute element body force contribution */
-export void hex1_body_force (uniform int n,
+/* compute element body force */
+export void hex1_body_force (uniform int n, /* number of elements */
   uniform REAL * uniform x[8],
   uniform REAL * uniform y[8],
   uniform REAL * uniform z[8],
   uniform REAL density[],
-  uniform REAL * uniform body_force[8])
+  uniform REAL * uniform body_force[8]) /* output nodal body force -- to be scaled by gravity along x, y, z -- per element */
 {
   foreach (i = 0 ... n)
   {
@@ -243,8 +251,8 @@ export void hex1_body_force (uniform int n,
   }
 }
 
-/* copute element internal force or force derivative contribution */
-export void hex1_internal_force (uniform int n,
+/* compute element internal force */
+export void hex1_internal_force (uniform int n, /* number of elements */
   uniform REAL * uniform x[8],
   uniform REAL * uniform y[8],
   uniform REAL * uniform z[8],
@@ -253,7 +261,7 @@ export void hex1_internal_force (uniform int n,
   uniform REAL * uniform dz[8],
   uniform REAL young[],
   uniform REAL poisson[],
-  uniform REAL * uniform internal_force[8])
+  uniform REAL * uniform internal_force[24]) /* output internal force per element */
 {
   foreach (i = 0 ... n)
   {
@@ -266,9 +274,10 @@ export void hex1_internal_force (uniform int n,
 #pragma ignore warning
                      {dx[4][i],dy[4][i],dz[4][i]}, {dx[5][i],dy[5][i],dz[5][i]}, {dx[6][i],dy[6][i],dz[6][i]}, {dx[7][i],dy[7][i],dz[7][i]}};
 
-    REAL integral[8] = {0., 0., 0., 0., 0., 0., 0., 0.}, *p;
-
-    REAL J, coef, E, mu, derivs [24], F0[9], F[9], *B;
+    REAL integral[24] = {0., 0., 0., 0., 0., 0., 0., 0.,0., 0., 0., 0., 0., 0., 0., 0.,0., 0., 0., 0., 0., 0., 0., 0.};
+    REAL J, coef, E, mu, derivs [24], F0[9], F[9], P[9];
+    varying REAL * varying B;
+    varying REAL * varying p;
     int j;
 
 #pragma ignore warning
@@ -282,15 +291,88 @@ export void hex1_internal_force (uniform int n,
 
       BULK_MATERIAL_P (E, mu, F, coef, P);
 
-      for (j = 0, B = derivs, p = integral; j < 8; j ++, B += 3, p += 3) { NVADDMUL (p, P, B, p); }
+      for (j = 0, B = derivs, p = integral; j < 8; j ++, B += 3, p += 3)
+      { 
+#pragma ignore warning
+        NVADDMUL (p, P, B, p);
+      }
 
     INTEGRAL3D_END() 
 
-    for (uniform int l = 0; l < 8; l ++)
+    for (uniform int l = 0; l < 24; l ++)
     {
 #pragma ignore warning
       internal_force[l][i] = integral[l];
     }
   }
 }
-#endif
+
+/* compute element stiffness matrix */
+export void hex1_stiffness_matrix (uniform int n, /* number of elements */
+  uniform REAL * uniform x[8],
+  uniform REAL * uniform y[8],
+  uniform REAL * uniform z[8],
+  uniform REAL * uniform dx[8],
+  uniform REAL * uniform dy[8],
+  uniform REAL * uniform dz[8],
+  uniform REAL young[],
+  uniform REAL poisson[],
+  uniform REAL * uniform stiffness_matrix[576]) /* output stiffness matrix per element */
+{
+  foreach (i = 0 ... n)
+  {
+#pragma ignore warning
+    REAL nodes [8][3] = {{x[0][i],y[0][i],z[0][i]}, {x[1][i],y[1][i],z[1][i]}, {x[2][i],y[2][i],z[2][i]}, {x[3][i],y[3][i],z[3][i]},
+#pragma ignore warning
+                         {x[4][i],y[4][i],z[4][i]}, {x[5][i],y[5][i],z[5][i]}, {x[6][i],y[6][i],z[6][i]}, {x[7][i],y[7][i],z[7][i]}};
+#pragma ignore warning
+    REAL q [8][3] = {{dx[0][i],dy[0][i],dz[0][i]}, {dx[1][i],dy[1][i],dz[1][i]}, {dx[2][i],dy[2][i],dz[2][i]}, {dx[3][i],dy[3][i],dz[3][i]},
+#pragma ignore warning
+                     {dx[4][i],dy[4][i],dz[4][i]}, {dx[5][i],dy[5][i],dz[5][i]}, {dx[6][i],dy[6][i],dz[6][i]}, {dx[7][i],dy[7][i],dz[7][i]}};
+
+    REAL integral[576] = {0.};
+    REAL J, coef, E, mu, derivs [24], F0[9], F[9], K[81], KB[9];
+    varying REAL * varying B;
+    varying REAL * varying p;
+    int j, k;
+
+#pragma ignore warning
+    E = young[i], mu = poisson[i];
+
+    INTEGRAL3D_BEGIN (8, 2)
+
+      J = hex1_det (nodes, point, F0);
+      hex1_gradient (q, point, F0, derivs, F);
+      coef = J * weight;
+
+      BULK_MATERIAL_K (E, mu, F, coef, K);
+
+      for (j = 0; j < 24; j ++) /* see doc/notes.lyx for details */
+      {
+	SET9 (KB, 0);
+	for (k = 0; k < 3; k ++)
+	{
+          int l = j-((j/3)*3); /* j%3 since ISPC warns: "Modulus operator with varying types is very inefficient" */
+	  p = &K [9*(l + (3*k))];
+#pragma ignore warning
+	  coef = derivs [3*(j/3)+k];
+#pragma ignore warning
+	  NNADDMUL (KB, coef, p, KB);
+	}
+
+	for (k = 0, B = derivs, p = &integral[24*j]; k < 8; k ++, B += 3, p += 3)
+        { 
+#pragma ignore warning
+          NVADDMUL (p, KB, B, p);
+        }
+      }
+
+    INTEGRAL3D_END() 
+
+    for (uniform int l = 0; l < 576; l ++)
+    {
+#pragma ignore warning
+      stiffness_matrix[l][i] = integral[l];
+    }
+  }
+}

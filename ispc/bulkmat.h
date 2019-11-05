@@ -125,14 +125,14 @@ inline static void SVK_Tangent_C (REAL lambda, REAL mi, REAL coef, REAL F[], REA
   K (9, 9) = ((3*SQ(F(3,3))+SQ(F(3,2))+SQ(F(3,1))+SQ(F(2,3))+SQ(F(2,2))+SQ(F(2,1))+SQ(F(1,3))+SQ(F(1,2))+SQ(F(1,1))-3)*lambda +    
              (6*SQ(F(3,3))+2*SQ(F(3,2))+2*SQ(F(3,1))+2*SQ(F(2,3))+2*SQ(F(1,3))-2)*mi)*0.5;
 
-  /* coef scaling */
+#pragma ignore warning
   for (int i = 0; i < 81; i ++) K[i] *= coef;
 }
 
 /* Saint Venant - Kirchhoff material model; assuming column-wise F;
  * given Lame coefficients (lambda, mi) and deformation gradient 'F'
  * return det (F) end output first Piola-Kirchhoff stress 'P' (scaled by the 'coef'); */
-static REAL SVK_Stress_C (REAL lambda, REAL mi, REAL coef, REAL F[], REAL P[])
+inline static void SVK_Stress_C (REAL lambda, REAL mi, REAL coef, REAL F[], REAL P[])
 {
   REAL J, E [9], S [9], trace;
 
@@ -180,8 +180,6 @@ static REAL SVK_Stress_C (REAL lambda, REAL mi, REAL coef, REAL F[], REAL P[])
   P [6] = coef * (F [0]*S [6] + F [3]*S [7] + F [6]*S [8]);
   P [7] = coef * (F [1]*S [6] + F [4]*S [7] + F [7]*S [8]);
   P [8] = coef * (F [2]*S [6] + F [5]*S [7] + F [8]*S [8]);
-
-  return J;
 }
 
 inline static void BULK_MATERIAL_P (REAL young, REAL poisson, REAL F[], REAL coef, REAL P[])
@@ -192,7 +190,7 @@ inline static void BULK_MATERIAL_P (REAL young, REAL poisson, REAL F[], REAL coe
   SVK_Stress_C (lambda, mi, coef, F, P);
 }
 
-inline static REAL BULK_MATERIAL_K (REAL young, REAL poisson, REAL F[], REAL coef, REAL K[])
+inline static void BULK_MATERIAL_K (REAL young, REAL poisson, REAL F[], REAL coef, REAL K[])
 {
   REAL lambda = young*poisson / ((1.0 + poisson)*(1.0 - 2.0*poisson));
   REAL mi = young / (2.0*(1.0 + poisson));
