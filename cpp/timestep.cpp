@@ -98,6 +98,9 @@ tf::Task time_step_task (REAL time, REAL step, tf::Taskflow& taskflow)
   std::vector<REAL> rhs; /* right hand side */
   std::vector<REAL> x; /* unkonwn solution */
 
+  /* TODO: global indexing of nodes from (rank,index) pairs
+           in order to facilitate AGMCL CSR matrix assembly */
+
   Precond *precond = update_precond (&A);
 
   auto [iters, error] = solve_system (&A, precond, rhs, x, 100, 1E-10);

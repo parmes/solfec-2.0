@@ -89,6 +89,9 @@ enum {nd_vx, nd_vy, nd_vz,   /* linear velocity */
       nd_unused,             /* unused node flag */
       nd_last};     
 
+extern GA *ga_nodeindex; /* global array of global node indices corresponding
+                            to nodal data as per element (rank/index) pairs */
+
 extern GA *ga_elements; /* global array of element data */
 enum {el_bodnum,
       el_matnum,

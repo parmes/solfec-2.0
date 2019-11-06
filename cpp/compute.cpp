@@ -88,6 +88,7 @@ bool debug_files = false; /* enable debug files output */
 GA *ga_counters; /* global array of counters */
 GA *ga_materials; /* global array of materials */
 GA *ga_nodes; /* global array of nodal data */
+GA *ga_nodeindex; /* global array of global node indices corresponding to nodal data as per element (rank/index) pairs */
 GA *ga_elements; /* global array of element data */
 GA *ga_faces; /* global array of face data */
 GA *ga_elldata; /* global array of ellipsoids data */
@@ -596,6 +597,7 @@ void compute_main_loop(REAL duration, REAL step)
     REAL msg[2] = {duration, step};
     MPI_Bcast (msg, 2, MPI_REAL, 0, MPI_COMM_WORLD);
     duration = msg[0]; step = msg[1];
+    int ga_nodeindex_update = 0;
 
     if (duration == -1.) break; /* rank 0 process communicated termination */
 
@@ -1085,6 +1087,7 @@ void compute_main_loop(REAL duration, REAL step)
 
 	ga_materials = new GA(MPI_COMM_WORLD, counts[sz_materials], mt_last, MPI_REAL);
 	ga_nodes = new GA(MPI_COMM_WORLD, counts[sz_nodes], nd_last, MPI_REAL);
+        ga_nodeindex = new GA(MPI_COMM_WORLD, counts[sz_nodes], nd_last, MPI_REAL);
 	ga_elements = new GA(MPI_COMM_WORLD, counts[sz_elements], el_last, MPI_UINT64_T);
 	ga_faces = new GA(MPI_COMM_WORLD, counts[sz_faces], fa_last, MPI_UINT64_T);
 	ga_elldata = new GA(MPI_COMM_WORLD, counts[sz_ellips], ll_last0, MPI_REAL);
@@ -1304,6 +1307,8 @@ void compute_main_loop(REAL duration, REAL step)
 	  GA_RESIZE_DOWN (cn_faces, ga_faces, fa_last, deleted_faces, fa_bodnum);
 
           deleted_meshes.clear();
+
+          ga_nodeindex_update = 1; /* invalidate global node indexing */
 	}
 
 	if (!deleted_ellips.empty())
@@ -1449,6 +1454,8 @@ void compute_main_loop(REAL duration, REAL step)
 	if (!inserted_meshes.empty())
 	{
 	  GA_INSERT_MESHES (parts, maps);
+
+          ga_nodeindex_update = 1; /* invalidate global node indexing */
 	}
 
 	if (!inserted_ellips.empty())
@@ -1725,6 +1732,28 @@ void compute_main_loop(REAL duration, REAL step)
       std::cout << "DBG: ELLIPSOIDS imbalance: " << FMT("%.2f") << im << std::endl;
     }
 
+    MPI_Bcast (&ga_nodeindex_update, 1, MPI_INT, 0, MPI_COMM_WORLD);
+    if (ga_nodeindex_update) /* node indexing needs updating */
+    {
+      uint64_t count[2], counts[size], base = 0;
+
+      delete ga_nodeindex;
+
+      ga_counters->get(rank, cn_nodes, sz_nodes+1, 0, 1, count); /* nodes count and size */
+
+      ga_nodeindex = new GA(MPI_COMM_WORLD, count[1], 1, MPI_UINT64_T); /* allocate new global node index array */
+
+      MPI_Allgather(count, 1, MPI_UINT64_T, counts, 1, MPI_UINT64_T, MPI_COMM_WORLD); /* gather per rank nodes counts */
+
+      for (int i = 0; i < rank; i ++) base += counts[i]; /* sum up to base rank index */
+
+      for (uint64_t j = 0; j < count[0]; j ++)
+      {
+        uint64_t index = base+j;
+        ga_nodeindex->put(rank, j, j+1, 0, 1, &index);
+      }
+    }
+
     if (debug_files)
     {
       debug_output_compute_data();
@@ -1765,6 +1794,7 @@ void compute_finalize()
   using namespace compute;
   delete ga_counters;
   delete ga_nodes;
+  delete ga_nodeindex;
   delete ga_elements;
   delete ga_faces;
   delete ga_ellips;
