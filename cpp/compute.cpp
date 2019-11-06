@@ -1735,7 +1735,7 @@ void compute_main_loop(REAL duration, REAL step)
     MPI_Bcast (&ga_nodeindex_update, 1, MPI_INT, 0, MPI_COMM_WORLD);
     if (ga_nodeindex_update) /* node indexing needs updating */
     {
-      uint64_t count[2], counts[size], base = 0;
+      uint64_t count[2];
 
       delete ga_nodeindex;
 
@@ -1743,14 +1743,29 @@ void compute_main_loop(REAL duration, REAL step)
 
       ga_nodeindex = new GA(MPI_COMM_WORLD, count[1], 1, MPI_UINT64_T); /* allocate new global node index array */
 
-      MPI_Allgather(count, 1, MPI_UINT64_T, counts, 1, MPI_UINT64_T, MPI_COMM_WORLD); /* gather per rank nodes counts */
-
-      for (int i = 0; i < rank; i ++) base += counts[i]; /* sum up to base rank index */
+      uint64_t used_count = 0, used_counts[size], base = 0;
 
       for (uint64_t j = 0; j < count[0]; j ++)
       {
-        uint64_t index = base+j;
-        ga_nodeindex->put(rank, j, j+1, 0, 1, &index);
+        REAL unused;
+        ga_nodes->get(rank, j, j+1, nd_unused, nd_unused+1, &unused);
+        if (unused == 0.) used_count ++;
+      }
+
+      MPI_Allgather(&used_count, 1, MPI_UINT64_T, used_counts, 1, MPI_UINT64_T, MPI_COMM_WORLD); /* gather per rank nodes counts */
+
+      for (int i = 0; i < rank; i ++) base += used_counts[i]; /* sum up to base rank index */
+
+      for (uint64_t j = 0, k = 0; j < count[0]; j ++)
+      {
+        REAL unused;
+        ga_nodes->get(rank, j, j+1, nd_unused, nd_unused+1, &unused);
+        if (unused == 0.)
+        {
+          uint64_t index = base+k;
+          ga_nodeindex->put(rank, j, j+1, 0, 1, &index);
+          k ++;
+        }
       }
     }
 
