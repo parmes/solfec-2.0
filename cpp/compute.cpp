@@ -737,9 +737,9 @@ void compute_main_loop(REAL duration, REAL step)
               noddata[nd_vx*nodsize + nodidx] = v[0];
               noddata[nd_vy*nodsize + nodidx] = v[1];
               noddata[nd_vz*nodsize + nodidx] = v[2];
-              noddata[nd_x*nodsize + nodidx] = x;
-              noddata[nd_y*nodsize + nodidx] = y;
-              noddata[nd_z*nodsize + nodidx] = z;
+              noddata[nd_dx*nodsize + nodidx] = 0.;
+              noddata[nd_dy*nodsize + nodidx] = 0.;
+              noddata[nd_dz*nodsize + nodidx] = 0.;
               noddata[nd_X*nodsize + nodidx] = x;
               noddata[nd_Y*nodsize + nodidx] = y;
               noddata[nd_Z*nodsize + nodidx] = z;
@@ -786,9 +786,9 @@ void compute_main_loop(REAL duration, REAL step)
 	    noddata[nd_vx*nodsize + nodidx] = v[0];
 	    noddata[nd_vy*nodsize + nodidx] = v[1];
 	    noddata[nd_vz*nodsize + nodidx] = v[2];
-	    noddata[nd_x*nodsize + nodidx] = x;
-	    noddata[nd_y*nodsize + nodidx] = y;
-	    noddata[nd_z*nodsize + nodidx] = z;
+	    noddata[nd_dx*nodsize + nodidx] = 0.;
+	    noddata[nd_dy*nodsize + nodidx] = 0.;
+	    noddata[nd_dz*nodsize + nodidx] = 0.;
 	    noddata[nd_X*nodsize + nodidx] = x;
 	    noddata[nd_Y*nodsize + nodidx] = y;
 	    noddata[nd_Z*nodsize + nodidx] = z;

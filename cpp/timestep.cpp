@@ -40,10 +40,15 @@ SOFTWARE.
 #include <amgcl/solver/lgmres.hpp>
 #include <amgcl/solver/fgmres.hpp>
 #include <amgcl/adapter/crs_tuple.hpp>
+#include <set>
+#include <map>
+#include <vector>
 #include "real.h"
 #include "alg.h"
 #include "compute.hpp"
 #include "timestep.hpp"
+
+#define NELPTSK 32 /* number of elements per task */
 
 /* example application with separated preconditioner and solver;
  * this allows to update the preconditioner less frequently then
@@ -88,24 +93,86 @@ inline std::tuple<int,REAL> solve_system (Matrix *matrix, Precond *precond,
 
 /* returns a time step task that can be preceded or followed by any
  * externally added task */
-tf::Task time_step_task (REAL time, REAL step, tf::Taskflow& taskflow)
+tf::Task time_step_task (int rank, REAL time, REAL step, tf::Taskflow& taskflow)
 {
-  Matrix A;
-  uint64_t n = std::get<0>(A); /* system size */
-  std::vector<uint64_t> &ptr = std::get<1>(A); /* row pointers */
-  std::vector<uint64_t> &col = std::get<2>(A); /* column indices */
-  std::vector<REAL> &val = std::get<3>(A); /* matrix values */
-  std::vector<REAL> rhs; /* right hand side */
-  std::vector<REAL> x; /* unkonwn solution */
+  return taskflow.emplace([rank, time, step]()
+  {
+    using namespace compute;
+    uint64_t count;
+    ga_counters->get (rank, cn_elements, cn_elements+1, 0, 1, &count);
+    std::vector<uint64_t> data(count*el_last);
+    ga_elements->get(rank, 0, count, 0, el_last, &data[0]);
 
-  /* TODO: global indexing of nodes from (rank,index) pairs
-           in order to facilitate AGMCL CSR matrix assembly */
+    uint64_t *matnum = &data[count*el_matnum],
+             *type = &data[count*el_type];
+    uint64_t *nd_ri[8][2] = {{&data[count*el_nd0_rnk], &data[count*el_nd0_idx]},
+                             {&data[count*el_nd1_rnk], &data[count*el_nd1_idx]},
+                             {&data[count*el_nd2_rnk], &data[count*el_nd2_idx]},
+                             {&data[count*el_nd3_rnk], &data[count*el_nd3_idx]},
+                             {&data[count*el_nd4_rnk], &data[count*el_nd4_idx]},
+                             {&data[count*el_nd5_rnk], &data[count*el_nd5_idx]},
+                             {&data[count*el_nd6_rnk], &data[count*el_nd6_idx]},
+                             {&data[count*el_nd7_rnk], &data[count*el_nd7_idx]}};
 
-  Precond *precond = update_precond (&A);
+    uint64_t nc = 0;
+    std::set<int> ranks;
+    for (uint64_t i = 0; i < count; i ++)
+    {
+      nc += type[i];
+      for (int j = 0; j < type[i]; j ++)
+      {
+        ranks.insert(nd_ri[j][0][i]);
+      }
+    }
 
-  auto [iters, error] = solve_system (&A, precond, rhs, x, 100, 1E-10);
+    std::vector<REAL> X(nc), Y(nc), Z(nc), dx(nc), dy(nc), dz(nc);
+    std::vector<uint64_t> index(nc);
+    {
+      std::map<int,uint64_t> cnt0;
+      std::map<int,std::vector<REAL>> dat0;
+      std::map<int,std::vector<uint64_t>> idx0;
 
-  delete precond;
+      for (auto r : ranks)
+      {
+        uint64_t count;
+        ga_counters->get (r, cn_nodes, cn_nodes+1, 0, 1, &count);
+        cnt0[r] = count;
+        dat0[r].resize(count*nd_last);
+        idx0[r].resize(count);
+        ga_nodes->get (r, 0, count, 0, nd_last, &dat0[r][0]);
+        ga_nodeindex->get (r, 0, count, 0, 1, &idx0[r][0]);
+      }
 
-  return taskflow.placeholder();
+      for (uint64_t i = 0, k = 0; i < count; i ++)
+      {
+        for (int j = 0; j < type[i]; j ++, k ++)
+        {
+          int r = nd_ri[j][0][i];
+          uint64_t cnt = cnt0[r];
+          uint64_t idx = nd_ri[j][1][i];
+          X[k] = dat0[r][cnt*nd_X + idx];
+          Y[k] = dat0[r][cnt*nd_Y + idx];
+          Z[k] = dat0[r][cnt*nd_Z + idx];
+          dx[k] = dat0[r][cnt*nd_dx + idx];
+          dy[k] = dat0[r][cnt*nd_dy + idx];
+          dz[k] = dat0[r][cnt*nd_dz + idx];
+          index[k] = idx0[r][idx];
+        }
+      }
+    }
+
+    Matrix A;
+    uint64_t n = std::get<0>(A); /* system size */
+    std::vector<uint64_t> &ptr = std::get<1>(A); /* row pointers */
+    std::vector<uint64_t> &col = std::get<2>(A); /* column indices */
+    std::vector<REAL> &val = std::get<3>(A); /* matrix values */
+    std::vector<REAL> rhs; /* right hand side */
+    std::vector<REAL> x; /* unkonwn solution */
+
+    Precond *precond = update_precond (&A);
+
+    auto [iters, error] = solve_system (&A, precond, rhs, x, 100, 1E-10);
+
+    delete precond;
+  });
 }

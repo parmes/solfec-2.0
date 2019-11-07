@@ -301,9 +301,9 @@ static std::tuple<uint64_t, uint64_t, uint64_t> h5_mesh_dataset (std::vector<uin
 
         for (uint64_t i = 0, j = rng[1]; i < nrng; i ++, j ++)
         {
-          REAL x = vals[nrng*nd_x+i],
-               y = vals[nrng*nd_y+i],
-               z = vals[nrng*nd_z+i];
+          REAL x = vals[nrng*nd_X+i] + vals[nrng*nd_dx+i],
+               y = vals[nrng*nd_Y+i] + vals[nrng*nd_dy+i],
+               z = vals[nrng*nd_Z+i] + vals[nrng*nd_dz+i];
 
           uint64_t k = nindex[rng[0]][j];
 

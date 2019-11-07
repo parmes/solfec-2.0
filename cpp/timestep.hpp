@@ -29,6 +29,6 @@ SOFTWARE.
 
 /* returns a time step task that can be preceded or followed by any
  * externally added task */
-tf::Task time_step_task (REAL time, REAL step, tf::Taskflow& taskflow);
+tf::Task time_step_task (int rank, REAL time, REAL step, tf::Taskflow& taskflow);
 
 #endif

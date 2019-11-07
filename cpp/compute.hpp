@@ -83,8 +83,8 @@ enum {mt_density,
       mt_last};
 
 extern GA *ga_nodes; /* global array of nodal data */
-enum {nd_vx, nd_vy, nd_vz,   /* linear velocity */
-      nd_x, nd_y, nd_z,      /* current position */
+enum {nd_vx, nd_vy, nd_vz,   /* curent velocity */
+      nd_dx, nd_dy, nd_dz,   /* current displacement */
       nd_X, nd_Y, nd_Z,      /* reference position */
       nd_unused,             /* unused node flag */
       nd_last};     
